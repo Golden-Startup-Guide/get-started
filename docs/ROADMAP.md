@@ -29,7 +29,7 @@ Core principles:
 
 # Current Version (Completed)
 
-## Version 1
+## Version 1 (completed baseline)
 
 Features already implemented:
 
@@ -48,16 +48,36 @@ Status:
 
 **Completed**
 
+## Version 2 - Personal Notes Workspace
+
+Phase 2 now includes:
+
+- Tags with suggestions, filters, and tag-aware search
+- Notebooks, safe note reassignment on deletion, pinning, and favorites
+- Debounced autosave, save status, Markdown preview, and note history
+- Persisted light, dark, and system themes
+- Validated JSON backup and non-destructive merge restore
+- Settings with local storage counts, estimate, and About information
+- Expanded search, responsive navigation, and keyboard/screen-reader support
+
+Status:
+
+**Completed**
+
 ### Current implementation baseline
 
 - The application is a React and TypeScript single-page app built with Vite and Tailwind CSS.
-- `src/types.ts` defines a note with an ID, title, content, creation timestamp, and update timestamp.
-- `src/lib/notes.ts` uses the `idb` library and an IndexedDB database named `my-notes`, currently at schema version 1. Notes are loaded from the `notes` object store and sorted by update time.
-- `src/App.tsx` provides the note list, client-side title/content search, and a create/edit dialog. Saving is explicit; closing or cancelling an editor does not save its draft.
-- `vite-plugin-pwa` generates a service worker, web manifest, and precached app shell. Note records themselves remain in browser-local IndexedDB; they are not synced or backed up automatically.
-- The app currently has no automated test script or test suite. New storage formats and migrations should add focused tests before they become the basis for more complex features.
+- `src/types.ts` defines note, notebook, tag, settings, and history records.
+- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 2. Its upgrade migrates V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`.
+- `src/App.tsx` provides notebook/tag navigation, title/content/tag/notebook search, a debounced Markdown editor, history, theme and backup settings. Existing notes remain browser-local.
+- The database has `notes`, `notebooks`, `settings`, `tags`, and `history` stores. New installations include the starter notebooks Personal, Work, Ideas, Research, and Health Handbook; All Notes is a virtual view.
+- JSON restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs, remaps conflicting notebook IDs, and applies accepted records atomically. Import files are limited to 10 MiB.
+- History records the previously saved note for each successful debounced title/content change; identical content and organization-only changes do not create revisions. History is not silently pruned.
+- Automated tests use Vitest, React Testing Library, and fake IndexedDB to cover the V1 migration, storage features, backup validation/round trips, autosave, search, favorites, and theme persistence.
+- `vite-plugin-pwa` generates a service worker, web manifest, and precached app shell. Note records remain in browser-local IndexedDB and do not sync; users can create JSON backups in Settings.
+- Vitest and React Testing Library cover storage migration and core user flows. Add focused tests for future storage formats and migrations before relying on them for more complex features.
 
-This baseline is descriptive, not a restriction on future architecture. Refactor storage behind well-defined operations as feature work warrants it; avoid a large rewrite before a concrete need.
+This baseline is descriptive, not a restriction on future architecture. Keep storage behind well-defined operations and avoid a large rewrite without a concrete need.
 
 # Phase 2 - Data Management
 
@@ -76,7 +96,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ### Future Enhancement
 
@@ -98,7 +118,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ## Phase 3 - Organisation
 
@@ -121,7 +141,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ### Feature: Notebooks
 
@@ -142,7 +162,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ### Feature: Pin Notes
 
@@ -154,7 +174,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ### Feature: Favourites
 
@@ -166,7 +186,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 # Phase 4 - Enhanced Editing
 
@@ -184,7 +204,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ## Feature: Auto Save
 
@@ -196,7 +216,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ## Feature: Dark Mode
 
@@ -208,7 +228,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 # Phase 5 - Data Protection
 
@@ -227,7 +247,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ## Feature: Trash Bin
 
@@ -431,7 +451,7 @@ These are candidates rather than requirements. Evaluate bundle size, offline beh
 
 # Recommended Implementation Order
 
-This order is based on the current V1 code: a single `Note` record with string content, a version-1 IndexedDB store, explicit form-based saving, client-side search, and no automated tests. It prioritizes backup and recovery before introducing richer data structures.
+This historical order was based on the V1 code: a single `Note` record with string content, a version-1 IndexedDB store, explicit form-based saving, client-side search, and no automated tests. The Phase 2 items delivered in Version 2 are marked Completed above; the remaining entries are candidate future work.
 
 | Order | Work | User value | Complexity / risk | Dependencies and rationale |
 |---|---|---|---|---|
