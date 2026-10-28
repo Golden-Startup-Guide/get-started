@@ -19,3 +19,19 @@ npm run preview
 The production build includes a web app manifest, install icons, and a service worker that precaches the app shell. After the first successful load, the app shell is available offline. Install it from the browser's install option on supported desktop and mobile browsers. Service workers require HTTPS in production; localhost is supported for development.
 
 Notes stay in the browser profile where they were created. Clearing that browser's site data removes them, and notes do not automatically sync between devices.
+
+## Phase 2 features
+
+Organize notes with notebooks and tags, mark important notes as pinned or favorite, search titles/content/tags/notebook names, and edit with a safe live Markdown preview. Changes autosave locally; previous content revisions can be restored from note history. Light, dark, and system themes are available in Settings.
+
+Use **Settings → Export JSON backup** to download a backup. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting notebook IDs are remapped. Files larger than 10 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
+
+V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook.
+
+## Tests
+
+```bash
+npm test
+```
+
+The test suite covers the V1 IndexedDB migration, storage operations, backup/restore validation, and key workspace interactions.
