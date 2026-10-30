@@ -1,45 +1,80 @@
 # My Notes
 
-A responsive, offline-first notes app built with React, TypeScript, Vite, and Tailwind CSS. Notes are stored in IndexedDB on the current browser and device; there is no account, server, or cloud sync.
+**A private, offline-first home for notes and personal knowledge.**
 
-## Run locally
+My Notes is an installable web app for capturing ideas, organizing them into a
+personal library, and connecting related notes. It runs in the browser and
+stores your content on your device. There is no account, cloud sync, or
+AI-powered processing.
+
+![Illustration of the My Notes workspace with library navigation, searchable notes, and a Markdown editor](docs/images/my-notes-workspace.svg)
+
+*Illustrative view of the workspace and its main areas.*
+
+## What you can do
+
+- **Write comfortably:** create and edit Markdown notes with a live preview,
+  interactive checklists, autosave status, and restorable revision history.
+- **Keep things organized:** use libraries, shelves, notebooks, tags, favorites,
+  and pins to arrange and revisit notes.
+- **Find and connect ideas:** search note titles, content, tags, and notebook
+  names; link notes, explore backlinks, and navigate a bounded relationship
+  graph.
+- **Keep useful context nearby:** attach files, preview common images, play
+  supported audio, and record audio when the browser permits it.
+- **Recover and move your data:** restore deleted notes from Trash and export or
+  import validated JSON backups.
+- **Work across conditions:** use the responsive, installable PWA online or
+  offline after its app shell has been cached.
+
+## Get started
+
+Requirements: Node.js and npm for local development; a modern browser with
+IndexedDB for using the app.
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Production build
+Open the local URL printed by Vite. To create and serve a production build:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-The production build includes a web app manifest, install icons, and a service worker that precaches the app shell. After the first successful load, the app shell is available offline. Install it from the browser's install option on supported desktop and mobile browsers. Service workers require HTTPS in production; localhost is supported for development.
+The production build includes a web app manifest and a service worker that
+precaches the app shell. Install My Notes from the browser's install control on
+supported devices. Production service workers require HTTPS; localhost is
+supported for development.
 
-Notes stay in the browser profile where they were created. Clearing that browser's site data removes them, and notes do not automatically sync between devices.
+## Your data and privacy
 
-## Phase 2 features
+Notes, relationships, attachments, settings, and history are stored in the
+browser's IndexedDB database on the current device and browser profile. My Notes
+does not provide an account or automatically synchronize data between devices.
+Clearing browser site data can remove locally stored content. Export a backup
+from **Settings** and keep a copy somewhere separate from the browser profile.
 
-Organize notes with notebooks and tags, mark important notes as pinned or favorite, search titles/content/tags/notebook names, and edit with a safe live Markdown preview. Changes autosave locally; previous content revisions can be restored from note history. Light, dark, and system themes are available in Settings.
+Backups include note content and metadata, Trash, attachments, note links,
+libraries, shelves, notebooks, and history. Import validates the file and
+merges it without replacing existing notes. See the [complete app guide](docs/APP_GUIDE.md)
+for storage, backup, migration, and feature details.
 
-Organize notebooks into shelves and shelves into libraries from the workspace navigation. Each library has a home page with its shelves; deleting a library or shelf requires choosing where its contents will move. **All Notes** remains available as a direct, flat view.
+## Project documentation
 
-Markdown task-list checkboxes are interactive in the live preview, with a saved completion count. Toggling a task updates the Markdown source and autosaves like other note edits.
+- [Complete app guide](docs/APP_GUIDE.md) — features, usage, data handling,
+  architecture, and development.
+- [Product roadmap](docs/ROADMAP.md) — current status and future direction.
 
-Attach files, images, and audio recordings to notes. Common raster images preview inline, browser-supported audio plays locally, and other file types download from the editor rather than being rendered. Attachments are stored in IndexedDB and remain available offline; each attachment is limited to 5 MiB and each note to 20 MiB of attachments. Recording requires browser microphone support, a secure context, and permission.
-
-Deleting a note moves it to **Trash**, where it can be restored or permanently deleted. Permanent deletion also removes that note's history. Backups include notes in Trash, so they can be recovered after restoring a backup.
-
-Use **Settings → Export JSON backup** to download a backup, including library and shelf organization, attachments, and note links. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting library, shelf, notebook, and attachment IDs are remapped. Version 1–3 backups remain importable. Files larger than 40 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
-
-V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook. Schema version 6 adds Personal Library → General and assigns existing notebooks to that shelf without rewriting note records; prior upgrades retain notes, history, settings, notebooks, attachments, and links.
-
-## Tests
+## Development
 
 ```bash
-npm test
+npm test       # Vitest and React Testing Library
+npm run build  # TypeScript project checks and production PWA build
 ```
 
-The test suite covers the IndexedDB migrations, storage operations, backup/restore validation, and key workspace interactions.
+The app is built with React, TypeScript, Vite, Tailwind CSS, IndexedDB (`idb`),
+and `vite-plugin-pwa`. Tests use Vitest, React Testing Library, and
+`fake-indexeddb`.
