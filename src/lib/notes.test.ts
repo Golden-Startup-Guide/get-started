@@ -55,7 +55,7 @@ describe('IndexedDB storage and backup', () => {
       'Work',
     ])
     const db = await storage.openNotesDatabase()
-    expect(db.version).toBe(2)
+    expect(db.version).toBe(3)
     expect([...db.objectStoreNames]).toEqual(expect.arrayContaining(['notes', 'notebooks', 'settings', 'tags', 'history']))
   })
 
@@ -119,8 +119,50 @@ describe('IndexedDB storage and backup', () => {
       content: legacyNote.content,
     }))
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(2)
-    await storage.deleteNote(legacyNote.id)
+    await storage.trashNote(legacyNote.id)
+    expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(2)
+    await storage.permanentlyDeleteNote(legacyNote.id)
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(0)
+  })
+
+  it('moves notes to Trash, restores them with tags, and permanently removes them with history', async () => {
+    const note: Note = {
+      id: 'trash-test-note',
+      title: 'Trash test',
+      content: 'Keep until permanently deleted',
+      createdAt: 20,
+      updatedAt: 30,
+      notebookId: 'starter-personal',
+      tags: ['recoverable'],
+    }
+    await storage.saveNote(note)
+    await storage.saveNote({ ...note, content: 'A later version', updatedAt: 40 })
+    await expect(storage.permanentlyDeleteNote(note.id)).rejects.toThrow('Only notes in Trash')
+    await storage.trashNote(note.id)
+
+    expect(await storage.getNotes()).not.toContainEqual(expect.objectContaining({ id: note.id }))
+    expect(await storage.getTrash()).toContainEqual(expect.objectContaining({ id: note.id, deletedAt: expect.any(Number) }))
+    expect(await storage.getTags()).not.toContainEqual(expect.objectContaining({ id: 'recoverable' }))
+    expect(await storage.getStorageSnapshot()).toEqual(expect.objectContaining({ trash: 1 }))
+    expect(await storage.exportBackup()).toEqual(expect.objectContaining({
+      notes: expect.arrayContaining([expect.objectContaining({ id: note.id, deletedAt: expect.any(Number) })]),
+    }))
+    const previousVersion = (await storage.getNoteHistory(note.id))[0]
+    await storage.restoreHistory(previousVersion.id)
+    expect(await storage.getTrash()).toContainEqual(
+      expect.objectContaining({ id: note.id, deletedAt: expect.any(Number), content: note.content }),
+    )
+    await storage.restoreNote(note.id)
+    expect(await storage.getTrash()).not.toContainEqual(expect.objectContaining({ id: note.id }))
+    const restoredNote = (await storage.getNotes()).find((item) => item.id === note.id)
+    expect(restoredNote).toBeDefined()
+    expect(restoredNote).not.toHaveProperty('deletedAt')
+    expect(await storage.getTags()).toContainEqual(expect.objectContaining({ id: 'recoverable', count: 1 }))
+
+    await storage.trashNote(note.id)
+    await storage.permanentlyDeleteNote(note.id)
+    expect(await storage.getTrash()).not.toContainEqual(expect.objectContaining({ id: note.id }))
+    expect(await storage.getNoteHistory(note.id)).toHaveLength(0)
   })
 
   it('persists theme preference and exports/imports a full backup without overwrites', async () => {
@@ -147,7 +189,8 @@ describe('IndexedDB storage and backup', () => {
     expect(backup.notes).toContainEqual(expect.objectContaining({ id: note.id, favorite: true, pinned: true }))
     expect(backup.tags).toContainEqual(expect.objectContaining({ id: 'archive' }))
 
-    await storage.deleteNote(note.id)
+    await storage.trashNote(note.id)
+    await storage.permanentlyDeleteNote(note.id)
     const restoreFile = jsonFile(JSON.stringify(backup))
     const result = await storage.importBackupFile(restoreFile)
     expect(result.notesAdded).toBe(1)

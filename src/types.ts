@@ -8,6 +8,7 @@ export interface Note {
   tags?: string[]
   pinned?: boolean
   favorite?: boolean
+  deletedAt?: number
 }
 
 export interface Notebook {

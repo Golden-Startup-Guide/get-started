@@ -32,7 +32,7 @@ const starterNotebooks = [
   ['starter-health', 'Health Handbook'],
 ] as const
 
-const database = openDB<NotesDatabase>('my-notes', 2, {
+const database = openDB<NotesDatabase>('my-notes', 3, {
   async upgrade(db, oldVersion, _newVersion, transaction) {
     const now = Date.now()
     if (oldVersion < 1) {
@@ -80,6 +80,7 @@ const database = openDB<NotesDatabase>('my-notes', 2, {
         cursor = await cursor.continue()
       }
     }
+
   },
 })
 
@@ -119,6 +120,7 @@ async function refreshTags<
   const notes = await notesStore.getAll()
   const counts = new Map<string, { label: string; count: number }>()
   for (const note of notes) {
+    if (note.deletedAt !== undefined) continue
     for (const label of cleanTags(note.tags ?? [])) {
       const id = label.toLocaleLowerCase()
       const current = counts.get(id)
@@ -131,9 +133,18 @@ async function refreshTags<
 
 export async function getNotes(): Promise<Note[]> {
   const db = await database
-  return (await db.getAll('notes')).sort(
+  return (await db.getAll('notes'))
+    .filter((note) => note.deletedAt === undefined)
+    .sort(
     (a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt,
   )
+}
+
+export async function getTrash(): Promise<Note[]> {
+  const db = await database
+  return (await db.getAll('notes'))
+    .filter((note) => note.deletedAt !== undefined)
+    .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
 }
 
 export async function saveNote(input: Note): Promise<void> {
@@ -154,15 +165,66 @@ export async function saveNote(input: Note): Promise<void> {
   await transaction.done
 }
 
-export async function deleteNote(id: string): Promise<void> {
+export async function trashNote(id: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'tags'], 'readwrite')
+  const store = transaction.objectStore('notes')
+  const note = await store.get(id)
+  if (!note) {
+    await transaction.done
+    throw new Error('Note not found.')
+  }
+  if (note.deletedAt !== undefined) {
+    await transaction.done
+    return
+  }
+  await store.put({ ...note, deletedAt: Date.now() })
+  await refreshTags(store, transaction.objectStore('tags'))
+  await transaction.done
+}
+
+export async function restoreNote(id: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'tags'], 'readwrite')
+  const store = transaction.objectStore('notes')
+  const note = await store.get(id)
+  if (!note) {
+    await transaction.done
+    throw new Error('Note not found.')
+  }
+  if (note.deletedAt === undefined) {
+    await transaction.done
+    return
+  }
+  const { deletedAt: _deletedAt, ...restored } = note
+  await store.put(restored)
+  await refreshTags(store, transaction.objectStore('tags'))
+  await transaction.done
+}
+
+export async function permanentlyDeleteNote(id: string): Promise<void> {
   const db = await database
   const transaction = db.transaction(['notes', 'tags', 'history'], 'readwrite')
-  await transaction.objectStore('notes').delete(id)
+  const noteStore = transaction.objectStore('notes')
+  const note = await noteStore.get(id)
+  if (!note) {
+    await transaction.done
+    throw new Error('Note not found.')
+  }
+  if (note.deletedAt === undefined) {
+    await transaction.done
+    throw new Error('Only notes in Trash can be permanently deleted.')
+  }
+  await noteStore.delete(id)
   const historyStore = transaction.objectStore('history')
   const historyKeys = await historyStore.index('by-note').getAllKeys(id)
   for (const key of historyKeys) await historyStore.delete(key)
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await trashNote(id)
 }
 
 export async function getNotebooks(): Promise<Notebook[]> {
@@ -301,7 +363,13 @@ export async function restoreHistory(revisionId: string): Promise<void> {
   if (!revision) throw new Error('History revision not found.')
   const current = await db.get('notes', revision.noteId)
   if (!current) throw new Error('The note for this revision no longer exists.')
-  await saveNote({ ...revision.snapshot, id: current.id, createdAt: current.createdAt, updatedAt: Date.now() })
+  await saveNote({
+    ...revision.snapshot,
+    id: current.id,
+    createdAt: current.createdAt,
+    updatedAt: Date.now(),
+    ...(current.deletedAt !== undefined ? { deletedAt: current.deletedAt } : {}),
+  })
 }
 
 export interface NotesBackup {
@@ -343,7 +411,8 @@ function validNote(value: unknown): value is Note {
     (value.tags === undefined ||
       (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string'))) &&
     (value.pinned === undefined || typeof value.pinned === 'boolean') &&
-    (value.favorite === undefined || typeof value.favorite === 'boolean')
+    (value.favorite === undefined || typeof value.favorite === 'boolean') &&
+    (value.deletedAt === undefined || Number.isFinite(value.deletedAt))
   )
 }
 
@@ -560,6 +629,7 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
 
 export async function getStorageSnapshot(): Promise<{
   notes: number
+  trash: number
   notebooks: number
   tags: number
   revisions: number
@@ -573,5 +643,13 @@ export async function getStorageSnapshot(): Promise<{
     db.getAll('history'),
   ])
   const estimatedBytes = new Blob([JSON.stringify({ notes, notebooks, tags, history })]).size
-  return { notes: notes.length, notebooks: notebooks.length, tags: tags.length, revisions: history.length, estimatedBytes }
+  const trash = notes.filter((note) => note.deletedAt !== undefined).length
+  return {
+    notes: notes.length - trash,
+    trash,
+    notebooks: notebooks.length,
+    tags: tags.length,
+    revisions: history.length,
+    estimatedBytes,
+  }
 }

@@ -12,6 +12,7 @@ import {
   Moon,
   Pin,
   Plus,
+  RotateCcw,
   Search,
   Settings,
   Sun,
@@ -22,7 +23,6 @@ import {
 import {
   createNotebook,
   deleteNotebook,
-  deleteNote,
   exportBackup,
   getNoteHistory,
   getNotes,
@@ -31,11 +31,15 @@ import {
   getStorageSnapshot,
   getTags,
   importBackupFile,
+  getTrash,
+  permanentlyDeleteNote,
   renameNotebook,
+  restoreNote,
   restoreHistory,
   saveNote,
   saveTheme,
   setNoteFlag,
+  trashNote,
 } from './lib/notes'
 import type {
   AppSettings,
@@ -48,7 +52,7 @@ import type {
 import './workspace.css'
 import { useDebouncedAutosave } from './features/notes/useDebouncedAutosave'
 
-type View = 'all' | 'favorites' | `notebook:${string}` | `tag:${string}`
+type View = 'all' | 'favorites' | 'trash' | `notebook:${string}` | `tag:${string}`
 type SaveState = 'saved' | 'unsaved' | 'saving'
 
 function sortNotes(notes: Note[]): Note[] {
@@ -111,6 +115,7 @@ function keepFocusInDialog(event: KeyboardEvent<HTMLElement>, onEscape?: () => v
 
 function App() {
   const [notes, setNotes] = useState<Note[]>([])
+  const [trash, setTrash] = useState<Note[]>([])
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [settings, setSettings] = useState<AppSettings>({ id: 'preferences', theme: 'system' })
@@ -126,7 +131,7 @@ function App() {
   const [deleteCandidate, setDeleteCandidate] = useState<Notebook | null>(null)
   const [deleteDestination, setDeleteDestination] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [storage, setStorage] = useState({ notes: 0, notebooks: 0, tags: 0, revisions: 0, estimatedBytes: 0 })
+  const [storage, setStorage] = useState({ notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, estimatedBytes: 0 })
   const newNoteRef = useRef<HTMLButtonElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const focusReturnRef = useRef<HTMLElement | null>(null)
@@ -138,14 +143,16 @@ function App() {
   )
 
   async function refresh() {
-    const [savedNotes, savedNotebooks, savedTags, savedSettings, storageSnapshot] = await Promise.all([
+    const [savedNotes, savedTrash, savedNotebooks, savedTags, savedSettings, storageSnapshot] = await Promise.all([
       getNotes(),
+      getTrash(),
       getNotebooks(),
       getTags(),
       getSettings(),
       getStorageSnapshot(),
     ])
     setNotes(sortNotes(savedNotes))
+    setTrash(savedTrash)
     setNotebooks(savedNotebooks)
     setTags(savedTags)
     setSettings(savedSettings)
@@ -185,8 +192,12 @@ function App() {
       ? notebooks.find((notebook) => notebook.id === view.slice('notebook:'.length))
       : undefined
     const selectedTag = view.startsWith('tag:') ? view.slice('tag:'.length) : undefined
-    return sortNotes(notes).filter((note) => {
+    const source = view === 'trash' ? trash : notes
+    const ordered = view === 'trash' ? source : sortNotes(source)
+    return ordered.filter((note) => {
       const noteTags = note.tags ?? []
+      if (view === 'trash' && note.deletedAt === undefined) return false
+      if (view !== 'trash' && note.deletedAt !== undefined) return false
       if (view === 'favorites' && !note.favorite) return false
       if (currentNotebook && note.notebookId !== currentNotebook.id) return false
       if (selectedTag && !noteTags.some((tag) => tag.toLocaleLowerCase() === selectedTag)) return false
@@ -196,19 +207,26 @@ function App() {
         value.toLocaleLowerCase().includes(term),
       )
     })
-  }, [notes, notebooks, query, view])
+  }, [notes, notebooks, query, trash, view])
 
   const viewLabel = view === 'all'
     ? 'All Notes'
     : view === 'favorites'
       ? 'Favorites'
+      : view === 'trash'
+        ? 'Trash'
       : view.startsWith('notebook:')
         ? notebooks.find((item) => item.id === view.slice(9))?.name ?? 'Notebook'
         : tags.find((item) => item.id === view.slice(4))?.label ?? 'Tag'
 
   async function handleSave(note: Note) {
     await saveNote(note)
-    setNotes((current) => sortNotes([note, ...current.filter((item) => item.id !== note.id)]))
+    setNotes((current) => note.deletedAt === undefined
+      ? sortNotes([note, ...current.filter((item) => item.id !== note.id)])
+      : current.filter((item) => item.id !== note.id))
+    if (note.deletedAt !== undefined) {
+      setTrash((current) => [note, ...current.filter((item) => item.id !== note.id)])
+    }
     setError(null)
     await Promise.all([getTags().then(setTags), getStorageSnapshot().then(setStorage)])
   }
@@ -306,7 +324,11 @@ function App() {
 
   async function handleDeleteNote(note: Note): Promise<boolean> {
     try {
-      await deleteNote(note.id)
+      if (note.deletedAt === undefined) {
+        await trashNote(note.id)
+      } else {
+        await permanentlyDeleteNote(note.id)
+      }
       setActiveNote(null)
       setIsCreating(false)
       await refresh()
@@ -314,6 +336,29 @@ function App() {
     } catch {
       setError('Your note could not be deleted. Please try again.')
       return false
+    }
+  }
+
+  async function handleRestoreNote(note: Note) {
+    try {
+      await restoreNote(note.id)
+      await refresh()
+      setNotice(`“${note.title || 'Untitled note'}” was restored.`)
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The note could not be restored.')
+    }
+  }
+
+  async function handlePermanentDelete(note: Note) {
+    if (!window.confirm(`Permanently delete “${note.title || 'Untitled note'}”? This cannot be undone.`)) return
+    try {
+      await permanentlyDeleteNote(note.id)
+      await refresh()
+      setNotice('The note was permanently deleted.')
+      setError(null)
+    } catch {
+      setError('The note could not be permanently deleted. Please try again.')
     }
   }
 
@@ -396,6 +441,7 @@ function App() {
           <nav aria-label="Note views" className="space-y-1">
             <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => setView('all')} icon={<FileText size={16} />} />
             <NavButton active={view === 'favorites'} label="Favorites" count={notes.filter((note) => note.favorite).length} onClick={() => setView('favorites')} icon={<Heart size={16} />} />
+            <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => setView('trash')} icon={<Trash2 size={16} />} />
           </nav>
           <div className="mt-8">
             <div className="mb-2 flex items-center justify-between px-2">
@@ -456,6 +502,7 @@ function App() {
             <select id="mobile-view" className="small-input max-w-48 md:hidden" value={view} onChange={(event) => setView(event.target.value as View)}>
               <option value="all">All Notes</option>
               <option value="favorites">Favorites</option>
+              <option value="trash">Trash ({trash.length})</option>
               {notebooks.map((notebook) => <option key={notebook.id} value={`notebook:${notebook.id}`}>{notebook.name}</option>)}
               {tags.map((tag) => <option key={tag.id} value={`tag:${tag.id}`}>Tag: {tag.label}</option>)}
             </select>
@@ -474,15 +521,25 @@ function App() {
           ) : filteredNotes.length ? (
             <section aria-label={`${viewLabel} notes`} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredNotes.map((note) => (
-                <NoteCard key={note.id} note={note} notebook={notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'} query={query} onOpen={() => openNote(note)} onFlag={(flag) => void handleNoteFlag(note, flag)} />
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  notebook={notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'}
+                  query={query}
+                  isTrash={view === 'trash'}
+                  onOpen={() => openNote(note)}
+                  onFlag={(flag) => void handleNoteFlag(note, flag)}
+                  onRestore={() => void handleRestoreNote(note)}
+                  onPermanentDelete={() => void handlePermanentDelete(note)}
+                />
               ))}
             </section>
           ) : (
             <div className="empty-state">
               <span className="empty-icon"><FileText size={24} /></span>
-              <h2 className="mt-4 text-lg font-semibold">{query ? 'No matching notes' : view === 'favorites' ? 'No favorites yet' : 'A little space to think.'}</h2>
-              <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{query ? 'Try another search term or clear your filters.' : 'Capture an idea, a reminder, or anything you want to remember.'}</p>
-              {!query && view !== 'favorites' && <button className="primary-button mt-5" onClick={openNewNote}><Plus size={16} /> Create a note</button>}
+              <h2 className="mt-4 text-lg font-semibold">{query ? 'No matching notes' : view === 'favorites' ? 'No favorites yet' : view === 'trash' ? 'Trash is empty' : 'A little space to think.'}</h2>
+              <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{query ? 'Try another search term or clear your filters.' : view === 'trash' ? 'Notes you move to Trash can be restored or permanently deleted here.' : 'Capture an idea, a reminder, or anything you want to remember.'}</p>
+              {!query && view !== 'favorites' && view !== 'trash' && <button className="primary-button mt-5" onClick={openNewNote}><Plus size={16} /> Create a note</button>}
             </div>
           )}
           <div className="mt-8 flex items-center justify-between md:hidden">
@@ -565,12 +622,18 @@ function NoteCard({
   query,
   onOpen,
   onFlag,
+  isTrash,
+  onRestore,
+  onPermanentDelete,
 }: {
   note: Note
   notebook: string
   query: string
+  isTrash: boolean
   onOpen: () => void
   onFlag: (flag: 'pinned' | 'favorite') => void
+  onRestore: () => void
+  onPermanentDelete: () => void
 }) {
   return (
     <article className="note-card group relative">
@@ -578,10 +641,10 @@ function NoteCard({
       <div className="relative z-10 pointer-events-none">
         <div className="mb-3 flex items-start justify-between gap-2">
           <span className="text-xs text-[var(--muted)]">{highlight(notebook, query)}</span>
-          <div className="pointer-events-auto flex gap-1">
+          {!isTrash && <div className="pointer-events-auto flex gap-1">
             <button className={`card-action ${note.pinned ? 'card-action-active' : ''}`} onClick={() => onFlag('pinned')} aria-label={note.pinned ? 'Unpin note' : 'Pin note'} aria-pressed={Boolean(note.pinned)}><Pin size={15} /></button>
             <button className={`card-action ${note.favorite ? 'card-action-favorite' : ''}`} onClick={() => onFlag('favorite')} aria-label={note.favorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={Boolean(note.favorite)}><Heart size={15} fill={note.favorite ? 'currentColor' : 'none'} /></button>
-          </div>
+          </div>}
         </div>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug">{highlight(note.title || 'Untitled note', query)}</h2>
         <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed text-[var(--muted)]">{highlight(note.content, query) || 'No content yet.'}</p>
@@ -589,7 +652,11 @@ function NoteCard({
           {(note.tags ?? []).map((tag) => <span className="tag-chip" key={tag}>{highlight(tag, query)}</span>)}
           {note.pinned && <span className="tag-chip tag-chip-pin"><Pin size={11} /> Pinned</span>}
         </div>
-        <p className="mt-4 text-xs text-[var(--muted)]">Updated {formatDate(note.updatedAt)}</p>
+        <p className="mt-4 text-xs text-[var(--muted)]">{isTrash ? `Moved to Trash ${formatDate(note.deletedAt ?? note.updatedAt)}` : `Updated ${formatDate(note.updatedAt)}`}</p>
+        {isTrash && <div className="pointer-events-auto mt-3 flex flex-wrap gap-2">
+          <button className="secondary-button" onClick={onRestore}><RotateCcw size={14} /> Restore</button>
+          <button className="danger-button" onClick={onPermanentDelete}><Trash2 size={14} /> Delete forever</button>
+        </div>}
       </div>
     </article>
   )
@@ -688,8 +755,15 @@ function NoteEditor({
   }
 
   async function deleteSafely() {
-    if (!window.confirm(`Delete “${title.trim() || 'Untitled note'}”? This cannot be undone.`)) return
-    cancel()
+    const message = note.deletedAt === undefined
+      ? `Move “${title.trim() || 'Untitled note'}” to Trash? You can restore it later.`
+      : `Permanently delete “${title.trim() || 'Untitled note'}”? This cannot be undone.`
+    if (!window.confirm(message)) return
+    if (note.deletedAt === undefined) {
+      if (!(await flush())) return
+    } else {
+      cancel()
+    }
     skipUnmountSave()
     if (!(await onDelete())) {
       resumeUnmountSave()
@@ -824,7 +898,7 @@ function NoteEditor({
         </div>
         <footer className="editor-footer">
           <p className="text-xs text-[var(--muted)]">Created {formatDate(note.createdAt)}</p>
-          {!isCreating && <button className="danger-button" onClick={() => void deleteSafely()}><Trash2 size={15} /> Delete note</button>}
+          {!isCreating && <button className="danger-button" onClick={() => void deleteSafely()}><Trash2 size={15} /> {note.deletedAt === undefined ? 'Move to Trash' : 'Delete forever'}</button>}
           <button className="primary-button ml-auto" onClick={() => void closeSafely()}>{saveState === 'unsaved' ? 'Save and close' : 'Done'}</button>
         </footer>
       </section>
@@ -846,7 +920,7 @@ function SettingsDialog({
   onDismissNotice,
 }: {
   settings: AppSettings
-  storage: { notes: number; notebooks: number; tags: number; revisions: number; estimatedBytes: number }
+  storage: { notes: number; trash: number; notebooks: number; tags: number; revisions: number; estimatedBytes: number }
   fileRef: React.RefObject<HTMLInputElement>
   onClose: () => void
   onTheme: (theme: ThemePreference) => void
@@ -905,14 +979,14 @@ function SettingsDialog({
         <section className="mt-7">
           <h3 className="mb-3 text-sm font-semibold">Storage on this device</h3>
           <dl className="settings-stats">
-            <div><dt>Notes</dt><dd>{storage.notes}</dd></div><div><dt>Notebooks</dt><dd>{storage.notebooks}</dd></div><div><dt>Tags</dt><dd>{storage.tags}</dd></div><div><dt>History revisions</dt><dd>{storage.revisions}</dd></div><div><dt>Estimated content size</dt><dd>{formatBytes(storage.estimatedBytes)}</dd></div>
+            <div><dt>Notes</dt><dd>{storage.notes}</dd></div><div><dt>Trash</dt><dd>{storage.trash}</dd></div><div><dt>Notebooks</dt><dd>{storage.notebooks}</dd></div><div><dt>Tags</dt><dd>{storage.tags}</dd></div><div><dt>History revisions</dt><dd>{storage.revisions}</dd></div><div><dt>Estimated content size</dt><dd>{formatBytes(storage.estimatedBytes)}</dd></div>
           </dl>
           <p className="mt-2 text-xs text-[var(--muted)]">Estimated from saved text records; browser quota may differ.</p>
         </section>
         <section className="mt-7 border-t border-[var(--border)] pt-5">
           <h3 className="text-sm font-semibold">About My Notes</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">An offline-first, private notes app. Your notes stay in this browser’s local storage; no account or network connection is required.</p>
-          <p className="mt-2 text-xs text-[var(--muted)]">My Notes · Version 2 · Data stored locally with IndexedDB</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">My Notes · Version 3 · Data stored locally with IndexedDB</p>
         </section>
       </section>
     </div>

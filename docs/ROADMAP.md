@@ -64,14 +64,25 @@ Status:
 
 **Completed**
 
+## Version 3 - Data Protection
+
+- Trash Bin with soft delete, restore, and permanent deletion
+- Backups include trashed notes; permanent deletion also removes associated history
+- IndexedDB schema version 3 adds the optional deletion timestamp without rewriting V2 note records
+
+Status:
+
+**Completed**
+
 ### Current implementation baseline
 
 - The application is a React and TypeScript single-page app built with Vite and Tailwind CSS.
 - `src/types.ts` defines note, notebook, tag, settings, and history records.
-- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 2. Its upgrade migrates V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`.
+- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 3. Its upgrades migrate V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`; v3 adds the optional `deletedAt` lifecycle field without rewriting V2 note data.
 - `src/App.tsx` provides notebook/tag navigation, title/content/tag/notebook search, a debounced Markdown editor, history, theme and backup settings. Existing notes remain browser-local.
 - The database has `notes`, `notebooks`, `settings`, `tags`, and `history` stores. New installations include the starter notebooks Personal, Work, Ideas, Research, and Health Handbook; All Notes is a virtual view.
-- JSON restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs, remaps conflicting notebook IDs, and applies accepted records atomically. Import files are limited to 10 MiB.
+- JSON backups include active and trashed notes. Restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs, remaps conflicting notebook IDs, and applies accepted records atomically. Import files are limited to 10 MiB.
+- Deleting a note moves it to Trash, where it can be restored. Permanent deletion is only available from Trash and removes the note's history; notebook and tag data are preserved appropriately.
 - History records the previously saved note for each successful debounced title/content change; identical content and organization-only changes do not create revisions. History is not silently pruned.
 - Automated tests use Vitest, React Testing Library, and fake IndexedDB to cover the V1 migration, storage features, backup validation/round trips, autosave, search, favorites, and theme persistence.
 - `vite-plugin-pwa` generates a service worker, web manifest, and precached app shell. Note records remain in browser-local IndexedDB and do not sync; users can create JSON backups in Settings.
@@ -259,7 +270,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 # Phase 6 - Rich Content
 
@@ -463,7 +474,7 @@ This historical order was based on the V1 code: a single `Note` record with stri
 | 6 | Tags | High | Medium | Add an optional tags field through a versioned IndexedDB migration with defaults for existing notes. Then add tag editing, filtering, and tag-aware search. This is a useful first organizational feature without changing note ownership or hierarchy. |
 | 7 | Pin Notes and Favourites | Medium | Low to medium | Both can be optional note metadata and list filters. Decide whether “pinned” and “favourite” serve distinct user needs; keep sorting deterministic and avoid duplicating navigation concepts unnecessarily. |
 | 8 | Notebooks | High | Medium to high | Requires a notebook store, a migration assigning existing notes to a default notebook, defined delete behavior, and move operations. Implement before shelves so notebooks can be the stable organizational unit beneath them. |
-| 9 | Trash Bin | High | Medium | Changes deletion semantics and requires migration or a deletion marker, restore behavior, and permanent-delete rules. Implement before attachment cleanup and consider backup/import treatment of trashed notes. |
+| 9 | Trash Bin | High | Medium | **Completed in Version 3.** Soft delete, restore, permanent deletion with history cleanup, and backup coverage for trashed notes. |
 | 10 | Markdown Support | Medium | Medium | Decide whether Markdown source replaces plain text or is a compatible rendering layer. Add safe rendering (including safe handling of raw HTML and links), editor/preview controls, and migration behavior without changing existing plain-text notes unexpectedly. |
 | 11 | Checklists | Medium | Medium | Choose between Markdown task syntax and structured checklist data. This decision should follow the Markdown/content-model decision to avoid incompatible parallel formats. |
 | 12 | File, image, and audio attachments | High | High | Share a common attachment model and IndexedDB storage strategy where possible. Define file-size/type limits, quota errors, export/import behavior, deletion cleanup, and graceful offline previews before exposing uploads. Add image preview and audio recording/playback as scoped interfaces over that foundation. |

@@ -24,9 +24,11 @@ Notes stay in the browser profile where they were created. Clearing that browser
 
 Organize notes with notebooks and tags, mark important notes as pinned or favorite, search titles/content/tags/notebook names, and edit with a safe live Markdown preview. Changes autosave locally; previous content revisions can be restored from note history. Light, dark, and system themes are available in Settings.
 
+Deleting a note moves it to **Trash**, where it can be restored or permanently deleted. Permanent deletion also removes that note's history. Backups include notes in Trash, so they can be recovered after restoring a backup.
+
 Use **Settings → Export JSON backup** to download a backup. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting notebook IDs are remapped. Files larger than 10 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
 
-V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook.
+V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook. Existing V2 data is retained when the Trash Bin migration upgrades IndexedDB to version 3.
 
 ## Tests
 
