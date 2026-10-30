@@ -9,22 +9,28 @@ import {
   Download,
   FileText,
   Heart,
+  Mic,
   Moon,
+  Paperclip,
   Pin,
   Plus,
   RotateCcw,
   Search,
   Settings,
   Sun,
+  Square,
   Tag as TagIcon,
   Trash2,
   X,
 } from 'lucide-react'
 import {
   createNotebook,
+  addNoteAttachment,
+  deleteNoteAttachment,
   deleteNotebook,
   exportBackup,
   getNoteHistory,
+  getNoteAttachments,
   getNotes,
   getNotebooks,
   getSettings,
@@ -44,6 +50,7 @@ import {
 import type {
   AppSettings,
   Note,
+  NoteAttachment,
   Notebook,
   NoteHistoryEntry,
   Tag,
@@ -56,6 +63,7 @@ import {
   getChecklistTaskLines,
   toggleChecklistItem,
 } from './features/notes/checklists'
+import { MAX_ATTACHMENT_SIZE_BYTES } from './features/notes/attachments'
 
 type View = 'all' | 'favorites' | 'trash' | `notebook:${string}` | `tag:${string}`
 type SaveState = 'saved' | 'unsaved' | 'saving'
@@ -136,7 +144,7 @@ function App() {
   const [deleteCandidate, setDeleteCandidate] = useState<Notebook | null>(null)
   const [deleteDestination, setDeleteDestination] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [storage, setStorage] = useState({ notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, estimatedBytes: 0 })
+  const [storage, setStorage] = useState({ notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, attachments: 0, attachmentBytes: 0, estimatedBytes: 0 })
   const newNoteRef = useRef<HTMLButtonElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const focusReturnRef = useRef<HTMLElement | null>(null)
@@ -387,8 +395,8 @@ function App() {
       link.click()
       URL.revokeObjectURL(url)
       setNotice('Your backup has been downloaded.')
-    } catch {
-      setError('The backup could not be created. Please try again.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The backup could not be created.')
     }
   }
 
@@ -408,7 +416,7 @@ function App() {
       const result = await importBackupFile(file)
       await refresh()
       setNotice(
-        `Backup restored: ${result.notesAdded} notes added, ${result.notesSkipped} duplicate notes skipped.`,
+        `Backup restored: ${result.notesAdded} notes and ${result.attachmentsAdded} attachments added, ${result.notesSkipped} duplicate notes skipped.`,
       )
       setError(null)
     } catch (reason) {
@@ -562,6 +570,7 @@ function App() {
           notebooks={notebooks}
           tags={tags}
           onSave={handleSave}
+          onRefresh={refresh}
           onClose={closeEditor}
           onDelete={() => handleDeleteNote(activeNote)}
           onError={setError}
@@ -667,12 +676,52 @@ function NoteCard({
   )
 }
 
+function AttachmentCard({
+  attachment,
+  onDelete,
+}: {
+  attachment: NoteAttachment
+  onDelete: () => void
+}) {
+  const [url, setUrl] = useState<string | null>(null)
+  const isImagePreviewable = ['image/avif', 'image/bmp', 'image/gif', 'image/jpeg', 'image/png', 'image/webp']
+    .includes(attachment.type.toLocaleLowerCase())
+
+  useEffect(() => {
+    if (typeof URL.createObjectURL !== 'function') return
+    const objectUrl = URL.createObjectURL(attachment.blob)
+    setUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [attachment.blob])
+
+  return (
+    <li className="attachment-card">
+      {url && isImagePreviewable && (
+        <img className="attachment-image" src={url} alt={`Preview of ${attachment.name}`} />
+      )}
+      {url && attachment.type.startsWith('audio/') && (
+        <audio className="attachment-audio" controls preload="metadata" src={url}>
+          Audio playback is not supported by this browser.
+        </audio>
+      )}
+      <div className="flex min-w-0 items-center gap-2">
+        <Paperclip size={15} aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-sm" title={attachment.name}>{attachment.name}</span>
+        <span className="shrink-0 text-xs text-[var(--muted)]">{formatBytes(attachment.size)}</span>
+        {url && <a className="secondary-button !min-h-8 !px-2 !py-1 text-xs" href={url} download={attachment.name} aria-label={`Download ${attachment.name}`}>Download</a>}
+        <button className="icon-button !h-8 !w-8" onClick={onDelete} aria-label={`Remove attachment ${attachment.name}`}><Trash2 size={14} /></button>
+      </div>
+    </li>
+  )
+}
+
 function NoteEditor({
   note,
   isCreating,
   notebooks,
   tags,
   onSave,
+  onRefresh,
   onClose,
   onDelete,
   onError,
@@ -682,6 +731,7 @@ function NoteEditor({
   notebooks: Notebook[]
   tags: Tag[]
   onSave: (note: Note) => Promise<void>
+  onRefresh: () => Promise<void>
   onClose: () => void
   onDelete: () => Promise<boolean>
   onError: (message: string | null) => void
@@ -698,7 +748,18 @@ function NoteEditor({
   const [history, setHistory] = useState<NoteHistoryEntry[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<NoteAttachment[]>([])
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isAddingAttachment, setIsAddingAttachment] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const attachmentFileRef = useRef<HTMLInputElement>(null)
+  const recordingRef = useRef<{
+    recorder: MediaRecorder
+    stream: MediaStream
+    chunks: Blob[]
+    exceeded: boolean
+  } | null>(null)
   const latest = useRef({ title, content, noteTags, notebookId, pinned, favorite })
   const baseline = useRef({ title: note.title, content: note.content, tags: note.tags ?? [], notebookId: note.notebookId ?? notebooks[0]?.id ?? '', pinned: Boolean(note.pinned), favorite: Boolean(note.favorite) })
   const saveRef = useRef<() => Promise<boolean>>(async () => false)
@@ -740,6 +801,26 @@ function NoteEditor({
     titleRef.current?.focus()
   }, [])
 
+  useEffect(() => {
+    let active = true
+    getNoteAttachments(note.id)
+      .then((saved) => {
+        if (active) setAttachments(saved)
+      })
+      .catch(() => {
+        if (active) setAttachmentError('Attachments could not be loaded.')
+      })
+    return () => {
+      active = false
+      const recording = recordingRef.current
+      if (recording) {
+        recording.recorder.onstop = null
+        if (recording.recorder.state !== 'inactive') recording.recorder.stop()
+        recording.stream.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [note.id])
+
   const dirty = title !== baseline.current.title || content !== baseline.current.content ||
     JSON.stringify(noteTags) !== JSON.stringify(baseline.current.tags) ||
     notebookId !== baseline.current.notebookId || pinned !== baseline.current.pinned || favorite !== baseline.current.favorite
@@ -749,6 +830,111 @@ function NoteEditor({
     draftKey,
     () => saveRef.current(),
   )
+
+  async function addAttachment(file: File) {
+    setAttachmentError(null)
+    if (isCreating && !latest.current.title.trim() && !latest.current.content.trim()) {
+      setAttachmentError('Add a title or note text before attaching files.')
+      return
+    }
+    if (!(await flush())) {
+      setAttachmentError('Save this note before adding attachments.')
+      return
+    }
+    setIsAddingAttachment(true)
+    try {
+      const added = await addNoteAttachment(note.id, file, file.name)
+      setAttachments((current) => [...current, added])
+      await onRefresh()
+    } catch (reason) {
+      setAttachmentError(reason instanceof Error ? reason.message : 'The attachment could not be saved.')
+    } finally {
+      setIsAddingAttachment(false)
+    }
+  }
+
+  function handleAttachmentFiles(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? [])
+    event.currentTarget.value = ''
+    for (const file of files) void addAttachment(file)
+  }
+
+  async function toggleAudioRecording() {
+    const current = recordingRef.current
+    if (current) {
+      if (current.recorder.state !== 'inactive') current.recorder.stop()
+      return
+    }
+    setAttachmentError(null)
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setAttachmentError('Audio recording is not supported by this browser. You can attach an audio file instead.')
+      return
+    }
+    if (isCreating && !latest.current.title.trim() && !latest.current.content.trim()) {
+      setAttachmentError('Add a title or note text before recording audio.')
+      return
+    }
+    if (!(await flush())) {
+      setAttachmentError('Save this note before recording audio.')
+      return
+    }
+    let stream: MediaStream | undefined
+    try {
+      const activeStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream = activeStream
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+        .find((candidate) => MediaRecorder.isTypeSupported(candidate))
+      const recorder = mimeType
+        ? new MediaRecorder(activeStream, { mimeType })
+        : new MediaRecorder(activeStream)
+      const recording = { recorder, stream, chunks: [] as Blob[], exceeded: false }
+      recordingRef.current = recording
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) recording.chunks.push(event.data)
+        const total = recording.chunks.reduce((sum, chunk) => sum + chunk.size, 0)
+        if (total > MAX_ATTACHMENT_SIZE_BYTES) {
+          recording.exceeded = true
+          setAttachmentError('The recording reached the 5 MiB limit and was discarded.')
+          if (recorder.state !== 'inactive') recorder.stop()
+        }
+      }
+      recorder.onerror = () => {
+        recording.exceeded = true
+        setAttachmentError('Audio recording failed. Check microphone permissions and try again.')
+        if (recorder.state !== 'inactive') recorder.stop()
+      }
+      recorder.onstop = () => {
+        activeStream.getTracks().forEach((track) => track.stop())
+        recordingRef.current = null
+        setIsRecording(false)
+        if (recording.exceeded) return
+        const blob = new Blob(recording.chunks, { type: recorder.mimeType || 'audio/webm' })
+        if (!blob.size) return
+        const extension = blob.type.includes('mp4') ? 'm4a' : 'webm'
+        const file = new File([blob], `audio-note-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`, { type: blob.type })
+        void addAttachment(file)
+      }
+      recorder.start(250)
+      setIsRecording(true)
+    } catch (reason) {
+      recordingRef.current = null
+      setIsRecording(false)
+      stream?.getTracks().forEach((track) => track.stop())
+      setAttachmentError(reason instanceof Error ? reason.message : 'Microphone access was denied or unavailable.')
+    }
+  }
+
+  async function removeAttachment(attachment: NoteAttachment) {
+    if (!window.confirm(`Remove “${attachment.name}” from this note?`)) return
+    try {
+      await deleteNoteAttachment(attachment.id)
+      setAttachments((current) => current.filter((item) => item.id !== attachment.id))
+      await onRefresh()
+      setAttachmentError(null)
+    } catch (reason) {
+      setAttachmentError(reason instanceof Error ? reason.message : 'The attachment could not be removed.')
+    }
+  }
 
   useEffect(() => {
     if (dirty) setSaveState('unsaved')
@@ -835,6 +1021,8 @@ function NoteEditor({
   )
   const checklistProgress = getChecklistProgress(content)
   const checklistTaskLines = getChecklistTaskLines(content)
+  const audioRecordingSupported =
+    typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
   let taskInputIndex = 0
 
   function toggleTask(lineNumber: number) {
@@ -924,6 +1112,54 @@ function NoteEditor({
                 </div>
               </article>
             </div>
+            <section className="attachments-section" aria-labelledby="attachments-heading">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 id="attachments-heading" className="text-sm font-semibold">Attachments</h3>
+                  <p className="mt-1 text-xs text-[var(--muted)]">Stored on this device. Each file is limited to 5 MiB; 20 MiB per note.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    ref={attachmentFileRef}
+                    id="note-attachments"
+                    type="file"
+                    multiple
+                    className="sr-only"
+                    aria-label="Choose files to attach"
+                    onChange={handleAttachmentFiles}
+                  />
+                  <button className="secondary-button" disabled={isAddingAttachment} onClick={() => attachmentFileRef.current?.click()}>
+                    <Paperclip size={15} /> Attach files
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={isAddingAttachment || isRecording || !audioRecordingSupported}
+                    onClick={() => void toggleAudioRecording()}
+                    aria-pressed={isRecording}
+                  >
+                    {isRecording ? <Square size={15} /> : <Mic size={15} />}
+                    {isRecording ? 'Stop recording' : 'Record audio'}
+                  </button>
+                </div>
+              </div>
+              {!audioRecordingSupported && <p className="mb-2 text-xs text-[var(--muted)]">Audio recording is unavailable here; attach an audio file to play it in the note.</p>}
+              {isRecording && <p className="mb-2 text-sm text-[var(--muted)]" role="status">Recording audio…</p>}
+              {isAddingAttachment && <p className="mb-2 text-sm text-[var(--muted)]" role="status">Saving attachment…</p>}
+              {attachmentError && <p className="mb-2 text-sm text-red-700" role="alert">{attachmentError}</p>}
+              {attachments.length ? (
+                <ul className="attachment-list" aria-label="Note attachments">
+                  {attachments.map((attachment) => (
+                    <AttachmentCard
+                      key={attachment.id}
+                      attachment={attachment}
+                      onDelete={() => void removeAttachment(attachment)}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-[var(--muted)]">No attachments yet.</p>
+              )}
+            </section>
             {saveError && <p className="text-sm text-red-700" role="alert">{saveError}<button className="ml-2 underline" onClick={() => void saveRef.current()}>Retry</button></p>}
             <p className="text-xs text-[var(--muted)]">Markdown is saved locally on this device. Raw HTML is not rendered.</p>
           </div>
@@ -956,7 +1192,7 @@ function SettingsDialog({
   onDismissNotice,
 }: {
   settings: AppSettings
-  storage: { notes: number; trash: number; notebooks: number; tags: number; revisions: number; estimatedBytes: number }
+  storage: { notes: number; trash: number; notebooks: number; tags: number; revisions: number; attachments: number; attachmentBytes: number; estimatedBytes: number }
   fileRef: React.RefObject<HTMLInputElement>
   onClose: () => void
   onTheme: (theme: ThemePreference) => void
@@ -1010,19 +1246,19 @@ function SettingsDialog({
               <button className="secondary-button" type="submit">Import</button>
             </form>
           </div>
-          <p className="mt-2 text-xs text-[var(--muted)]">Import adds notes without overwriting existing notes. JSON backups up to 10 MiB are supported.</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">Import adds notes without overwriting existing notes. JSON backups up to 40 MiB are supported.</p>
         </section>
         <section className="mt-7">
           <h3 className="mb-3 text-sm font-semibold">Storage on this device</h3>
           <dl className="settings-stats">
-            <div><dt>Notes</dt><dd>{storage.notes}</dd></div><div><dt>Trash</dt><dd>{storage.trash}</dd></div><div><dt>Notebooks</dt><dd>{storage.notebooks}</dd></div><div><dt>Tags</dt><dd>{storage.tags}</dd></div><div><dt>History revisions</dt><dd>{storage.revisions}</dd></div><div><dt>Estimated content size</dt><dd>{formatBytes(storage.estimatedBytes)}</dd></div>
+            <div><dt>Notes</dt><dd>{storage.notes}</dd></div><div><dt>Trash</dt><dd>{storage.trash}</dd></div><div><dt>Notebooks</dt><dd>{storage.notebooks}</dd></div><div><dt>Tags</dt><dd>{storage.tags}</dd></div><div><dt>History revisions</dt><dd>{storage.revisions}</dd></div><div><dt>Attachments</dt><dd>{storage.attachments}</dd></div><div><dt>Attachment data</dt><dd>{formatBytes(storage.attachmentBytes)}</dd></div><div><dt>Estimated content size</dt><dd>{formatBytes(storage.estimatedBytes)}</dd></div>
           </dl>
-          <p className="mt-2 text-xs text-[var(--muted)]">Estimated from saved text records; browser quota may differ.</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">Includes attachment data; browser quota may differ.</p>
         </section>
         <section className="mt-7 border-t border-[var(--border)] pt-5">
           <h3 className="text-sm font-semibold">About My Notes</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">An offline-first, private notes app. Your notes stay in this browser’s local storage; no account or network connection is required.</p>
-          <p className="mt-2 text-xs text-[var(--muted)]">My Notes · Version 3 · Data stored locally with IndexedDB</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">My Notes · IndexedDB schema 4 · Data stored locally</p>
         </section>
       </section>
     </div>

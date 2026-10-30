@@ -94,8 +94,52 @@ describe('My Notes workspace', () => {
     expect(screen.getByText('seedlings', { selector: 'mark' })).toBeInTheDocument()
   }, 25000)
 
-  it('does not recreate a note when deleting with an unsaved draft', async () => {
+  it('attaches and previews local image files from a saved note', async () => {
+    const createObjectURL = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+    const revokeObjectURL = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: () => 'blob:test-attachment' })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    const view = render(<App />)
+    try {
+      await screen.findByRole('heading', { name: 'All Notes' })
+      await user.click(screen.getByRole('button', { name: 'Create a new note' }))
+      fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Photo note' } })
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
+      const image = new File([new Uint8Array([137, 80, 78, 71])], 'seedlings.png', { type: 'image/png' })
+      await user.upload(screen.getByLabelText('Choose files to attach'), image)
+
+      expect(await screen.findByRole('img', { name: 'Preview of seedlings.png' })).toHaveAttribute('src', 'blob:test-attachment')
+      expect(screen.getByRole('link', { name: 'Download seedlings.png' })).toHaveAttribute('download', 'seedlings.png')
+      expect(screen.getByRole('button', { name: 'Record audio' })).toBeDisabled()
+      expect(screen.getByText('Audio recording is unavailable here; attach an audio file to play it in the note.')).toBeInTheDocument()
+      const audio = new File([new Uint8Array([1, 2, 3])], 'voice.webm', { type: 'audio/webm' })
+      await user.upload(screen.getByLabelText('Choose files to attach'), audio)
+      await waitFor(() => expect(document.querySelector('audio')).toHaveAttribute('src', 'blob:test-attachment'))
+      await expect((await import('./lib/notes')).getStorageSnapshot()).resolves.toEqual(
+        expect.objectContaining({ attachments: 2, attachmentBytes: image.size + audio.size }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Remove attachment seedlings.png' }))
+      await waitFor(() => expect(screen.queryByRole('img', { name: 'Preview of seedlings.png' })).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Remove attachment voice.webm' }))
+      await waitFor(() => expect(document.querySelector('audio')).toBeNull())
+      const storage = await import('./lib/notes')
+      const savedNote = (await storage.getNotes()).find((note) => note.title === 'Photo note')
+      await expect(storage.getNoteAttachments(savedNote!.id)).resolves.toEqual([])
+    } finally {
+      view.unmount()
+      if (createObjectURL) Object.defineProperty(URL, 'createObjectURL', createObjectURL)
+      else Reflect.deleteProperty(URL, 'createObjectURL')
+      if (revokeObjectURL) Object.defineProperty(URL, 'revokeObjectURL', revokeObjectURL)
+      else Reflect.deleteProperty(URL, 'revokeObjectURL')
+    }
+  })
+
+  it('does not recreate a note when deleting with an unsaved draft', async () => {
+    const confirmation = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const { default: App } = await import('./App')
     const user = userEvent.setup()
     render(<App />)
@@ -109,6 +153,7 @@ describe('My Notes workspace', () => {
     await user.click(await screen.findByRole('button', { name: 'Open note Delete race' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'unsaved draft' } })
     await user.click(screen.getByRole('button', { name: 'Move to Trash' }))
+    expect(confirmation).toHaveBeenCalledOnce()
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Delete race' })).not.toBeInTheDocument())
     const { getNotes, getTrash } = await import('./lib/notes')
     expect(await getNotes()).toEqual([])

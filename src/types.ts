@@ -37,3 +37,13 @@ export interface NoteHistoryEntry {
   savedAt: number
   snapshot: Note
 }
+
+export interface NoteAttachment {
+  id: string
+  noteId: string
+  name: string
+  type: string
+  size: number
+  createdAt: number
+  blob: Blob
+}

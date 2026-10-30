@@ -26,11 +26,13 @@ Organize notes with notebooks and tags, mark important notes as pinned or favori
 
 Markdown task-list checkboxes are interactive in the live preview, with a saved completion count. Toggling a task updates the Markdown source and autosaves like other note edits.
 
+Attach files, images, and audio recordings to notes. Common raster images preview inline, browser-supported audio plays locally, and other file types download from the editor rather than being rendered. Attachments are stored in IndexedDB and remain available offline; each attachment is limited to 5 MiB and each note to 20 MiB of attachments. Recording requires browser microphone support, a secure context, and permission.
+
 Deleting a note moves it to **Trash**, where it can be restored or permanently deleted. Permanent deletion also removes that note's history. Backups include notes in Trash, so they can be recovered after restoring a backup.
 
-Use **Settings → Export JSON backup** to download a backup. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting notebook IDs are remapped. Files larger than 10 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
+Use **Settings → Export JSON backup** to download a backup, including attachments. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting notebook IDs are remapped. Files larger than 40 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
 
-V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook. Existing V2 data is retained when the Trash Bin migration upgrades IndexedDB to version 3.
+V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook. Later IndexedDB upgrades retain existing notes, history, settings, and notebooks; version 4 adds attachment storage without rewriting note records.
 
 ## Tests
 
@@ -38,4 +40,4 @@ V1 notes are migrated in place when the app opens. Their IDs and content are pre
 npm test
 ```
 
-The test suite covers the V1 IndexedDB migration, storage operations, backup/restore validation, and key workspace interactions.
+The test suite covers the IndexedDB migrations, storage operations, backup/restore validation, and key workspace interactions.
