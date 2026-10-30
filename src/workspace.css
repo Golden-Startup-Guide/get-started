@@ -484,6 +484,17 @@ html[data-theme='dark'] .workspace .primary-button {
 .prose-notes pre code { background: transparent; padding: 0; }
 .prose-notes input[type='checkbox'] { margin-right: 0.4rem; accent-color: var(--accent); }
 
+.checklist-progress {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  padding: 0.2rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
 .history-panel {
   width: 280px;
   flex: 0 0 auto;
@@ -495,6 +506,45 @@ html[data-theme='dark'] .workspace .primary-button {
 .history-item {
   border-top: 1px solid var(--border);
   padding: 0.85rem 0;
+}
+
+.attachments-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+.attachment-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachment-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--canvas);
+  padding: 0.65rem;
+}
+
+.attachment-image {
+  display: block;
+  max-height: 320px;
+  max-width: 100%;
+  margin: 0 auto 0.65rem;
+  border-radius: 0.55rem;
+  object-fit: contain;
+}
+
+.attachment-audio {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.65rem;
 }
 
 .theme-option {

@@ -2,11 +2,23 @@ import { openDB, type DBSchema, type IDBPDatabase, type IDBPObjectStore } from '
 import type {
   AppSettings,
   Note,
+  NoteAttachment,
   Notebook,
   NoteHistoryEntry,
   Tag,
   ThemePreference,
 } from '../types'
+import {
+  MAX_ATTACHMENT_SIZE_BYTES,
+  MAX_ATTACHMENTS_PER_NOTE,
+  MAX_BACKUP_SIZE_BYTES,
+  MAX_NOTE_ATTACHMENT_BYTES,
+  validateAttachmentDetails,
+} from '../features/notes/attachments'
+
+interface StoredNoteAttachment extends Omit<NoteAttachment, 'blob'> {
+  data: ArrayBuffer
+}
 
 interface NotesDatabase extends DBSchema {
   notes: {
@@ -16,6 +28,11 @@ interface NotesDatabase extends DBSchema {
   }
   notebooks: { key: string; value: Notebook; indexes: { 'by-name': string } }
   settings: { key: string; value: AppSettings }
+  attachments: {
+    key: string
+    value: StoredNoteAttachment
+    indexes: { 'by-note': string }
+  }
   tags: { key: string; value: Tag; indexes: { 'by-label': string } }
   history: {
     key: string
@@ -32,7 +49,7 @@ const starterNotebooks = [
   ['starter-health', 'Health Handbook'],
 ] as const
 
-const database = openDB<NotesDatabase>('my-notes', 2, {
+const database = openDB<NotesDatabase>('my-notes', 4, {
   async upgrade(db, oldVersion, _newVersion, transaction) {
     const now = Date.now()
     if (oldVersion < 1) {
@@ -80,6 +97,10 @@ const database = openDB<NotesDatabase>('my-notes', 2, {
         cursor = await cursor.continue()
       }
     }
+
+    if (oldVersion < 4) {
+      db.createObjectStore('attachments', { keyPath: 'id' }).createIndex('by-note', 'noteId')
+    }
   },
 })
 
@@ -111,7 +132,7 @@ function normalizeNote(note: Note): Note {
 }
 
 async function refreshTags<
-  StoreNames extends ArrayLike<'notes' | 'notebooks' | 'settings' | 'tags' | 'history'>,
+  StoreNames extends ArrayLike<'notes' | 'notebooks' | 'settings' | 'tags' | 'history' | 'attachments'>,
 >(
   notesStore: IDBPObjectStore<NotesDatabase, StoreNames, 'notes', 'readwrite'>,
   tagsStore: IDBPObjectStore<NotesDatabase, StoreNames, 'tags', 'readwrite'>,
@@ -119,6 +140,7 @@ async function refreshTags<
   const notes = await notesStore.getAll()
   const counts = new Map<string, { label: string; count: number }>()
   for (const note of notes) {
+    if (note.deletedAt !== undefined) continue
     for (const label of cleanTags(note.tags ?? [])) {
       const id = label.toLocaleLowerCase()
       const current = counts.get(id)
@@ -131,9 +153,18 @@ async function refreshTags<
 
 export async function getNotes(): Promise<Note[]> {
   const db = await database
-  return (await db.getAll('notes')).sort(
+  return (await db.getAll('notes'))
+    .filter((note) => note.deletedAt === undefined)
+    .sort(
     (a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt,
   )
+}
+
+export async function getTrash(): Promise<Note[]> {
+  const db = await database
+  return (await db.getAll('notes'))
+    .filter((note) => note.deletedAt !== undefined)
+    .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
 }
 
 export async function saveNote(input: Note): Promise<void> {
@@ -154,15 +185,151 @@ export async function saveNote(input: Note): Promise<void> {
   await transaction.done
 }
 
-export async function deleteNote(id: string): Promise<void> {
+export async function getNoteAttachments(noteId: string): Promise<NoteAttachment[]> {
   const db = await database
-  const transaction = db.transaction(['notes', 'tags', 'history'], 'readwrite')
-  await transaction.objectStore('notes').delete(id)
+  return (await db.getAllFromIndex('attachments', 'by-note', noteId))
+    .map(({ data, ...attachment }) => ({
+      ...attachment,
+      blob: new Blob([data], { type: attachment.type }),
+    }))
+    .sort(
+    (a, b) => a.createdAt - b.createdAt,
+  )
+}
+
+export async function addNoteAttachment(
+  noteId: string,
+  file: Blob,
+  name: string,
+): Promise<NoteAttachment> {
+  validateAttachmentDetails(name, file.size)
+  const data = await readBlob(file)
+  const db = await database
+  const transaction = db.transaction(['notes', 'attachments'], 'readwrite')
+  const noteStore = transaction.objectStore('notes')
+  const note = await noteStore.get(noteId)
+  if (!note) {
+    await transaction.done
+    throw new Error('Save this note before adding attachments.')
+  }
+  const attachmentStore = transaction.objectStore('attachments')
+  const existing = await attachmentStore.index('by-note').getAll(noteId)
+  const usedBytes = existing.reduce((sum, attachment) => sum + attachment.size, 0)
+  if (existing.length >= MAX_ATTACHMENTS_PER_NOTE) {
+    await transaction.done
+    throw new Error(`A note can have at most ${MAX_ATTACHMENTS_PER_NOTE} attachments.`)
+  }
+  if (usedBytes + file.size > MAX_NOTE_ATTACHMENT_BYTES) {
+    await transaction.done
+    throw new Error('Attachments for a note cannot exceed 20 MiB in total.')
+  }
+  const attachment: StoredNoteAttachment = {
+    id: crypto.randomUUID(),
+    noteId,
+    name: name.trim(),
+    type: file.type || 'application/octet-stream',
+    size: file.size,
+    createdAt: Date.now(),
+    data,
+  }
+  try {
+    await attachmentStore.add(attachment)
+    await noteStore.put({ ...note, updatedAt: Date.now() })
+    await transaction.done
+  } catch (reason) {
+    let failure = reason
+    try {
+      await transaction.done
+    } catch (transactionError) {
+      failure = transactionError
+    }
+    if (isQuotaExceeded(failure)) {
+      throw new Error('Browser storage is full. Remove large attachments or free device storage and try again.')
+    }
+    throw failure
+  }
+  return { ...attachment, blob: new Blob([data], { type: attachment.type }) }
+}
+
+export async function deleteNoteAttachment(id: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'attachments'], 'readwrite')
+  const attachmentStore = transaction.objectStore('attachments')
+  const attachment = await attachmentStore.get(id)
+  if (!attachment) {
+    await transaction.done
+    throw new Error('Attachment not found.')
+  }
+  await attachmentStore.delete(id)
+  const noteStore = transaction.objectStore('notes')
+  const note = await noteStore.get(attachment.noteId)
+  if (note) await noteStore.put({ ...note, updatedAt: Date.now() })
+  await transaction.done
+}
+
+export async function trashNote(id: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'tags'], 'readwrite')
+  const store = transaction.objectStore('notes')
+  const note = await store.get(id)
+  if (!note) {
+    await transaction.done
+    throw new Error('Note not found.')
+  }
+  if (note.deletedAt !== undefined) {
+    await transaction.done
+    return
+  }
+  await store.put({ ...note, deletedAt: Date.now() })
+  await refreshTags(store, transaction.objectStore('tags'))
+  await transaction.done
+}
+
+export async function restoreNote(id: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'tags'], 'readwrite')
+  const store = transaction.objectStore('notes')
+  const note = await store.get(id)
+  if (!note) {
+    await transaction.done
+    throw new Error('Note not found.')
+  }
+  if (note.deletedAt === undefined) {
+    await transaction.done
+    return
+  }
+  const { deletedAt: _deletedAt, ...restored } = note
+  await store.put(restored)
+  await refreshTags(store, transaction.objectStore('tags'))
+  await transaction.done
+}
+
+export async function permanentlyDeleteNote(id: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'tags', 'history', 'attachments'], 'readwrite')
+  const noteStore = transaction.objectStore('notes')
+  const note = await noteStore.get(id)
+  if (!note) {
+    await transaction.done
+    throw new Error('Note not found.')
+  }
+  if (note.deletedAt === undefined) {
+    await transaction.done
+    throw new Error('Only notes in Trash can be permanently deleted.')
+  }
+  await noteStore.delete(id)
   const historyStore = transaction.objectStore('history')
   const historyKeys = await historyStore.index('by-note').getAllKeys(id)
   for (const key of historyKeys) await historyStore.delete(key)
+  const attachmentStore = transaction.objectStore('attachments')
+  const attachmentKeys = await attachmentStore.index('by-note').getAllKeys(id)
+  for (const key of attachmentKeys) await attachmentStore.delete(key)
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await trashNote(id)
 }
 
 export async function getNotebooks(): Promise<Notebook[]> {
@@ -301,10 +468,16 @@ export async function restoreHistory(revisionId: string): Promise<void> {
   if (!revision) throw new Error('History revision not found.')
   const current = await db.get('notes', revision.noteId)
   if (!current) throw new Error('The note for this revision no longer exists.')
-  await saveNote({ ...revision.snapshot, id: current.id, createdAt: current.createdAt, updatedAt: Date.now() })
+  await saveNote({
+    ...revision.snapshot,
+    id: current.id,
+    createdAt: current.createdAt,
+    updatedAt: Date.now(),
+    ...(current.deletedAt !== undefined ? { deletedAt: current.deletedAt } : {}),
+  })
 }
 
-export interface NotesBackup {
+interface LegacyNotesBackup {
   format: 'my-notes-backup'
   version: 1
   exportedAt: number
@@ -315,16 +488,91 @@ export interface NotesBackup {
   history: NoteHistoryEntry[]
 }
 
+interface AttachmentBackup extends Omit<NoteAttachment, 'blob'> {
+  data: string
+}
+
+export interface NotesBackup {
+  format: 'my-notes-backup'
+  version: 2
+  exportedAt: number
+  notes: Note[]
+  notebooks: Notebook[]
+  tags: Tag[]
+  settings: AppSettings
+  history: NoteHistoryEntry[]
+  attachments: AttachmentBackup[]
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
+  }
+  return btoa(binary)
+}
+
+function base64ByteLength(value: string): number | undefined {
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+    return undefined
+  }
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0
+  return (value.length / 4) * 3 - padding
+}
+
+function base64ToArrayBuffer(value: string): ArrayBuffer {
+  const binary = atob(value)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  return bytes.buffer
+}
+
+function readBlob(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) resolve(reader.result)
+      else reject(new Error('The attachment could not be read for export.'))
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('The attachment could not be read for export.'))
+    reader.readAsArrayBuffer(blob)
+  })
+}
+
+function isQuotaExceeded(reason: unknown): boolean {
+  return reason instanceof DOMException && reason.name === 'QuotaExceededError'
+}
+
 export async function exportBackup(): Promise<NotesBackup> {
   const db = await database
-  const [notes, notebooks, tags, settings, history] = await Promise.all([
+  const [notes, notebooks, tags, settings, history, attachments] = await Promise.all([
     db.getAll('notes'),
     db.getAll('notebooks'),
     db.getAll('tags'),
     getSettings(),
     db.getAll('history'),
+    db.getAll('attachments'),
   ])
-  return { format: 'my-notes-backup', version: 1, exportedAt: Date.now(), notes, notebooks, tags, settings, history }
+  const backupAttachments = attachments.map(({ data, ...attachment }) => ({
+    ...attachment,
+    data: bytesToBase64(new Uint8Array(data)),
+  }))
+  const backup: NotesBackup = {
+    format: 'my-notes-backup',
+    version: 2,
+    exportedAt: Date.now(),
+    notes,
+    notebooks,
+    tags,
+    settings,
+    history,
+    attachments: backupAttachments,
+  }
+  if (new Blob([JSON.stringify(backup, null, 2)]).size > MAX_BACKUP_SIZE_BYTES) {
+    throw new Error('This backup exceeds 40 MiB. Remove some attachments and try again.')
+  }
+  return backup
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -343,7 +591,8 @@ function validNote(value: unknown): value is Note {
     (value.tags === undefined ||
       (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string'))) &&
     (value.pinned === undefined || typeof value.pinned === 'boolean') &&
-    (value.favorite === undefined || typeof value.favorite === 'boolean')
+    (value.favorite === undefined || typeof value.favorite === 'boolean') &&
+    (value.deletedAt === undefined || Number.isFinite(value.deletedAt))
   )
 }
 
@@ -394,16 +643,40 @@ function validHistory(value: unknown): value is NoteHistoryEntry {
   )
 }
 
-function isNotesBackup(value: unknown): value is NotesBackup {
+function validAttachmentBackup(value: unknown): value is AttachmentBackup {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    !value.id ||
+    typeof value.noteId !== 'string' ||
+    !value.noteId ||
+    typeof value.name !== 'string' ||
+    !value.name.trim() ||
+    value.name.length > 255 ||
+    typeof value.type !== 'string' ||
+    value.type.length > 255 ||
+    !Number.isSafeInteger(value.size) ||
+    Number(value.size) < 0 ||
+    Number(value.size) > MAX_ATTACHMENT_SIZE_BYTES ||
+    !Number.isFinite(value.createdAt) ||
+    typeof value.data !== 'string'
+  ) {
+    return false
+  }
+  return base64ByteLength(value.data) === value.size
+}
+
+function isNotesBackup(value: unknown): value is NotesBackup | LegacyNotesBackup {
   if (
     !isRecord(value) ||
     value.format !== 'my-notes-backup' ||
-    value.version !== 1 ||
+    (value.version !== 1 && value.version !== 2) ||
     !Number.isFinite(value.exportedAt) ||
     !Array.isArray(value.notes) ||
     !Array.isArray(value.notebooks) ||
     !Array.isArray(value.tags) ||
     !Array.isArray(value.history) ||
+    (value.version === 2 && !Array.isArray(value.attachments)) ||
     !validSettings(value.settings)
   ) {
     return false
@@ -412,6 +685,8 @@ function isNotesBackup(value: unknown): value is NotesBackup {
   const notes: unknown[] = value.notes
   const tags: unknown[] = value.tags
   const history: unknown[] = value.history
+  const attachments: unknown[] =
+    value.version === 2 && Array.isArray(value.attachments) ? value.attachments : []
   if (
     !hasUniqueIds(notebooks) ||
     !notebooks.every(validNotebook) ||
@@ -420,15 +695,30 @@ function isNotesBackup(value: unknown): value is NotesBackup {
     !hasUniqueIds(tags) ||
     !tags.every(validTag) ||
     !hasUniqueIds(history) ||
-    !history.every(validHistory)
+    !history.every(validHistory) ||
+    !hasUniqueIds(attachments) ||
+    !attachments.every(validAttachmentBackup)
   ) {
     return false
   }
   const validatedNotebooks = notebooks.filter(validNotebook)
   const validatedNotes = notes.filter(validNote)
   const validatedHistory = history.filter(validHistory)
+  const validatedAttachments = attachments.filter(validAttachmentBackup)
   const notebookIds = new Set(validatedNotebooks.map((item) => item.id))
   const notebookNames = validatedNotebooks.map((item) => item.name.toLocaleLowerCase())
+  const noteIds = new Set(validatedNotes.map((item) => item.id))
+  const attachmentCounts = new Map<string, { count: number; bytes: number }>()
+  for (const attachment of validatedAttachments) {
+    if (!noteIds.has(attachment.noteId)) return false
+    const current = attachmentCounts.get(attachment.noteId) ?? { count: 0, bytes: 0 }
+    current.count += 1
+    current.bytes += attachment.size
+    if (current.count > MAX_ATTACHMENTS_PER_NOTE || current.bytes > MAX_NOTE_ATTACHMENT_BYTES) {
+      return false
+    }
+    attachmentCounts.set(attachment.noteId, current)
+  }
   if (
     new Set(notebookNames).size !== notebookNames.length ||
     validatedNotes.some(
@@ -448,6 +738,13 @@ function isNotesBackup(value: unknown): value is NotesBackup {
 
 function validateBackup(value: unknown): NotesBackup {
   if (!isNotesBackup(value)) throw new Error('This backup contains invalid, duplicate, or unsupported records.')
+  if (value.version === 1) {
+    return {
+      ...value,
+      version: 2,
+      attachments: [],
+    }
+  }
   return value
 }
 
@@ -456,11 +753,12 @@ export interface ImportSummary {
   notesSkipped: number
   notebooksAdded: number
   historyAdded: number
+  attachmentsAdded: number
   settingsKept: boolean
 }
 
 export async function importBackupFile(file: File): Promise<ImportSummary> {
-  if (file.size > 10 * 1024 * 1024) throw new Error('Backup files must be 10 MiB or smaller.')
+  if (file.size > MAX_BACKUP_SIZE_BYTES) throw new Error('Backup files must be 40 MiB or smaller.')
   let parsed: unknown
   try {
     parsed = JSON.parse(await file.text())
@@ -469,10 +767,11 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   }
   const backup = validateBackup(parsed)
   const db = await database
-  const transaction = db.transaction(['notes', 'notebooks', 'settings', 'tags', 'history'], 'readwrite')
+  const transaction = db.transaction(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments'], 'readwrite')
   const noteStore = transaction.objectStore('notes')
   const notebookStore = transaction.objectStore('notebooks')
   const historyStore = transaction.objectStore('history')
+  const attachmentStore = transaction.objectStore('attachments')
   const currentNotes = await noteStore.getAll()
   const currentNotebooks = await notebookStore.getAll()
   const noteIds = new Set(currentNotes.map((note) => note.id))
@@ -544,6 +843,21 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
     historyAdded += 1
   }
 
+  let attachmentsAdded = 0
+  for (const imported of backup.attachments) {
+    if (!acceptedNoteIds.has(imported.noteId)) continue
+    await attachmentStore.put({
+      id: (await attachmentStore.get(imported.id)) ? crypto.randomUUID() : imported.id,
+      noteId: imported.noteId,
+      name: imported.name,
+      type: imported.type,
+      size: imported.size,
+      createdAt: imported.createdAt,
+      data: base64ToArrayBuffer(imported.data),
+    })
+    attachmentsAdded += 1
+  }
+
   const settingsStore = transaction.objectStore('settings')
   const hasLocalSettings = await settingsStore.get('preferences')
   if (!hasLocalSettings) await settingsStore.put(backup.settings)
@@ -554,24 +868,40 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
     notesSkipped,
     notebooksAdded,
     historyAdded,
+    attachmentsAdded,
     settingsKept: Boolean(hasLocalSettings),
   }
 }
 
 export async function getStorageSnapshot(): Promise<{
   notes: number
+  trash: number
   notebooks: number
   tags: number
   revisions: number
+  attachments: number
+  attachmentBytes: number
   estimatedBytes: number
 }> {
   const db = await database
-  const [notes, notebooks, tags, history] = await Promise.all([
+  const [notes, notebooks, tags, history, attachments] = await Promise.all([
     db.getAll('notes'),
     db.getAll('notebooks'),
     db.getAll('tags'),
     db.getAll('history'),
+    db.getAll('attachments'),
   ])
-  const estimatedBytes = new Blob([JSON.stringify({ notes, notebooks, tags, history })]).size
-  return { notes: notes.length, notebooks: notebooks.length, tags: tags.length, revisions: history.length, estimatedBytes }
+  const attachmentBytes = attachments.reduce((sum, attachment) => sum + attachment.size, 0)
+  const estimatedBytes = new Blob([JSON.stringify({ notes, notebooks, tags, history })]).size + attachmentBytes
+  const trash = notes.filter((note) => note.deletedAt !== undefined).length
+  return {
+    notes: notes.length - trash,
+    trash,
+    notebooks: notebooks.length,
+    tags: tags.length,
+    revisions: history.length,
+    attachments: attachments.length,
+    attachmentBytes,
+    estimatedBytes,
+  }
 }

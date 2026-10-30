@@ -8,6 +8,7 @@ export interface Note {
   tags?: string[]
   pinned?: boolean
   favorite?: boolean
+  deletedAt?: number
 }
 
 export interface Notebook {
@@ -35,4 +36,14 @@ export interface NoteHistoryEntry {
   noteId: string
   savedAt: number
   snapshot: Note
+}
+
+export interface NoteAttachment {
+  id: string
+  noteId: string
+  name: string
+  type: string
+  size: number
+  createdAt: number
+  blob: Blob
 }
