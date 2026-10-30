@@ -9,6 +9,7 @@ import {
   Download,
   FileText,
   Heart,
+  Link2,
   Mic,
   Moon,
   Paperclip,
@@ -30,6 +31,7 @@ import {
   deleteNotebook,
   exportBackup,
   getNoteHistory,
+  getNoteLinks,
   getNoteAttachments,
   getNotes,
   getNotebooks,
@@ -37,6 +39,7 @@ import {
   getStorageSnapshot,
   getTags,
   importBackupFile,
+  linkNotes,
   getTrash,
   permanentlyDeleteNote,
   renameNotebook,
@@ -46,6 +49,7 @@ import {
   saveTheme,
   setNoteFlag,
   trashNote,
+  unlinkNotes,
 } from './lib/notes'
 import type {
   AppSettings,
@@ -53,6 +57,7 @@ import type {
   NoteAttachment,
   Notebook,
   NoteHistoryEntry,
+  NoteLink,
   Tag,
   ThemePreference,
 } from './types'
@@ -100,6 +105,22 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} bytes`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
+}
+
+function getNoteLinkLabel(note: Note, records: Note[], notebooks: Notebook[]): string {
+  const title = note.title || 'Untitled note'
+  const duplicates = records.filter((item) =>
+    (item.title || 'Untitled note').toLocaleLowerCase() === title.toLocaleLowerCase(),
+  )
+  const notebook = notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'
+  const maxIdLength = Math.max(0, ...duplicates.map((item) => item.id.length))
+  let suffixLength = Math.min(8, maxIdLength)
+  while (suffixLength < maxIdLength && duplicates.some((item) =>
+    item.id !== note.id && item.id.slice(-suffixLength) === note.id.slice(-suffixLength),
+  )) {
+    suffixLength += 1
+  }
+  return `${title} — ${notebook}${duplicates.length > 1 ? ` · ${note.id.slice(-suffixLength)}` : ''}`
 }
 
 function keepFocusInDialog(event: KeyboardEvent<HTMLElement>, onEscape?: () => void) {
@@ -269,7 +290,10 @@ function App() {
   function closeEditor() {
     setActiveNote(null)
     setIsCreating(false)
-    requestAnimationFrame(() => (focusReturnRef.current ?? newNoteRef.current)?.focus())
+    requestAnimationFrame(() => {
+      const target = focusReturnRef.current
+      ;(target?.isConnected ? target : newNoteRef.current)?.focus()
+    })
   }
 
   function openSettings() {
@@ -416,7 +440,7 @@ function App() {
       const result = await importBackupFile(file)
       await refresh()
       setNotice(
-        `Backup restored: ${result.notesAdded} notes and ${result.attachmentsAdded} attachments added, ${result.notesSkipped} duplicate notes skipped.`,
+        `Backup restored: ${result.notesAdded} notes, ${result.linksAdded} links, and ${result.attachmentsAdded} attachments added, ${result.notesSkipped} duplicate notes skipped.`,
       )
       setError(null)
     } catch (reason) {
@@ -569,9 +593,12 @@ function App() {
           isCreating={isCreating}
           notebooks={notebooks}
           tags={tags}
+          notes={notes}
+          trash={trash}
           onSave={handleSave}
           onRefresh={refresh}
           onClose={closeEditor}
+          onOpenNote={openNote}
           onDelete={() => handleDeleteNote(activeNote)}
           onError={setError}
         />
@@ -720,9 +747,12 @@ function NoteEditor({
   isCreating,
   notebooks,
   tags,
+  notes,
+  trash,
   onSave,
   onRefresh,
   onClose,
+  onOpenNote,
   onDelete,
   onError,
 }: {
@@ -730,9 +760,12 @@ function NoteEditor({
   isCreating: boolean
   notebooks: Notebook[]
   tags: Tag[]
+  notes: Note[]
+  trash: Note[]
   onSave: (note: Note) => Promise<void>
   onRefresh: () => Promise<void>
   onClose: () => void
+  onOpenNote: (note: Note) => void
   onDelete: () => Promise<boolean>
   onError: (message: string | null) => void
 }) {
@@ -749,6 +782,10 @@ function NoteEditor({
   const [showHistory, setShowHistory] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<NoteAttachment[]>([])
+  const [links, setLinks] = useState<{ outgoing: NoteLink[]; backlinks: NoteLink[] }>({ outgoing: [], backlinks: [] })
+  const [linkTargetId, setLinkTargetId] = useState('')
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [persisted, setPersisted] = useState(!isCreating)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [isAddingAttachment, setIsAddingAttachment] = useState(false)
@@ -787,6 +824,7 @@ function NoteEditor({
     }
     try {
       await onSave(next)
+      setPersisted(true)
       baseline.current = { title: draft.title, content: draft.content, tags: draft.noteTags, notebookId: draft.notebookId, pinned: draft.pinned, favorite: draft.favorite }
       setSaveState('saved')
       return true
@@ -818,6 +856,20 @@ function NoteEditor({
         if (recording.recorder.state !== 'inactive') recording.recorder.stop()
         recording.stream.getTracks().forEach((track) => track.stop())
       }
+    }
+  }, [note.id])
+
+  useEffect(() => {
+    let active = true
+    getNoteLinks(note.id)
+      .then((saved) => {
+        if (active) setLinks(saved)
+      })
+      .catch(() => {
+        if (active) setLinkError('Note links could not be loaded.')
+      })
+    return () => {
+      active = false
     }
   }, [note.id])
 
@@ -945,6 +997,38 @@ function NoteEditor({
     if (saved) onClose()
   }
 
+  async function addLink() {
+    if (!linkTargetId || !(await flush())) return
+    try {
+      if (!notes.some((item) => item.id === note.id)) {
+        setLinkError('Save this note and restore it from Trash before adding links.')
+        return
+      }
+      await linkNotes(note.id, linkTargetId)
+      setLinks(await getNoteLinks(note.id))
+      setLinkTargetId('')
+      setLinkError(null)
+    } catch (reason) {
+      setLinkError(reason instanceof Error ? reason.message : 'The note could not be linked.')
+    }
+  }
+
+  async function removeLink(targetNoteId: string) {
+    if (!(await flush())) return
+    try {
+      await unlinkNotes(note.id, targetNoteId)
+      setLinks(await getNoteLinks(note.id))
+      setLinkError(null)
+    } catch (reason) {
+      setLinkError(reason instanceof Error ? reason.message : 'The link could not be removed.')
+    }
+  }
+
+  async function openRelatedNote(related: Note) {
+    if (related.deletedAt !== undefined || !(await flush())) return
+    onOpenNote(related)
+  }
+
   async function deleteSafely() {
     const message = note.deletedAt === undefined
       ? `Move “${title.trim() || 'Untitled note'}” to Trash? You can restore it later.`
@@ -1021,6 +1105,16 @@ function NoteEditor({
   )
   const checklistProgress = getChecklistProgress(content)
   const checklistTaskLines = getChecklistTaskLines(content)
+  const allNotes = [...notes, ...trash]
+  const outgoingNotes = links.outgoing
+    .map((link) => allNotes.find((item) => item.id === link.targetNoteId))
+    .filter((item): item is Note => Boolean(item))
+  const backlinkNotes = links.backlinks
+    .map((link) => allNotes.find((item) => item.id === link.sourceNoteId))
+    .filter((item): item is Note => Boolean(item))
+  const linkedIds = new Set(links.outgoing.map((link) => link.targetNoteId))
+  const availableTargets = notes.filter((item) => item.id !== note.id && !linkedIds.has(item.id))
+  const canEditLinks = persisted && note.deletedAt === undefined
   const audioRecordingSupported =
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
   let taskInputIndex = 0
@@ -1076,6 +1170,63 @@ function NoteEditor({
               </div>
               {tagInput && suggestions.length > 0 && <div className="suggestion-list" role="listbox" aria-label="Tag suggestions">{suggestions.map((tag) => <button key={tag.id} role="option" aria-selected={false} onMouseDown={(event) => event.preventDefault()} onClick={() => addTag(tag.label)}>{tag.label}</button>)}</div>}
             </div>
+            <section className="note-links" aria-labelledby="note-links-heading">
+              <h3 id="note-links-heading" className="mb-2 flex items-center gap-2 text-sm font-semibold"><Link2 size={15} aria-hidden="true" /> Linked notes</h3>
+              {canEditLinks && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <label className="sr-only" htmlFor="link-note-target">Choose a note to link</label>
+                  <select
+                    id="link-note-target"
+                    className="small-input min-w-0 flex-1"
+                    value={linkTargetId}
+                    onChange={(event) => setLinkTargetId(event.target.value)}
+                    disabled={!availableTargets.length}
+                  >
+                    <option value="">Choose a note…</option>
+                    {availableTargets.map((item) => (
+                      <option key={item.id} value={item.id}>{getNoteLinkLabel(item, allNotes, notebooks)}</option>
+                    ))}
+                  </select>
+                  <button className="secondary-button" onClick={() => void addLink()} disabled={!linkTargetId}>Add link</button>
+                </div>
+              )}
+              {linkError && <p className="mb-2 text-sm text-red-700" role="alert">{linkError}</p>}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">Links from this note</h4>
+                  {outgoingNotes.length ? (
+                    <ul className="note-link-list" aria-label="Links from this note">
+                      {outgoingNotes.map((related) => (
+                        <li key={related.id}>
+                          {related.deletedAt === undefined ? (
+                            <>
+                              <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{getNoteLinkLabel(related, allNotes, notebooks)}</button>
+                              {canEditLinks && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${getNoteLinkLabel(related, allNotes, notebooks)}`}>Remove</button>}
+                            </>
+                          ) : <span>{getNoteLinkLabel(related, allNotes, notebooks)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">No linked notes yet.</p>}
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">Backlinks</h4>
+                  {backlinkNotes.length ? (
+                    <ul className="note-link-list" aria-label="Backlinks">
+                      {backlinkNotes.map((related) => (
+                        <li key={related.id}>
+                          {related.deletedAt === undefined ? (
+                            <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{getNoteLinkLabel(related, allNotes, notebooks)}</button>
+                          ) : <span>{getNoteLinkLabel(related, allNotes, notebooks)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">No backlinks yet.</p>}
+                </div>
+              </div>
+              {!canEditLinks && !note.deletedAt && <p className="mt-2 text-xs text-[var(--muted)]">Save this note before linking it.</p>}
+              {note.deletedAt !== undefined && <p className="mt-2 text-xs text-[var(--muted)]">Links are preserved while this note is in Trash.</p>}
+            </section>
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
                 <label htmlFor="note-content" className="section-label mb-2 block">Markdown</label>

@@ -11,6 +11,11 @@ export interface Note {
   deletedAt?: number
 }
 
+export interface NoteLink {
+  sourceNoteId: string
+  targetNoteId: string
+}
+
 export interface Notebook {
   id: string
   name: string
