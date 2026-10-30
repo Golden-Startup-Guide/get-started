@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteDB } from 'idb'
+import type { Note } from './types'
 
 describe('My Notes workspace', () => {
   beforeEach(async () => {
@@ -87,12 +88,68 @@ describe('My Notes workspace', () => {
     await user.click(screen.getByRole('button', { name: 'Close settings' }))
     await expect((await import('./lib/notes')).getSettings()).resolves.toEqual({ id: 'preferences', theme: 'dark' })
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, notebooks, and tags' }), { target: { value: 'Work' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, libraries, shelves, notebooks, and tags' }), { target: { value: 'Work' } })
     expect(await screen.findByText('Work', { selector: 'mark' })).toBeInTheDocument()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, notebooks, and tags' }), { target: { value: 'seedlings' } })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, libraries, shelves, notebooks, and tags' }), { target: { value: 'seedlings' } })
     expect(await screen.findByRole('heading', { name: 'Garden notes' })).toBeInTheDocument()
     expect(screen.getByText('seedlings', { selector: 'mark' })).toBeInTheDocument()
   }, 25000)
+
+  it('navigates library and shelf pages and moves notebooks before deleting a shelf', async () => {
+    const storage = await import('./lib/notes')
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+
+    const libraryNavigation = screen.getByRole('navigation', { name: 'Libraries' })
+    await within(libraryNavigation).findByText('Personal Library')
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 0' }))
+    expect(await screen.findByRole('heading', { name: 'Library home' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Open General shelf' }))
+    expect(await screen.findByRole('heading', { name: 'General' })).toBeInTheDocument()
+
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 0' }))
+    await screen.findByRole('heading', { name: 'Library home' })
+    const main = screen.getByRole('main')
+    fireEvent.change(within(main).getByRole('textbox', { name: 'New library name' }), { target: { value: 'Garden Library' } })
+    await user.click(within(main).getByRole('button', { name: 'Add library' }))
+    await within(libraryNavigation).findByRole('button', { name: 'Garden Library 0' })
+    const newShelf = within(main).getByRole('textbox', { name: 'New shelf in Garden Library' })
+    fireEvent.change(newShelf, { target: { value: 'Garden Shelf' } })
+    await user.click(within(main).getByRole('button', { name: 'Add shelf' }))
+    expect(await screen.findByRole('heading', { name: 'Garden Shelf' })).toBeInTheDocument()
+
+    fireEvent.change(within(main).getByRole('textbox', { name: 'New notebook in Garden Shelf' }), { target: { value: 'Seed Journal' } })
+    await user.click(within(main).getByRole('button', { name: 'Add notebook' }))
+    await waitFor(async () => expect(await storage.getNotebooks()).toContainEqual(
+      expect.objectContaining({ name: 'Seed Journal', shelfId: expect.any(String) }),
+    ))
+    const notebook = (await storage.getNotebooks()).find((item) => item.name === 'Seed Journal')!
+    const note: Note = {
+      id: 'shelf-delete-note',
+      title: 'Garden observations',
+      content: 'Preserve during shelf deletion.',
+      createdAt: 1,
+      updatedAt: 2,
+      notebookId: notebook.id,
+    }
+    await storage.saveNote(note)
+
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'Garden Library 0' }))
+    await screen.findByRole('heading', { name: 'Library home' })
+    await user.click(within(main).getByRole('button', { name: 'Delete Garden Shelf' }))
+    const dialog = screen.getByRole('dialog')
+    const gardenLibrary = (await storage.getLibraries()).find((item) => item.name === 'Garden Library')!
+    const destinationShelf = (await storage.getShelves()).find((item) => item.libraryId === gardenLibrary.id && item.name === 'General')!
+    await user.selectOptions(within(dialog).getByLabelText('Move notebooks to shelf'), destinationShelf.id)
+    await user.click(within(dialog).getByRole('button', { name: 'Move contents and delete' }))
+    await waitFor(async () => expect(await storage.getShelves()).not.toContainEqual(
+      expect.objectContaining({ name: 'Garden Shelf' }),
+    ))
+    expect(await storage.getNotebooks()).toContainEqual(expect.objectContaining({ id: notebook.id, shelfId: destinationShelf.id }))
+    expect(await storage.getNotes()).toContainEqual(expect.objectContaining(note))
+  }, 15000)
 
   it('creates, follows, disambiguates, and removes linked notes with backlinks', async () => {
     const storage = await import('./lib/notes')

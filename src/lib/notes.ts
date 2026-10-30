@@ -4,8 +4,10 @@ import type {
   Note,
   NoteAttachment,
   NoteLink,
+  Library,
   Notebook,
   NoteHistoryEntry,
+  Shelf,
   Tag,
   ThemePreference,
 } from '../types'
@@ -28,6 +30,8 @@ interface NotesDatabase extends DBSchema {
     indexes: { 'by-updated': number; 'by-notebook': string; 'by-tags': string }
   }
   notebooks: { key: string; value: Notebook; indexes: { 'by-name': string } }
+  libraries: { key: string; value: Library; indexes: { 'by-name': string } }
+  shelves: { key: string; value: Shelf; indexes: { 'by-library': string; 'by-name': string } }
   settings: { key: string; value: AppSettings }
   attachments: {
     key: string
@@ -55,7 +59,10 @@ const starterNotebooks = [
   ['starter-health', 'Health Handbook'],
 ] as const
 
-const database = openDB<NotesDatabase>('my-notes', 5, {
+const DEFAULT_LIBRARY_ID = 'starter-library'
+const DEFAULT_SHELF_ID = 'starter-shelf'
+
+const database = openDB<NotesDatabase>('my-notes', 6, {
   async upgrade(db, oldVersion, _newVersion, transaction) {
     const now = Date.now()
     if (oldVersion < 1) {
@@ -113,6 +120,24 @@ const database = openDB<NotesDatabase>('my-notes', 5, {
       links.createIndex('by-source', 'sourceNoteId')
       links.createIndex('by-target', 'targetNoteId')
     }
+
+    if (oldVersion < 6) {
+      const libraries = db.createObjectStore('libraries', { keyPath: 'id' })
+      libraries.createIndex('by-name', 'name')
+      const shelves = db.createObjectStore('shelves', { keyPath: 'id' })
+      shelves.createIndex('by-library', 'libraryId')
+      shelves.createIndex('by-name', 'name')
+      const notebooks = transaction.objectStore('notebooks')
+      const library = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: now, updatedAt: now }
+      const shelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: now, updatedAt: now }
+      libraries.put(library)
+      shelves.put(shelf)
+      let cursor = await notebooks.openCursor()
+      while (cursor) {
+        cursor.update({ ...cursor.value, shelfId: cursor.value.shelfId ?? DEFAULT_SHELF_ID })
+        cursor = await cursor.continue()
+      }
+    }
   },
 })
 
@@ -144,7 +169,9 @@ function normalizeNote(note: Note): Note {
 }
 
 async function refreshTags<
-  StoreNames extends ArrayLike<'notes' | 'notebooks' | 'settings' | 'tags' | 'history' | 'attachments' | 'noteLinks'>,
+  StoreNames extends ArrayLike<
+    'notes' | 'notebooks' | 'libraries' | 'shelves' | 'settings' | 'tags' | 'history' | 'attachments' | 'noteLinks'
+  >,
 >(
   notesStore: IDBPObjectStore<NotesDatabase, StoreNames, 'notes', 'readwrite'>,
   tagsStore: IDBPObjectStore<NotesDatabase, StoreNames, 'tags', 'readwrite'>,
@@ -399,19 +426,196 @@ export async function getNotebooks(): Promise<Notebook[]> {
   )
 }
 
-export async function createNotebook(name: string): Promise<Notebook> {
+export async function getLibraries(): Promise<Library[]> {
+  const db = await database
+  return (await db.getAll('libraries')).sort((a, b) => a.createdAt - b.createdAt || a.name.localeCompare(b.name))
+}
+
+export async function getShelves(): Promise<Shelf[]> {
+  const db = await database
+  return (await db.getAll('shelves')).sort((a, b) => a.createdAt - b.createdAt || a.name.localeCompare(b.name))
+}
+
+export async function createLibrary(name: string): Promise<Library> {
+  const cleaned = name.trim()
+  if (!cleaned) throw new Error('Library name cannot be empty.')
+  const db = await database
+  const transaction = db.transaction(['libraries', 'shelves'], 'readwrite')
+  const libraries = await transaction.objectStore('libraries').getAll()
+  if (libraries.some((library) => library.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
+    await transaction.done
+    throw new Error('A library with that name already exists.')
+  }
+  const now = Date.now()
+  const library = { id: crypto.randomUUID(), name: cleaned, createdAt: now, updatedAt: now }
+  await transaction.objectStore('libraries').add(library)
+  await transaction.objectStore('shelves').add({
+    id: crypto.randomUUID(),
+    libraryId: library.id,
+    name: 'General',
+    createdAt: now,
+    updatedAt: now,
+  })
+  await transaction.done
+  return library
+}
+
+export async function renameLibrary(id: string, name: string): Promise<void> {
+  const cleaned = name.trim()
+  if (!cleaned) throw new Error('Library name cannot be empty.')
+  const db = await database
+  const transaction = db.transaction('libraries', 'readwrite')
+  const store = transaction.objectStore('libraries')
+  const libraries = await store.getAll()
+  const library = libraries.find((item) => item.id === id)
+  if (!library) {
+    await transaction.done
+    throw new Error('Library not found.')
+  }
+  if (libraries.some((item) => item.id !== id && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
+    await transaction.done
+    throw new Error('A library with that name already exists.')
+  }
+  await store.put({ ...library, name: cleaned, updatedAt: Date.now() })
+  await transaction.done
+}
+
+export async function createShelf(libraryId: string, name: string): Promise<Shelf> {
+  const cleaned = name.trim()
+  if (!cleaned) throw new Error('Shelf name cannot be empty.')
+  const db = await database
+  const transaction = db.transaction(['libraries', 'shelves'], 'readwrite')
+  if (!(await transaction.objectStore('libraries').get(libraryId))) {
+    await transaction.done
+    throw new Error('Library not found.')
+  }
+  const shelves = await transaction.objectStore('shelves').getAll()
+  if (shelves.some((shelf) => shelf.libraryId === libraryId && shelf.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
+    await transaction.done
+    throw new Error('A shelf with that name already exists in this library.')
+  }
+  const now = Date.now()
+  const shelf = { id: crypto.randomUUID(), libraryId, name: cleaned, createdAt: now, updatedAt: now }
+  await transaction.objectStore('shelves').add(shelf)
+  await transaction.done
+  return shelf
+}
+
+export async function renameShelf(id: string, name: string): Promise<void> {
+  const cleaned = name.trim()
+  if (!cleaned) throw new Error('Shelf name cannot be empty.')
+  const db = await database
+  const transaction = db.transaction('shelves', 'readwrite')
+  const store = transaction.objectStore('shelves')
+  const shelves = await store.getAll()
+  const shelf = shelves.find((item) => item.id === id)
+  if (!shelf) {
+    await transaction.done
+    throw new Error('Shelf not found.')
+  }
+  if (shelves.some((item) => item.id !== id && item.libraryId === shelf.libraryId && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
+    await transaction.done
+    throw new Error('A shelf with that name already exists in this library.')
+  }
+  await store.put({ ...shelf, name: cleaned, updatedAt: Date.now() })
+  await transaction.done
+}
+
+export async function deleteShelf(id: string, destinationId: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['shelves', 'notebooks'], 'readwrite')
+  const shelves = transaction.objectStore('shelves')
+  const source = await shelves.get(id)
+  const destination = await shelves.get(destinationId)
+  if (!source || !destination || id === destinationId || source.libraryId !== destination.libraryId) {
+    await transaction.done
+    throw new Error('Choose a different existing shelf in the same library as the destination.')
+  }
+  if ((await shelves.index('by-library').count(source.libraryId)) <= 1) {
+    await transaction.done
+    throw new Error('The last shelf in a library cannot be deleted.')
+  }
+  const notebooks = transaction.objectStore('notebooks')
+  for (const notebook of await notebooks.getAll()) {
+    if (notebook.shelfId === id) await notebooks.put({ ...notebook, shelfId: destinationId, updatedAt: Date.now() })
+  }
+  await shelves.delete(id)
+  await transaction.done
+}
+
+export async function deleteLibrary(id: string, destinationId: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['libraries', 'shelves', 'notebooks'], 'readwrite')
+  const libraries = transaction.objectStore('libraries')
+  const source = await libraries.get(id)
+  const destination = await libraries.get(destinationId)
+  if (!source || !destination || id === destinationId) {
+    await transaction.done
+    throw new Error('Choose a different existing library as the destination.')
+  }
+  if ((await libraries.count()) <= 1) {
+    await transaction.done
+    throw new Error('The last library cannot be deleted.')
+  }
+  const shelves = transaction.objectStore('shelves')
+  const sourceShelves = await shelves.index('by-library').getAll(id)
+  const destinationShelves = await shelves.index('by-library').getAll(destinationId)
+  const notebooks = transaction.objectStore('notebooks')
+  for (const sourceShelf of sourceShelves) {
+    let name = sourceShelf.name
+    let suffix = 2
+    while (destinationShelves.some((shelf) => shelf.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      name = `${sourceShelf.name} (${suffix++})`
+    }
+    const newShelf = { ...sourceShelf, libraryId: destinationId, name, updatedAt: Date.now() }
+    await shelves.put(newShelf)
+    destinationShelves.push(newShelf)
+    for (const notebook of await notebooks.getAll()) {
+      if (notebook.shelfId === sourceShelf.id) {
+        await notebooks.put({ ...notebook, shelfId: newShelf.id, updatedAt: Date.now() })
+      }
+    }
+  }
+  await libraries.delete(id)
+  await transaction.done
+}
+
+export async function moveNotebook(notebookId: string, shelfId: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
+  const notebooks = transaction.objectStore('notebooks')
+  const notebook = await notebooks.get(notebookId)
+  if (!notebook) {
+    await transaction.done
+    throw new Error('Notebook not found.')
+  }
+  if (!(await transaction.objectStore('shelves').get(shelfId))) {
+    await transaction.done
+    throw new Error('Shelf not found.')
+  }
+  await notebooks.put({ ...notebook, shelfId, updatedAt: Date.now() })
+  await transaction.done
+}
+
+export async function createNotebook(name: string, shelfId?: string): Promise<Notebook> {
   const cleaned = name.trim()
   if (!cleaned) throw new Error('Notebook name cannot be empty.')
   const db = await database
-  const transaction = db.transaction('notebooks', 'readwrite')
-  const notebooks = await transaction.store.getAll()
+  const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
+  const notebooksStore = transaction.objectStore('notebooks')
+  const notebooks = await notebooksStore.getAll()
   if (notebooks.some((notebook) => notebook.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
     await transaction.done
     throw new Error('A notebook with that name already exists.')
   }
+  const targetShelfId = shelfId ?? (await transaction.objectStore('shelves').getAll())[0]?.id
+  if (!targetShelfId || !(await transaction.objectStore('shelves').get(targetShelfId))) {
+    await transaction.done
+    throw new Error('Choose an existing shelf for the notebook.')
+  }
   const now = Date.now()
-  const notebook = { id: crypto.randomUUID(), name: cleaned, createdAt: now, updatedAt: now }
-  await transaction.store.add(notebook)
+  const notebook = { id: crypto.randomUUID(), name: cleaned, shelfId: targetShelfId, createdAt: now, updatedAt: now }
+  await notebooksStore.add(notebook)
   await transaction.done
   return notebook
 }
@@ -553,16 +757,23 @@ interface VersionTwoNotesBackup extends Omit<LegacyNotesBackup, 'version'> {
   attachments: AttachmentBackup[]
 }
 
+interface VersionThreeNotesBackup extends Omit<VersionTwoNotesBackup, 'version'> {
+  version: 3
+  links: NoteLink[]
+}
+
 interface AttachmentBackup extends Omit<NoteAttachment, 'blob'> {
   data: string
 }
 
 export interface NotesBackup {
   format: 'my-notes-backup'
-  version: 3
+  version: 4
   exportedAt: number
   notes: Note[]
   notebooks: Notebook[]
+  libraries: Library[]
+  shelves: Shelf[]
   tags: Tag[]
   settings: AppSettings
   history: NoteHistoryEntry[]
@@ -612,9 +823,11 @@ function isQuotaExceeded(reason: unknown): boolean {
 
 export async function exportBackup(): Promise<NotesBackup> {
   const db = await database
-  const [notes, notebooks, tags, settings, history, attachments, links] = await Promise.all([
+  const [notes, notebooks, libraries, shelves, tags, settings, history, attachments, links] = await Promise.all([
     db.getAll('notes'),
     db.getAll('notebooks'),
+    db.getAll('libraries'),
+    db.getAll('shelves'),
     db.getAll('tags'),
     getSettings(),
     db.getAll('history'),
@@ -627,10 +840,12 @@ export async function exportBackup(): Promise<NotesBackup> {
   }))
   const backup: NotesBackup = {
     format: 'my-notes-backup',
-    version: 3,
+    version: 4,
     exportedAt: Date.now(),
     notes,
     notebooks,
+    libraries,
+    shelves,
     tags,
     settings,
     history,
@@ -674,6 +889,33 @@ function validNotebook(value: unknown): value is Notebook {
     isRecord(value) &&
     typeof value.id === 'string' &&
     value.id.length > 0 &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    Number.isFinite(value.createdAt) &&
+    Number.isFinite(value.updatedAt) &&
+    (value.shelfId === undefined || (typeof value.shelfId === 'string' && value.shelfId.length > 0))
+  )
+}
+
+function validLibrary(value: unknown): value is Library {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    Number.isFinite(value.createdAt) &&
+    Number.isFinite(value.updatedAt)
+  )
+}
+
+function validShelf(value: unknown): value is Shelf {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.libraryId === 'string' &&
+    value.libraryId.length > 0 &&
     typeof value.name === 'string' &&
     value.name.trim().length > 0 &&
     Number.isFinite(value.createdAt) &&
@@ -745,18 +987,21 @@ function validNoteLink(value: unknown): value is NoteLink {
   )
 }
 
-function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBackup | LegacyNotesBackup {
+function isNotesBackup(
+  value: unknown,
+): value is NotesBackup | VersionThreeNotesBackup | VersionTwoNotesBackup | LegacyNotesBackup {
   if (
     !isRecord(value) ||
     value.format !== 'my-notes-backup' ||
-    (value.version !== 1 && value.version !== 2 && value.version !== 3) ||
+    (value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4) ||
     !Number.isFinite(value.exportedAt) ||
     !Array.isArray(value.notes) ||
     !Array.isArray(value.notebooks) ||
     !Array.isArray(value.tags) ||
     !Array.isArray(value.history) ||
     (value.version >= 2 && !Array.isArray(value.attachments)) ||
-    (value.version === 3 && !Array.isArray(value.links)) ||
+    (value.version >= 3 && !Array.isArray(value.links)) ||
+    (value.version === 4 && (!Array.isArray(value.libraries) || !Array.isArray(value.shelves))) ||
     !validSettings(value.settings)
   ) {
     return false
@@ -767,7 +1012,9 @@ function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBa
   const history: unknown[] = value.history
   const attachments: unknown[] =
     value.version >= 2 && Array.isArray(value.attachments) ? value.attachments : []
-  const links: unknown[] = value.version === 3 && Array.isArray(value.links) ? value.links : []
+  const links: unknown[] = value.version >= 3 && Array.isArray(value.links) ? value.links : []
+  const libraries: unknown[] = value.version === 4 && Array.isArray(value.libraries) ? value.libraries : []
+  const shelves: unknown[] = value.version === 4 && Array.isArray(value.shelves) ? value.shelves : []
   if (
     !hasUniqueIds(notebooks) ||
     !notebooks.every(validNotebook) ||
@@ -779,6 +1026,10 @@ function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBa
     !history.every(validHistory) ||
     !hasUniqueIds(attachments) ||
     !attachments.every(validAttachmentBackup) ||
+    !hasUniqueIds(libraries) ||
+    !libraries.every(validLibrary) ||
+    !hasUniqueIds(shelves) ||
+    !shelves.every(validShelf) ||
     !links.every(validNoteLink) ||
     new Set(links.map((link) =>
       isRecord(link) ? JSON.stringify([link.sourceNoteId, link.targetNoteId]) : '',
@@ -790,10 +1041,16 @@ function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBa
   const validatedNotes = notes.filter(validNote)
   const validatedHistory = history.filter(validHistory)
   const validatedAttachments = attachments.filter(validAttachmentBackup)
+  const validatedLibraries = libraries.filter(validLibrary)
+  const validatedShelves = shelves.filter(validShelf)
   const notebookIds = new Set(validatedNotebooks.map((item) => item.id))
   const notebookNames = validatedNotebooks.map((item) => item.name.toLocaleLowerCase())
   const noteIds = new Set(validatedNotes.map((item) => item.id))
   const attachmentCounts = new Map<string, { count: number; bytes: number }>()
+  const libraryIds = new Set(validatedLibraries.map((item) => item.id))
+  const shelfIds = new Set(validatedShelves.map((item) => item.id))
+  const shelfNames = validatedShelves.map((item) => `${item.libraryId}\u0000${item.name.toLocaleLowerCase()}`)
+  const libraryNames = validatedLibraries.map((item) => item.name.toLocaleLowerCase())
   for (const attachment of validatedAttachments) {
     if (!noteIds.has(attachment.noteId)) return false
     const current = attachmentCounts.get(attachment.noteId) ?? { count: 0, bytes: 0 }
@@ -806,6 +1063,11 @@ function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBa
   }
   if (
     new Set(notebookNames).size !== notebookNames.length ||
+    new Set(libraryNames).size !== libraryNames.length ||
+    new Set(shelfNames).size !== shelfNames.length ||
+    validatedShelves.some((item) => !libraryIds.has(item.libraryId)) ||
+    (value.version === 4 && validatedNotebooks.some((item) => !item.shelfId || !shelfIds.has(item.shelfId))) ||
+    (value.version === 4 && validatedShelves.length === 0) ||
     validatedNotes.some(
       (item) => item.notebookId && !notebookIds.has(item.notebookId),
     ) ||
@@ -823,28 +1085,37 @@ function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBa
 
 function validateBackup(value: unknown): NotesBackup {
   if (!isNotesBackup(value)) throw new Error('This backup contains invalid, duplicate, or unsupported records.')
-  if (value.version === 1) {
-    return {
-      ...value,
-      version: 3,
-      attachments: [],
-      links: [],
-    }
+  const defaultLibrary = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: value.exportedAt, updatedAt: value.exportedAt }
+  const defaultShelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: value.exportedAt, updatedAt: value.exportedAt }
+  const libraries = value.version === 4 ? value.libraries : [defaultLibrary]
+  const shelves = value.version === 4 ? value.shelves : [defaultShelf]
+  const shelfIdByNotebook = new Map(
+    value.notebooks.map((notebook) => [
+      notebook.id,
+      value.version === 4 ? notebook.shelfId ?? DEFAULT_SHELF_ID : DEFAULT_SHELF_ID,
+    ]),
+  )
+  const normalizedNotebooks = value.notebooks.map((notebook) => ({
+    ...notebook,
+    shelfId: shelfIdByNotebook.get(notebook.id) ?? DEFAULT_SHELF_ID,
+  }))
+  return {
+    ...value,
+    version: 4,
+    libraries,
+    shelves: shelves.length ? shelves : [defaultShelf],
+    notebooks: normalizedNotebooks,
+    attachments: value.version === 1 ? [] : value.attachments,
+    links: value.version === 1 || value.version === 2 ? [] : value.links,
   }
-  if (value.version === 2) {
-    return {
-      ...value,
-      version: 3,
-      links: [],
-    }
-  }
-  return value
 }
 
 export interface ImportSummary {
   notesAdded: number
   notesSkipped: number
   notebooksAdded: number
+  librariesAdded: number
+  shelvesAdded: number
   historyAdded: number
   attachmentsAdded: number
   linksAdded: number
@@ -861,19 +1132,79 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   }
   const backup = validateBackup(parsed)
   const db = await database
-  const transaction = db.transaction(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
+  const transaction = db.transaction(['notes', 'notebooks', 'libraries', 'shelves', 'settings', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
   const noteStore = transaction.objectStore('notes')
   const notebookStore = transaction.objectStore('notebooks')
+  const libraryStore = transaction.objectStore('libraries')
+  const shelfStore = transaction.objectStore('shelves')
   const historyStore = transaction.objectStore('history')
   const attachmentStore = transaction.objectStore('attachments')
   const linkStore = transaction.objectStore('noteLinks')
   const currentNotes = await noteStore.getAll()
   const currentNotebooks = await notebookStore.getAll()
+  const currentLibraries = await libraryStore.getAll()
+  const currentShelves = await shelfStore.getAll()
   const noteIds = new Set(currentNotes.map((note) => note.id))
   const notebookById = new Map(currentNotebooks.map((notebook) => [notebook.id, notebook]))
   const notebookByName = new Map(currentNotebooks.map((notebook) => [notebook.name.toLocaleLowerCase(), notebook]))
   const notebookIdMap = new Map<string, string>()
+  const libraryIdMap = new Map<string, string>()
+  const shelfIdMap = new Map<string, string>()
   let notebooksAdded = 0
+  let librariesAdded = 0
+  let shelvesAdded = 0
+
+  const libraryById = new Map(currentLibraries.map((library) => [library.id, library]))
+  const libraryByName = new Map(currentLibraries.map((library) => [library.name.toLocaleLowerCase(), library]))
+  for (const imported of backup.libraries) {
+    const sameId = libraryById.get(imported.id)
+    const local = sameId?.name.toLocaleLowerCase() === imported.name.toLocaleLowerCase()
+      ? sameId
+      : libraryByName.get(imported.name.toLocaleLowerCase())
+    if (local) {
+      libraryIdMap.set(imported.id, local.id)
+      continue
+    }
+    const id = sameId ? crypto.randomUUID() : imported.id
+    const library = { ...imported, id }
+    await libraryStore.add(library)
+    libraryById.set(id, library)
+    libraryByName.set(library.name.toLocaleLowerCase(), library)
+    libraryIdMap.set(imported.id, id)
+    librariesAdded += 1
+  }
+
+  const shelfById = new Map(currentShelves.map((shelf) => [shelf.id, shelf]))
+  const shelfByName = new Map(currentShelves.map((shelf) => [`${shelf.libraryId}\u0000${shelf.name.toLocaleLowerCase()}`, shelf]))
+  for (const imported of backup.shelves) {
+    const libraryId = libraryIdMap.get(imported.libraryId)
+    if (!libraryId) {
+      transaction.abort()
+      throw new Error('A backup shelf refers to a library that could not be restored.')
+    }
+    const sameId = shelfById.get(imported.id)
+    const local = sameId?.libraryId === libraryId && sameId.name.toLocaleLowerCase() === imported.name.toLocaleLowerCase()
+      ? sameId
+      : shelfByName.get(`${libraryId}\u0000${imported.name.toLocaleLowerCase()}`)
+    if (local) {
+      shelfIdMap.set(imported.id, local.id)
+      continue
+    }
+    const id = sameId ? crypto.randomUUID() : imported.id
+    const shelf = { ...imported, id, libraryId }
+    await shelfStore.add(shelf)
+    shelfById.set(id, shelf)
+    shelfByName.set(`${libraryId}\u0000${shelf.name.toLocaleLowerCase()}`, shelf)
+    shelfIdMap.set(imported.id, id)
+    shelvesAdded += 1
+  }
+
+  const defaultShelf = currentShelves.find((shelf) => shelf.id === DEFAULT_SHELF_ID) ?? currentShelves[0]
+  if (!defaultShelf) {
+    transaction.abort()
+    throw new Error('A default shelf is not available for imported notebooks.')
+  }
+  const defaultShelfId = defaultShelf.id
 
   for (const imported of backup.notebooks) {
     const local = notebookById.get(imported.id)
@@ -888,9 +1219,11 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
     }
     const id = local ? crypto.randomUUID() : imported.id
     notebookIdMap.set(imported.id, id)
-    await notebookStore.add({ ...imported, id })
-    notebookById.set(id, { ...imported, id })
-    notebookByName.set(imported.name.toLocaleLowerCase(), { ...imported, id })
+    const shelfId = shelfIdMap.get(imported.shelfId ?? '') ?? defaultShelfId
+    const notebook = { ...imported, id, shelfId }
+    await notebookStore.add(notebook)
+    notebookById.set(id, notebook)
+    notebookByName.set(imported.name.toLocaleLowerCase(), notebook)
     notebooksAdded += 1
   }
 
@@ -970,6 +1303,8 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
     notesAdded,
     notesSkipped,
     notebooksAdded,
+    librariesAdded,
+    shelvesAdded,
     historyAdded,
     attachmentsAdded,
     linksAdded,

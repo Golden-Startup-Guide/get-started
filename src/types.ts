@@ -21,6 +21,22 @@ export interface Notebook {
   name: string
   createdAt: number
   updatedAt: number
+  shelfId?: string
+}
+
+export interface Library {
+  id: string
+  name: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface Shelf {
+  id: string
+  libraryId: string
+  name: string
+  createdAt: number
+  updatedAt: number
 }
 
 export interface Tag {
