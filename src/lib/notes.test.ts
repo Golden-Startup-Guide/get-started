@@ -181,6 +181,7 @@ describe('IndexedDB storage and backup', () => {
       outgoing: [{ sourceNoteId: source.id, targetNoteId: target.id }],
       backlinks: [{ sourceNoteId: backlink.id, targetNoteId: source.id }],
     })
+    expect(await storage.getAllNoteLinks()).toHaveLength(2)
     await expect(storage.linkNotes(source.id, source.id)).rejects.toThrow('cannot link to itself')
     await storage.trashNote(target.id)
     expect(await storage.getNoteLinks(source.id)).toEqual({

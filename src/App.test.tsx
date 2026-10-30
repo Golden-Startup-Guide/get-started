@@ -147,6 +147,47 @@ describe('My Notes workspace', () => {
     expect(await within(sourceDialog).findByText('No linked notes yet.')).toBeInTheDocument()
   })
 
+  it('explores stored relationships in the graph and opens the focused note', async () => {
+    const storage = await import('./lib/notes')
+    await storage.saveNote({
+      id: 'graph-source',
+      title: 'Graph source',
+      content: '',
+      createdAt: 1,
+      updatedAt: 2,
+      notebookId: 'starter-personal',
+    })
+    await storage.saveNote({
+      id: 'graph-target',
+      title: 'Graph target',
+      content: '',
+      createdAt: 1,
+      updatedAt: 1,
+      notebookId: 'starter-personal',
+    })
+    await storage.linkNotes('graph-source', 'graph-target')
+
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+    await user.click(screen.getByRole('button', { name: /Knowledge Graph/ }))
+
+    expect(await screen.findByRole('heading', { name: 'Knowledge Graph' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Connected note graph' })).toBeInTheDocument()
+    const graph = screen.getByRole('group', { name: 'Connected note graph' })
+    expect(within(graph).getByRole('button', { name: 'Explore Graph target — Personal' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Links from this note' })).toHaveTextContent('Graph target')
+
+    const connectedNode = within(graph).getByRole('button', { name: 'Explore Graph target — Personal' })
+    connectedNode.focus()
+    expect(connectedNode).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByRole('combobox', { name: 'Explore note' })).toHaveValue('graph-target')
+    await user.click(screen.getByRole('button', { name: 'Open in editor' }))
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Graph target')
+  })
+
   it('attaches and previews local image files from a saved note', async () => {
     const createObjectURL = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
     const revokeObjectURL = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
