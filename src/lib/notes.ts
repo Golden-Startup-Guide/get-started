@@ -3,6 +3,7 @@ import type {
   AppSettings,
   Note,
   NoteAttachment,
+  NoteLink,
   Notebook,
   NoteHistoryEntry,
   Tag,
@@ -39,6 +40,11 @@ interface NotesDatabase extends DBSchema {
     value: NoteHistoryEntry
     indexes: { 'by-note': string; 'by-saved-at': number }
   }
+  noteLinks: {
+    key: [string, string]
+    value: NoteLink
+    indexes: { 'by-source': string; 'by-target': string }
+  }
 }
 
 const starterNotebooks = [
@@ -49,7 +55,7 @@ const starterNotebooks = [
   ['starter-health', 'Health Handbook'],
 ] as const
 
-const database = openDB<NotesDatabase>('my-notes', 4, {
+const database = openDB<NotesDatabase>('my-notes', 5, {
   async upgrade(db, oldVersion, _newVersion, transaction) {
     const now = Date.now()
     if (oldVersion < 1) {
@@ -101,6 +107,12 @@ const database = openDB<NotesDatabase>('my-notes', 4, {
     if (oldVersion < 4) {
       db.createObjectStore('attachments', { keyPath: 'id' }).createIndex('by-note', 'noteId')
     }
+
+    if (oldVersion < 5) {
+      const links = db.createObjectStore('noteLinks', { keyPath: ['sourceNoteId', 'targetNoteId'] })
+      links.createIndex('by-source', 'sourceNoteId')
+      links.createIndex('by-target', 'targetNoteId')
+    }
   },
 })
 
@@ -132,7 +144,7 @@ function normalizeNote(note: Note): Note {
 }
 
 async function refreshTags<
-  StoreNames extends ArrayLike<'notes' | 'notebooks' | 'settings' | 'tags' | 'history' | 'attachments'>,
+  StoreNames extends ArrayLike<'notes' | 'notebooks' | 'settings' | 'tags' | 'history' | 'attachments' | 'noteLinks'>,
 >(
   notesStore: IDBPObjectStore<NotesDatabase, StoreNames, 'notes', 'readwrite'>,
   tagsStore: IDBPObjectStore<NotesDatabase, StoreNames, 'tags', 'readwrite'>,
@@ -158,6 +170,41 @@ export async function getNotes(): Promise<Note[]> {
     .sort(
     (a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt,
   )
+}
+
+export async function getNoteLinks(noteId: string): Promise<{ outgoing: NoteLink[]; backlinks: NoteLink[] }> {
+  const db = await database
+  const [outgoing, backlinks] = await Promise.all([
+    db.getAllFromIndex('noteLinks', 'by-source', noteId),
+    db.getAllFromIndex('noteLinks', 'by-target', noteId),
+  ])
+  return { outgoing, backlinks }
+}
+
+export async function linkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
+  if (sourceNoteId === targetNoteId) throw new Error('A note cannot link to itself.')
+  const db = await database
+  const transaction = db.transaction(['notes', 'noteLinks'], 'readwrite')
+  const notes = transaction.objectStore('notes')
+  const [source, target] = await Promise.all([
+    notes.get(sourceNoteId),
+    notes.get(targetNoteId),
+  ])
+  if (!source || !target) {
+    await transaction.done
+    throw new Error('Both notes must exist before they can be linked.')
+  }
+  if (source.deletedAt !== undefined || target.deletedAt !== undefined) {
+    await transaction.done
+    throw new Error('Restore notes from Trash before linking them.')
+  }
+  await transaction.objectStore('noteLinks').put({ sourceNoteId, targetNoteId })
+  await transaction.done
+}
+
+export async function unlinkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
+  const db = await database
+  await db.delete('noteLinks', [sourceNoteId, targetNoteId])
 }
 
 export async function getTrash(): Promise<Note[]> {
@@ -306,7 +353,7 @@ export async function restoreNote(id: string): Promise<void> {
 
 export async function permanentlyDeleteNote(id: string): Promise<void> {
   const db = await database
-  const transaction = db.transaction(['notes', 'tags', 'history', 'attachments'], 'readwrite')
+  const transaction = db.transaction(['notes', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
   const noteStore = transaction.objectStore('notes')
   const note = await noteStore.get(id)
   if (!note) {
@@ -324,6 +371,14 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   const attachmentStore = transaction.objectStore('attachments')
   const attachmentKeys = await attachmentStore.index('by-note').getAllKeys(id)
   for (const key of attachmentKeys) await attachmentStore.delete(key)
+  const linkStore = transaction.objectStore('noteLinks')
+  const [outgoing, backlinks] = await Promise.all([
+    linkStore.index('by-source').getAll(id),
+    linkStore.index('by-target').getAll(id),
+  ])
+  for (const link of [...outgoing, ...backlinks]) {
+    await linkStore.delete([link.sourceNoteId, link.targetNoteId])
+  }
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
 }
@@ -488,13 +543,18 @@ interface LegacyNotesBackup {
   history: NoteHistoryEntry[]
 }
 
+interface VersionTwoNotesBackup extends Omit<LegacyNotesBackup, 'version'> {
+  version: 2
+  attachments: AttachmentBackup[]
+}
+
 interface AttachmentBackup extends Omit<NoteAttachment, 'blob'> {
   data: string
 }
 
 export interface NotesBackup {
   format: 'my-notes-backup'
-  version: 2
+  version: 3
   exportedAt: number
   notes: Note[]
   notebooks: Notebook[]
@@ -502,6 +562,7 @@ export interface NotesBackup {
   settings: AppSettings
   history: NoteHistoryEntry[]
   attachments: AttachmentBackup[]
+  links: NoteLink[]
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -546,13 +607,14 @@ function isQuotaExceeded(reason: unknown): boolean {
 
 export async function exportBackup(): Promise<NotesBackup> {
   const db = await database
-  const [notes, notebooks, tags, settings, history, attachments] = await Promise.all([
+  const [notes, notebooks, tags, settings, history, attachments, links] = await Promise.all([
     db.getAll('notes'),
     db.getAll('notebooks'),
     db.getAll('tags'),
     getSettings(),
     db.getAll('history'),
     db.getAll('attachments'),
+    db.getAll('noteLinks'),
   ])
   const backupAttachments = attachments.map(({ data, ...attachment }) => ({
     ...attachment,
@@ -560,7 +622,7 @@ export async function exportBackup(): Promise<NotesBackup> {
   }))
   const backup: NotesBackup = {
     format: 'my-notes-backup',
-    version: 2,
+    version: 3,
     exportedAt: Date.now(),
     notes,
     notebooks,
@@ -568,6 +630,7 @@ export async function exportBackup(): Promise<NotesBackup> {
     settings,
     history,
     attachments: backupAttachments,
+    links,
   }
   if (new Blob([JSON.stringify(backup, null, 2)]).size > MAX_BACKUP_SIZE_BYTES) {
     throw new Error('This backup exceeds 40 MiB. Remove some attachments and try again.')
@@ -666,17 +729,29 @@ function validAttachmentBackup(value: unknown): value is AttachmentBackup {
   return base64ByteLength(value.data) === value.size
 }
 
-function isNotesBackup(value: unknown): value is NotesBackup | LegacyNotesBackup {
+function validNoteLink(value: unknown): value is NoteLink {
+  return (
+    isRecord(value) &&
+    typeof value.sourceNoteId === 'string' &&
+    value.sourceNoteId.length > 0 &&
+    typeof value.targetNoteId === 'string' &&
+    value.targetNoteId.length > 0 &&
+    value.sourceNoteId !== value.targetNoteId
+  )
+}
+
+function isNotesBackup(value: unknown): value is NotesBackup | VersionTwoNotesBackup | LegacyNotesBackup {
   if (
     !isRecord(value) ||
     value.format !== 'my-notes-backup' ||
-    (value.version !== 1 && value.version !== 2) ||
+    (value.version !== 1 && value.version !== 2 && value.version !== 3) ||
     !Number.isFinite(value.exportedAt) ||
     !Array.isArray(value.notes) ||
     !Array.isArray(value.notebooks) ||
     !Array.isArray(value.tags) ||
     !Array.isArray(value.history) ||
-    (value.version === 2 && !Array.isArray(value.attachments)) ||
+    (value.version >= 2 && !Array.isArray(value.attachments)) ||
+    (value.version === 3 && !Array.isArray(value.links)) ||
     !validSettings(value.settings)
   ) {
     return false
@@ -686,7 +761,8 @@ function isNotesBackup(value: unknown): value is NotesBackup | LegacyNotesBackup
   const tags: unknown[] = value.tags
   const history: unknown[] = value.history
   const attachments: unknown[] =
-    value.version === 2 && Array.isArray(value.attachments) ? value.attachments : []
+    value.version >= 2 && Array.isArray(value.attachments) ? value.attachments : []
+  const links: unknown[] = value.version === 3 && Array.isArray(value.links) ? value.links : []
   if (
     !hasUniqueIds(notebooks) ||
     !notebooks.every(validNotebook) ||
@@ -697,7 +773,11 @@ function isNotesBackup(value: unknown): value is NotesBackup | LegacyNotesBackup
     !hasUniqueIds(history) ||
     !history.every(validHistory) ||
     !hasUniqueIds(attachments) ||
-    !attachments.every(validAttachmentBackup)
+    !attachments.every(validAttachmentBackup) ||
+    !links.every(validNoteLink) ||
+    new Set(links.map((link) =>
+      isRecord(link) ? JSON.stringify([link.sourceNoteId, link.targetNoteId]) : '',
+    )).size !== links.length
   ) {
     return false
   }
@@ -741,8 +821,16 @@ function validateBackup(value: unknown): NotesBackup {
   if (value.version === 1) {
     return {
       ...value,
-      version: 2,
+      version: 3,
       attachments: [],
+      links: [],
+    }
+  }
+  if (value.version === 2) {
+    return {
+      ...value,
+      version: 3,
+      links: [],
     }
   }
   return value
@@ -754,6 +842,7 @@ export interface ImportSummary {
   notebooksAdded: number
   historyAdded: number
   attachmentsAdded: number
+  linksAdded: number
   settingsKept: boolean
 }
 
@@ -767,11 +856,12 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   }
   const backup = validateBackup(parsed)
   const db = await database
-  const transaction = db.transaction(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments'], 'readwrite')
+  const transaction = db.transaction(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
   const noteStore = transaction.objectStore('notes')
   const notebookStore = transaction.objectStore('notebooks')
   const historyStore = transaction.objectStore('history')
   const attachmentStore = transaction.objectStore('attachments')
+  const linkStore = transaction.objectStore('noteLinks')
   const currentNotes = await noteStore.getAll()
   const currentNotebooks = await notebookStore.getAll()
   const noteIds = new Set(currentNotes.map((note) => note.id))
@@ -858,6 +948,14 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
     attachmentsAdded += 1
   }
 
+  let linksAdded = 0
+  for (const link of backup.links) {
+    if (!noteIds.has(link.sourceNoteId) || !noteIds.has(link.targetNoteId)) continue
+    if (await linkStore.get([link.sourceNoteId, link.targetNoteId])) continue
+    await linkStore.put(link)
+    linksAdded += 1
+  }
+
   const settingsStore = transaction.objectStore('settings')
   const hasLocalSettings = await settingsStore.get('preferences')
   if (!hasLocalSettings) await settingsStore.put(backup.settings)
@@ -869,6 +967,7 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
     notebooksAdded,
     historyAdded,
     attachmentsAdded,
+    linksAdded,
     settingsKept: Boolean(hasLocalSettings),
   }
 }
@@ -884,15 +983,16 @@ export async function getStorageSnapshot(): Promise<{
   estimatedBytes: number
 }> {
   const db = await database
-  const [notes, notebooks, tags, history, attachments] = await Promise.all([
+  const [notes, notebooks, tags, history, attachments, links] = await Promise.all([
     db.getAll('notes'),
     db.getAll('notebooks'),
     db.getAll('tags'),
     db.getAll('history'),
     db.getAll('attachments'),
+    db.getAll('noteLinks'),
   ])
   const attachmentBytes = attachments.reduce((sum, attachment) => sum + attachment.size, 0)
-  const estimatedBytes = new Blob([JSON.stringify({ notes, notebooks, tags, history })]).size + attachmentBytes
+  const estimatedBytes = new Blob([JSON.stringify({ notes, notebooks, tags, history, links })]).size + attachmentBytes
   const trash = notes.filter((note) => note.deletedAt !== undefined).length
   return {
     notes: notes.length - trash,

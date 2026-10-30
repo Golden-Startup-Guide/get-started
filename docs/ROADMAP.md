@@ -99,10 +99,10 @@ Status:
 
 - The application is a React and TypeScript single-page app built with Vite and Tailwind CSS.
 - `src/types.ts` defines note, notebook, tag, settings, history, and attachment records.
-- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 4. Its upgrades migrate V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`; v3 adds the optional `deletedAt` lifecycle field and v4 adds a separate attachment store without rewriting existing note records.
+- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 5. Its upgrades migrate V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`; v3 adds the optional `deletedAt` lifecycle field, v4 adds a separate attachment store, and v5 adds ID-based note relationships without rewriting existing note records.
 - `src/App.tsx` provides notebook/tag navigation, title/content/tag/notebook search, a debounced Markdown editor, attachments, history, theme and backup settings. Existing notes remain browser-local.
 - The database has `notes`, `notebooks`, `settings`, `tags`, `history`, and `attachments` stores. New installations include the starter notebooks Personal, Work, Ideas, Research, and Health Handbook; All Notes is a virtual view.
-- Version 2 JSON backups include active and trashed notes, history, and attachment data; version 1 backups remain importable. Restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs and their attachments, remaps conflicting notebook and attachment IDs, and applies accepted records atomically. Import files are limited to 40 MiB.
+- Version 3 JSON backups include active and trashed notes, history, attachments, and linked-note relationships; version 1 and 2 backups remain importable. Restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs and their attachments, restores links whenever both endpoint IDs exist after the merge (including locally existing notes), skips missing endpoints and existing relationships, remaps conflicting notebook and attachment IDs, and applies accepted records atomically. Import files are limited to 40 MiB.
 - Deleting a note moves it to Trash, where it can be restored. Permanent deletion is only available from Trash and removes the note's history; notebook and tag data are preserved appropriately.
 - History records the previously saved note for each successful debounced title/content change; identical content and organization-only changes do not create revisions. History is not silently pruned.
 - Automated tests use Vitest, React Testing Library, and fake IndexedDB to cover the V1 migration, storage features, backup validation/round trips, autosave, search, favorites, and theme persistence.
@@ -359,13 +359,15 @@ Stress Management
 
 Requirements:
 
-- Link notes together
-- Backlinks
-- Relationship tracking
+- Create and remove directional links between saved notes from the note editor.
+- Follow links and open the exact note by its stable ID; backlinks list notes that point to the current note.
+- Disambiguate duplicate titles using notebook names and a short note-ID suffix.
+- Keep relationships while either note is in Trash, show trashed counterparts as unavailable, and remove all relationships when a note is permanently deleted.
+- Include relationships in local JSON backups and restore links when both endpoint IDs exist after the non-destructive merge; skip dangling endpoints and existing relationships.
 
 Status:
 
-**Planned**
+**Completed** — relationships are stored independently from note content in IndexedDB. Links and backlinks work offline; no network service or graph dependency is used. Trash and restore preserve relationships, while permanent deletion removes both incoming and outgoing links. Backup format version 3 preserves links and remains backward-compatible with version 1 and 2 backups.
 
 ## Feature: Knowledge Graph
 
@@ -500,7 +502,7 @@ This historical order was based on the V1 code: a single `Note` record with stri
 | 11 | Checklists | Medium | Medium | **Completed in Version 4.** Uses GFM Markdown task items, accessible interactive checkboxes, and completion progress; changes remain portable Markdown. |
 | 12 | File, image, and audio attachments | High | High | **Completed in Version 5.** Shared IndexedDB storage, size limits, quota errors, backup/import, deletion cleanup, offline previews, and audio recording/playback. |
 | 13 | Note History | Medium to high | High | Requires revision retention limits, timestamps, comparison UI, and restore semantics. Build after autosave and the richer content model so revision boundaries are reliable and storage growth is controlled. |
-| 14 | Linked Notes and Backlinks | High | Medium to high | Depends on stable note IDs and explicit link integrity behavior when a linked note is deleted or moved. Start with textual links/backlinks; keep the relationship model independent from graph rendering. |
+| 14 | Linked Notes and Backlinks | High | Medium to high | **Completed.** Stable note-ID relationships, editor link management, backlinks, Trash integrity, and version 3 backup/restore support. The relationship model is independent from graph rendering. |
 | 15 | Knowledge Graph | Medium | High | Depends on linked-note relationships and a useful amount of user data. Begin with a bounded, accessible relationship explorer; assess graph library bundle cost before adoption. |
 | 16 | Personal Knowledge Library / Shelves | High long-term | High | A hierarchy redesign affecting navigation, migrations, imports, and notebook ownership. Implement only after notebook semantics have settled; preserve the current flat “All notes” access and migrate existing data safely. |
 | 17 | AI Summaries and AI Search | Variable | High / privacy-sensitive | Depends on a mature content model and clear user consent, processing location, cost, and offline behavior. Prototype opt-in integrations independently; do not make AI a prerequisite for search or core note operations. |

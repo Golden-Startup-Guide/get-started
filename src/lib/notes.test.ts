@@ -55,8 +55,8 @@ describe('IndexedDB storage and backup', () => {
       'Work',
     ])
     const db = await storage.openNotesDatabase()
-    expect(db.version).toBe(4)
-    expect([...db.objectStoreNames]).toEqual(expect.arrayContaining(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments']))
+    expect(db.version).toBe(5)
+    expect([...db.objectStoreNames]).toEqual(expect.arrayContaining(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments', 'noteLinks']))
   })
 
   it('supports notebook and tagged note CRUD, pins, and favorites', async () => {
@@ -168,6 +168,102 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteAttachments(note.id)).toHaveLength(0)
   })
 
+  it('stores stable directional links, preserves them in Trash, and cleans both directions on permanent deletion', async () => {
+    const source: Note = { id: 'link-source', title: 'Source', content: '', createdAt: 1, updatedAt: 1 }
+    const target: Note = { id: 'link-target', title: 'Target', content: '', createdAt: 2, updatedAt: 2 }
+    const backlink: Note = { id: 'link-backlink', title: 'Backlink', content: '', createdAt: 3, updatedAt: 3 }
+    await Promise.all([source, target, backlink].map((note) => storage.saveNote(note)))
+    await storage.linkNotes(source.id, target.id)
+    await storage.linkNotes(source.id, target.id)
+    await storage.linkNotes(backlink.id, source.id)
+
+    expect(await storage.getNoteLinks(source.id)).toEqual({
+      outgoing: [{ sourceNoteId: source.id, targetNoteId: target.id }],
+      backlinks: [{ sourceNoteId: backlink.id, targetNoteId: source.id }],
+    })
+    await expect(storage.linkNotes(source.id, source.id)).rejects.toThrow('cannot link to itself')
+    await storage.trashNote(target.id)
+    expect(await storage.getNoteLinks(source.id)).toEqual({
+      outgoing: [{ sourceNoteId: source.id, targetNoteId: target.id }],
+      backlinks: [{ sourceNoteId: backlink.id, targetNoteId: source.id }],
+    })
+    await expect(storage.linkNotes(source.id, target.id)).rejects.toThrow('Restore notes from Trash')
+    await storage.restoreNote(target.id)
+    await storage.trashNote(target.id)
+    await storage.permanentlyDeleteNote(target.id)
+    expect((await storage.getNoteLinks(source.id)).outgoing).toEqual([])
+
+    await storage.trashNote(source.id)
+    await storage.permanentlyDeleteNote(source.id)
+    expect((await storage.getNoteLinks(backlink.id)).outgoing).toEqual([])
+  })
+
+  it('backs up links across local and imported notes while skipping missing and existing edges', async () => {
+    const source: Note = { id: 'backup-link-source', title: 'Linked source', content: '', createdAt: 11, updatedAt: 12 }
+    const target: Note = { id: 'backup-link-target', title: 'Linked target', content: '', createdAt: 13, updatedAt: 14 }
+    await storage.saveNote(source)
+    await storage.saveNote(target)
+    await storage.linkNotes(source.id, target.id)
+    const backup = await storage.exportBackup()
+    expect(backup.version).toBe(3)
+    expect(backup.links).toContainEqual({ sourceNoteId: source.id, targetNoteId: target.id })
+
+    await storage.trashNote(source.id)
+    await storage.permanentlyDeleteNote(source.id)
+    await storage.trashNote(target.id)
+    await storage.permanentlyDeleteNote(target.id)
+    const result = await storage.importBackupFile(jsonFile(JSON.stringify(backup)))
+    expect(result.notesAdded).toBe(2)
+    expect(result.linksAdded).toBe(1)
+    expect(await storage.getNoteLinks(source.id)).toEqual({
+      outgoing: [{ sourceNoteId: source.id, targetNoteId: target.id }],
+      backlinks: [],
+    })
+    const duplicateResult = await storage.importBackupFile(jsonFile(JSON.stringify(backup)))
+    expect(duplicateResult.linksAdded).toBe(0)
+
+    const localEndpoint: Note = {
+      id: 'local-link-endpoint',
+      title: 'Local endpoint',
+      content: '',
+      createdAt: 21,
+      updatedAt: 22,
+    }
+    const importedEndpoint: Note = {
+      id: 'imported-link-endpoint',
+      title: 'Imported endpoint',
+      content: '',
+      createdAt: 23,
+      updatedAt: 24,
+    }
+    await storage.saveNote(localEndpoint)
+    await storage.saveNote(importedEndpoint)
+    await storage.linkNotes(localEndpoint.id, importedEndpoint.id)
+    const mixedBackup = await storage.exportBackup()
+    await storage.trashNote(importedEndpoint.id)
+    await storage.permanentlyDeleteNote(importedEndpoint.id)
+    const mixedResult = await storage.importBackupFile(jsonFile(JSON.stringify(mixedBackup)))
+    expect(mixedResult.notesAdded).toBe(1)
+    expect(mixedResult.linksAdded).toBe(1)
+    expect(await storage.getNoteLinks(localEndpoint.id)).toEqual({
+      outgoing: [{ sourceNoteId: localEndpoint.id, targetNoteId: importedEndpoint.id }],
+      backlinks: [],
+    })
+    expect((await storage.importBackupFile(jsonFile(JSON.stringify(mixedBackup)))).linksAdded).toBe(0)
+
+    const orphanedBackup = {
+      ...mixedBackup,
+      links: [{ sourceNoteId: 'missing-link-endpoint', targetNoteId: importedEndpoint.id }],
+    }
+    expect((await storage.importBackupFile(jsonFile(JSON.stringify(orphanedBackup)))).linksAdded).toBe(0)
+
+    const { attachments: _attachments, links: _links, ...versionTwoBackup } = backup
+    const oldBackup = { ...versionTwoBackup, version: 2, attachments: [] }
+    await expect(storage.importBackupFile(jsonFile(JSON.stringify(oldBackup)))).resolves.toEqual(
+      expect.objectContaining({ linksAdded: 0 }),
+    )
+  })
+
   it('persists theme preference and exports/imports a full backup without overwrites', async () => {
     await storage.saveTheme('dark')
     expect(await storage.getSettings()).toEqual({ id: 'preferences', theme: 'dark' })
@@ -187,7 +283,7 @@ describe('IndexedDB storage and backup', () => {
     const backup = await storage.exportBackup()
     expect(backup).toEqual(expect.objectContaining({
       format: 'my-notes-backup',
-      version: 2,
+      version: 3,
       settings: { id: 'preferences', theme: 'dark' },
     }))
     expect(backup.notes).toContainEqual(expect.objectContaining({ id: note.id, favorite: true, pinned: true }))
@@ -215,7 +311,7 @@ describe('IndexedDB storage and backup', () => {
       expect.objectContaining({ name: 'garden.png', type: 'image/png', size: 10 }),
     ])
     expect((await storage.importBackupFile(restoreFile)).notesSkipped).toBe(backup.notes.length)
-    const { attachments: _attachments, ...legacyBackup } = backup
+    const { attachments: _attachments, links: _links, ...legacyBackup } = backup
     const legacyResult = await storage.importBackupFile(jsonFile(JSON.stringify({ ...legacyBackup, version: 1 })))
     expect(legacyResult.attachmentsAdded).toBe(0)
   })
@@ -319,6 +415,6 @@ describe('IndexedDB storage and backup', () => {
 
     expect(await storage.getTrash()).toEqual([note])
     expect(await storage.getNoteAttachments(note.id)).toEqual([])
-    expect((await storage.openNotesDatabase()).version).toBe(4)
+    expect((await storage.openNotesDatabase()).version).toBe(5)
   })
 })
