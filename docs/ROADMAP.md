@@ -379,7 +379,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed** — an offline relationship explorer renders a bounded, keyboard-operable SVG neighborhood from stored note links, with directional arrows, backlinks, connected-note discovery, and exact-note opening. The complete relationship lists remain available when a note has more connections than the visual graph displays. No graph library was added, avoiding bundle cost for this focused explorer.
 
 # Phase 8 - Personal Knowledge Library
 
@@ -474,7 +474,7 @@ AI capabilities must clearly disclose where processing occurs. Local processing 
 
 ### Graph Visualisation
 
-- React Flow
+- The current bounded neighborhood explorer uses in-house SVG and adds no graph-library bundle cost. Reconsider a library only if future graph interactions exceed this focused view.
 
 ### AI
 

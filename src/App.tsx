@@ -12,6 +12,7 @@ import {
   Link2,
   Mic,
   Moon,
+  Network,
   Paperclip,
   Pin,
   Plus,
@@ -32,6 +33,7 @@ import {
   exportBackup,
   getNoteHistory,
   getNoteLinks,
+  getAllNoteLinks,
   getNoteAttachments,
   getNotes,
   getNotebooks,
@@ -69,8 +71,9 @@ import {
   toggleChecklistItem,
 } from './features/notes/checklists'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './features/notes/attachments'
+import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 
-type View = 'all' | 'favorites' | 'trash' | `notebook:${string}` | `tag:${string}`
+type View = 'all' | 'favorites' | 'trash' | 'graph' | `notebook:${string}` | `tag:${string}`
 type SaveState = 'saved' | 'unsaved' | 'saving'
 
 function sortNotes(notes: Note[]): Note[] {
@@ -152,6 +155,7 @@ function App() {
   const [trash, setTrash] = useState<Note[]>([])
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  const [links, setLinks] = useState<NoteLink[]>([])
   const [settings, setSettings] = useState<AppSettings>({ id: 'preferences', theme: 'system' })
   const [view, setView] = useState<View>('all')
   const [query, setQuery] = useState('')
@@ -177,18 +181,20 @@ function App() {
   )
 
   async function refresh() {
-    const [savedNotes, savedTrash, savedNotebooks, savedTags, savedSettings, storageSnapshot] = await Promise.all([
+    const [savedNotes, savedTrash, savedNotebooks, savedTags, savedSettings, storageSnapshot, savedLinks] = await Promise.all([
       getNotes(),
       getTrash(),
       getNotebooks(),
       getTags(),
       getSettings(),
       getStorageSnapshot(),
+      getAllNoteLinks(),
     ])
     setNotes(sortNotes(savedNotes))
     setTrash(savedTrash)
     setNotebooks(savedNotebooks)
     setTags(savedTags)
+    setLinks(savedLinks)
     setSettings(savedSettings)
     setStorage(storageSnapshot)
   }
@@ -249,6 +255,8 @@ function App() {
       ? 'Favorites'
       : view === 'trash'
         ? 'Trash'
+      : view === 'graph'
+        ? 'Knowledge Graph'
       : view.startsWith('notebook:')
         ? notebooks.find((item) => item.id === view.slice(9))?.name ?? 'Notebook'
         : tags.find((item) => item.id === view.slice(4))?.label ?? 'Tag'
@@ -479,6 +487,7 @@ function App() {
             <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => setView('all')} icon={<FileText size={16} />} />
             <NavButton active={view === 'favorites'} label="Favorites" count={notes.filter((note) => note.favorite).length} onClick={() => setView('favorites')} icon={<Heart size={16} />} />
             <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => setView('trash')} icon={<Trash2 size={16} />} />
+            <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => setView('graph')} icon={<Network size={16} />} />
           </nav>
           <div className="mt-8">
             <div className="mb-2 flex items-center justify-between px-2">
@@ -540,21 +549,33 @@ function App() {
               <option value="all">All Notes</option>
               <option value="favorites">Favorites</option>
               <option value="trash">Trash ({trash.length})</option>
+              <option value="graph">Knowledge Graph</option>
               {notebooks.map((notebook) => <option key={notebook.id} value={`notebook:${notebook.id}`}>{notebook.name}</option>)}
               {tags.map((tag) => <option key={tag.id} value={`tag:${tag.id}`}>Tag: {tag.label}</option>)}
             </select>
-            <div className="search-field flex-1">
-              <Search size={18} aria-hidden="true" />
-              <label htmlFor="note-search" className="sr-only">Search notes, notebooks, and tags</label>
-              <input id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, content, tags, or notebooks..." />
-              {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
-            </div>
-            <p className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
-              {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
-            </p>
+            {view !== 'graph' && (
+              <>
+                <div className="search-field flex-1">
+                  <Search size={18} aria-hidden="true" />
+                  <label htmlFor="note-search" className="sr-only">Search notes, notebooks, and tags</label>
+                  <input id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, content, tags, or notebooks..." />
+                  {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
+                </div>
+                <p className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
+                  {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
+                </p>
+              </>
+            )}
           </div>
           {isLoading ? (
             <p role="status" className="py-16 text-center text-[var(--muted)]">Loading your notes…</p>
+          ) : view === 'graph' ? (
+            <KnowledgeGraph
+              notes={[...notes, ...trash]}
+              links={links}
+              noteLabel={(note) => getNoteLinkLabel(note, [...notes, ...trash], notebooks)}
+              onOpenNote={openNote}
+            />
           ) : filteredNotes.length ? (
             <section aria-label={`${viewLabel} notes`} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredNotes.map((note) => (

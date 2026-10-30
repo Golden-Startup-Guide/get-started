@@ -181,6 +181,11 @@ export async function getNoteLinks(noteId: string): Promise<{ outgoing: NoteLink
   return { outgoing, backlinks }
 }
 
+export async function getAllNoteLinks(): Promise<NoteLink[]> {
+  const db = await database
+  return db.getAll('noteLinks')
+}
+
 export async function linkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
   if (sourceNoteId === targetNoteId) throw new Error('A note cannot link to itself.')
   const db = await database
