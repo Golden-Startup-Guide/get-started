@@ -9,8 +9,12 @@ import {
   Download,
   FileText,
   Heart,
+  Link2,
+  Layers3,
+  LibraryBig,
   Mic,
   Moon,
+  Network,
   Paperclip,
   Pin,
   Plus,
@@ -24,28 +28,41 @@ import {
   X,
 } from 'lucide-react'
 import {
+  createLibrary,
   createNotebook,
+  createShelf,
   addNoteAttachment,
   deleteNoteAttachment,
   deleteNotebook,
+  deleteLibrary,
+  deleteShelf,
   exportBackup,
   getNoteHistory,
+  getNoteLinks,
+  getAllNoteLinks,
   getNoteAttachments,
   getNotes,
   getNotebooks,
+  getLibraries,
+  getShelves,
   getSettings,
   getStorageSnapshot,
   getTags,
   importBackupFile,
+  linkNotes,
   getTrash,
   permanentlyDeleteNote,
   renameNotebook,
+  renameLibrary,
+  renameShelf,
+  moveNotebook,
   restoreNote,
   restoreHistory,
   saveNote,
   saveTheme,
   setNoteFlag,
   trashNote,
+  unlinkNotes,
 } from './lib/notes'
 import type {
   AppSettings,
@@ -53,7 +70,10 @@ import type {
   NoteAttachment,
   Notebook,
   NoteHistoryEntry,
+  NoteLink,
+  Library,
   Tag,
+  Shelf,
   ThemePreference,
 } from './types'
 import './workspace.css'
@@ -64,9 +84,14 @@ import {
   toggleChecklistItem,
 } from './features/notes/checklists'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './features/notes/attachments'
+import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 
-type View = 'all' | 'favorites' | 'trash' | `notebook:${string}` | `tag:${string}`
+type View = 'all' | 'favorites' | 'trash' | 'graph' | `library:${string}` | `shelf:${string}` | `notebook:${string}` | `tag:${string}`
 type SaveState = 'saved' | 'unsaved' | 'saving'
+type DeleteCandidate =
+  | { kind: 'notebook'; item: Notebook }
+  | { kind: 'shelf'; item: Shelf }
+  | { kind: 'library'; item: Library }
 
 function sortNotes(notes: Note[]): Note[] {
   return [...notes].sort(
@@ -102,6 +127,22 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
 }
 
+function getNoteLinkLabel(note: Note, records: Note[], notebooks: Notebook[]): string {
+  const title = note.title || 'Untitled note'
+  const duplicates = records.filter((item) =>
+    (item.title || 'Untitled note').toLocaleLowerCase() === title.toLocaleLowerCase(),
+  )
+  const notebook = notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'
+  const maxIdLength = Math.max(0, ...duplicates.map((item) => item.id.length))
+  let suffixLength = Math.min(8, maxIdLength)
+  while (suffixLength < maxIdLength && duplicates.some((item) =>
+    item.id !== note.id && item.id.slice(-suffixLength) === note.id.slice(-suffixLength),
+  )) {
+    suffixLength += 1
+  }
+  return `${title} — ${notebook}${duplicates.length > 1 ? ` · ${note.id.slice(-suffixLength)}` : ''}`
+}
+
 function keepFocusInDialog(event: KeyboardEvent<HTMLElement>, onEscape?: () => void) {
   if (event.key === 'Escape' && onEscape) {
     event.preventDefault()
@@ -130,7 +171,10 @@ function App() {
   const [notes, setNotes] = useState<Note[]>([])
   const [trash, setTrash] = useState<Note[]>([])
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
+  const [libraries, setLibraries] = useState<Library[]>([])
+  const [shelves, setShelves] = useState<Shelf[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  const [links, setLinks] = useState<NoteLink[]>([])
   const [settings, setSettings] = useState<AppSettings>({ id: 'preferences', theme: 'system' })
   const [view, setView] = useState<View>('all')
   const [query, setQuery] = useState('')
@@ -141,7 +185,9 @@ function App() {
   const [notice, setNotice] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [notebookName, setNotebookName] = useState('')
-  const [deleteCandidate, setDeleteCandidate] = useState<Notebook | null>(null)
+  const [libraryName, setLibraryName] = useState('')
+  const [shelfNames, setShelfNames] = useState<Record<string, string>>({})
+  const [deleteCandidate, setDeleteCandidate] = useState<DeleteCandidate | null>(null)
   const [deleteDestination, setDeleteDestination] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [storage, setStorage] = useState({ notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, attachments: 0, attachmentBytes: 0, estimatedBytes: 0 })
@@ -156,18 +202,24 @@ function App() {
   )
 
   async function refresh() {
-    const [savedNotes, savedTrash, savedNotebooks, savedTags, savedSettings, storageSnapshot] = await Promise.all([
+    const [savedNotes, savedTrash, savedNotebooks, savedLibraries, savedShelves, savedTags, savedSettings, storageSnapshot, savedLinks] = await Promise.all([
       getNotes(),
       getTrash(),
       getNotebooks(),
+      getLibraries(),
+      getShelves(),
       getTags(),
       getSettings(),
       getStorageSnapshot(),
+      getAllNoteLinks(),
     ])
     setNotes(sortNotes(savedNotes))
     setTrash(savedTrash)
     setNotebooks(savedNotebooks)
+    setLibraries(savedLibraries)
+    setShelves(savedShelves)
     setTags(savedTags)
+    setLinks(savedLinks)
     setSettings(savedSettings)
     setStorage(storageSnapshot)
   }
@@ -204,6 +256,7 @@ function App() {
     const currentNotebook = view.startsWith('notebook:')
       ? notebooks.find((notebook) => notebook.id === view.slice('notebook:'.length))
       : undefined
+    const currentShelfId = view.startsWith('shelf:') ? view.slice('shelf:'.length) : undefined
     const selectedTag = view.startsWith('tag:') ? view.slice('tag:'.length) : undefined
     const source = view === 'trash' ? trash : notes
     const ordered = view === 'trash' ? source : sortNotes(source)
@@ -213,14 +266,17 @@ function App() {
       if (view !== 'trash' && note.deletedAt !== undefined) return false
       if (view === 'favorites' && !note.favorite) return false
       if (currentNotebook && note.notebookId !== currentNotebook.id) return false
+      if (currentShelfId && notebooks.find((notebook) => notebook.id === note.notebookId)?.shelfId !== currentShelfId) return false
       if (selectedTag && !noteTags.some((tag) => tag.toLocaleLowerCase() === selectedTag)) return false
       if (!term) return true
-      const notebookName = notebooks.find((notebook) => notebook.id === note.notebookId)?.name ?? ''
-      return [note.title, note.content, notebookName, ...noteTags].some((value) =>
+      const notebook = notebooks.find((item) => item.id === note.notebookId)
+      const shelf = shelves.find((item) => item.id === notebook?.shelfId)
+      const libraryName = libraries.find((item) => item.id === shelf?.libraryId)?.name ?? ''
+      return [note.title, note.content, notebook?.name ?? '', shelf?.name ?? '', libraryName, ...noteTags].some((value) =>
         value.toLocaleLowerCase().includes(term),
       )
     })
-  }, [notes, notebooks, query, trash, view])
+  }, [libraries, notes, notebooks, query, shelves, trash, view])
 
   const viewLabel = view === 'all'
     ? 'All Notes'
@@ -228,9 +284,18 @@ function App() {
       ? 'Favorites'
       : view === 'trash'
         ? 'Trash'
+      : view === 'graph'
+        ? 'Knowledge Graph'
+      : view.startsWith('library:')
+        ? libraries.find((item) => item.id === view.slice(8))?.name ?? 'Library'
+      : view.startsWith('shelf:')
+        ? shelves.find((item) => item.id === view.slice(6))?.name ?? 'Shelf'
       : view.startsWith('notebook:')
         ? notebooks.find((item) => item.id === view.slice(9))?.name ?? 'Notebook'
         : tags.find((item) => item.id === view.slice(4))?.label ?? 'Tag'
+  const activeLibrary = view.startsWith('library:')
+    ? libraries.find((library) => library.id === view.slice(8))
+    : undefined
 
   async function handleSave(note: Note) {
     await saveNote(note)
@@ -246,6 +311,19 @@ function App() {
 
   function openNewNote() {
     focusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const activeLibraryId = view.startsWith('shelf:')
+      ? shelves.find((shelf) => shelf.id === view.slice(6))?.libraryId ?? 'starter-library'
+      : view.startsWith('library:')
+        ? view.slice(8)
+        : 'starter-library'
+    const activeShelfId = view.startsWith('shelf:')
+      ? view.slice(6)
+      : shelves.find((shelf) => shelf.libraryId === activeLibraryId)?.id
+    const targetNotebookId = view.startsWith('notebook:')
+      ? view.slice(9)
+      : notebooks.find((notebook) => notebook.shelfId === activeShelfId)?.id
+        ?? notebooks.find((notebook) => shelves.some((shelf) => shelf.id === notebook.shelfId && shelf.libraryId === activeLibraryId))?.id
+        ?? 'starter-personal'
     setIsCreating(true)
     setActiveNote({
       id: crypto.randomUUID(),
@@ -253,7 +331,7 @@ function App() {
       content: '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      notebookId: view.startsWith('notebook:') ? view.slice(9) : 'starter-personal',
+      notebookId: targetNotebookId,
       tags: [],
       pinned: false,
       favorite: false,
@@ -269,7 +347,10 @@ function App() {
   function closeEditor() {
     setActiveNote(null)
     setIsCreating(false)
-    requestAnimationFrame(() => (focusReturnRef.current ?? newNoteRef.current)?.focus())
+    requestAnimationFrame(() => {
+      const target = focusReturnRef.current
+      ;(target?.isConnected ? target : newNoteRef.current)?.focus()
+    })
   }
 
   function openSettings() {
@@ -282,11 +363,17 @@ function App() {
     requestAnimationFrame(() => settingsFocusReturnRef.current?.focus())
   }
 
-  function openDeleteNotebook(notebook: Notebook) {
+  function openDeleteStructure(candidate: DeleteCandidate) {
     deleteFocusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setDeleteError(null)
-    setDeleteCandidate(notebook)
-    setDeleteDestination(notebooks.find((item) => item.id !== notebook.id)?.id ?? '')
+    setDeleteCandidate(candidate)
+    if (candidate.kind === 'notebook') {
+      setDeleteDestination(notebooks.find((item) => item.id !== candidate.item.id)?.id ?? '')
+    } else if (candidate.kind === 'shelf') {
+      setDeleteDestination(shelves.find((item) => item.libraryId === candidate.item.libraryId && item.id !== candidate.item.id)?.id ?? '')
+    } else {
+      setDeleteDestination(libraries.find((item) => item.id !== candidate.item.id)?.id ?? '')
+    }
   }
 
   function closeDeleteDialog() {
@@ -298,7 +385,14 @@ function App() {
   async function createNotebookFromForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     try {
-      const created = await createNotebook(notebookName)
+      const currentNotebook = view.startsWith('notebook:')
+        ? notebooks.find((notebook) => notebook.id === view.slice(9))
+        : undefined
+      const currentShelfId = view.startsWith('shelf:')
+        ? view.slice(6)
+        : currentNotebook?.shelfId
+          ?? shelves.find((shelf) => shelf.libraryId === (view.startsWith('library:') ? view.slice(8) : 'starter-library'))?.id
+      const created = await createNotebook(notebookName, currentShelfId)
       setNotebookName('')
       setView(`notebook:${created.id}`)
       await refresh()
@@ -308,13 +402,30 @@ function App() {
     }
   }
 
-  async function handleDeleteNotebook() {
+  async function handleDeleteStructure() {
     if (!deleteCandidate) return
     try {
-      await deleteNotebook(deleteCandidate.id, deleteDestination)
+      if (deleteCandidate.kind === 'notebook') {
+        await deleteNotebook(deleteCandidate.item.id, deleteDestination)
+      } else if (deleteCandidate.kind === 'shelf') {
+        await deleteShelf(deleteCandidate.item.id, deleteDestination)
+      } else {
+        await deleteLibrary(deleteCandidate.item.id, deleteDestination)
+      }
+      const removed = deleteCandidate
       setDeleteCandidate(null)
       setDeleteDestination('')
-      if (view === `notebook:${deleteCandidate.id}`) setView('all')
+      if (removed.kind === 'notebook' && view === `notebook:${removed.item.id}`) setView('all')
+      if (removed.kind === 'shelf' && view === `shelf:${removed.item.id}`) setView(`library:${removed.item.libraryId}`)
+      if (removed.kind === 'library') {
+        const destination = libraries.find((library) => library.id === deleteDestination)
+        const sourceShelfIds = new Set(shelves.filter((shelf) => shelf.libraryId === removed.item.id).map((shelf) => shelf.id))
+        const sourceNotebookIds = new Set(notebooks.filter((notebook) => notebook.shelfId && sourceShelfIds.has(notebook.shelfId)).map((notebook) => notebook.id))
+        const isInRemovedLibrary = view === `library:${removed.item.id}`
+          || (view.startsWith('shelf:') && sourceShelfIds.has(view.slice(6)))
+          || (view.startsWith('notebook:') && sourceNotebookIds.has(view.slice(9)))
+        if (isInRemovedLibrary) setView(destination ? `library:${destination.id}` : 'all')
+      }
       setDeleteError(null)
       await refresh()
       requestAnimationFrame(() => {
@@ -322,7 +433,57 @@ function App() {
         ;(target?.isConnected ? target : newNoteRef.current)?.focus()
       })
     } catch (reason) {
-      setDeleteError(reason instanceof Error ? reason.message : 'The notebook could not be deleted.')
+      setDeleteError(reason instanceof Error ? reason.message : `The ${deleteCandidate.kind} could not be deleted.`)
+    }
+  }
+
+  async function createLibraryFromForm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    try {
+      const created = await createLibrary(libraryName)
+      setLibraryName('')
+      setView(`library:${created.id}`)
+      await refresh()
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The library could not be created.')
+    }
+  }
+
+  async function createShelfFromForm(library: Library, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    try {
+      const created = await createShelf(library.id, shelfNames[library.id] ?? '')
+      setShelfNames((current) => ({ ...current, [library.id]: '' }))
+      setView(`shelf:${created.id}`)
+      await refresh()
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The shelf could not be created.')
+    }
+  }
+
+  async function handleRenameLibrary(library: Library) {
+    const name = window.prompt('Rename library', library.name)
+    if (name === null) return
+    try {
+      await renameLibrary(library.id, name)
+      await refresh()
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The library could not be renamed.')
+    }
+  }
+
+  async function handleRenameShelf(shelf: Shelf) {
+    const name = window.prompt('Rename shelf', shelf.name)
+    if (name === null) return
+    try {
+      await renameShelf(shelf.id, name)
+      await refresh()
+      setError(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The shelf could not be renamed.')
     }
   }
 
@@ -416,7 +577,7 @@ function App() {
       const result = await importBackupFile(file)
       await refresh()
       setNotice(
-        `Backup restored: ${result.notesAdded} notes and ${result.attachmentsAdded} attachments added, ${result.notesSkipped} duplicate notes skipped.`,
+        `Backup restored: ${result.librariesAdded} libraries, ${result.shelvesAdded} shelves, ${result.notebooksAdded} notebooks, ${result.notesAdded} notes, ${result.linksAdded} links, and ${result.attachmentsAdded} attachments added; ${result.notesSkipped} duplicate notes skipped.`,
       )
       setError(null)
     } catch (reason) {
@@ -455,30 +616,93 @@ function App() {
             <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => setView('all')} icon={<FileText size={16} />} />
             <NavButton active={view === 'favorites'} label="Favorites" count={notes.filter((note) => note.favorite).length} onClick={() => setView('favorites')} icon={<Heart size={16} />} />
             <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => setView('trash')} icon={<Trash2 size={16} />} />
+            <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => setView('graph')} icon={<Network size={16} />} />
           </nav>
           <div className="mt-8">
             <div className="mb-2 flex items-center justify-between px-2">
-              <h2 className="section-label">Notebooks</h2>
-              <span className="text-xs text-[var(--muted)]">{notebooks.length}</span>
+              <h2 className="section-label">Your Library</h2>
+              <span className="text-xs text-[var(--muted)]">{libraries.length}</span>
             </div>
-            <nav aria-label="Notebooks" className="space-y-1">
-              {notebooks.map((notebook) => (
-                <div key={notebook.id} className="group flex items-center gap-1">
-                  <NavButton
-                    active={view === `notebook:${notebook.id}`}
-                    label={notebook.name}
-                    count={notes.filter((note) => note.notebookId === notebook.id).length}
-                    onClick={() => setView(`notebook:${notebook.id}`)}
-                    icon={<Archive size={16} />}
-                  />
-                  <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                    <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void handleRename(notebook)}><Settings size={13} /></button>
-                            <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => openDeleteNotebook(notebook)}><Trash2 size={13} /></button>
+            <nav aria-label="Libraries" className="space-y-3">
+              {libraries.map((library) => {
+                const libraryShelves = shelves.filter((shelf) => shelf.libraryId === library.id)
+                const libraryNotebookIds = notebooks
+                  .filter((notebook) => libraryShelves.some((shelf) => shelf.id === notebook.shelfId))
+                  .map((notebook) => notebook.id)
+                return (
+                  <div key={library.id}>
+                    <div className="group flex items-center gap-1">
+                      <NavButton
+                        active={view === `library:${library.id}`}
+                        label={library.name}
+                        count={notes.filter((note) => libraryNotebookIds.includes(note.notebookId ?? '')).length}
+                        onClick={() => setView(`library:${library.id}`)}
+                        icon={<LibraryBig size={16} />}
+                      />
+                      <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                        <button className="icon-button !h-8 !w-8" aria-label={`Rename ${library.name}`} onClick={() => void handleRenameLibrary(library)}><Settings size={13} /></button>
+                        <button className="icon-button !h-8 !w-8" aria-label={`Delete ${library.name}`} disabled={libraries.length <= 1} title={libraries.length <= 1 ? 'The last library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'library', item: library })}><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                    <div className="ml-3 border-l border-[var(--border)] pl-2">
+                      {libraryShelves.map((shelf) => (
+                        <div key={shelf.id} className="mb-2">
+                          <div className="group flex items-center gap-1">
+                            <NavButton
+                              active={view === `shelf:${shelf.id}`}
+                              label={shelf.name}
+                              count={notes.filter((note) => notebooks.some((notebook) => notebook.id === note.notebookId && notebook.shelfId === shelf.id)).length}
+                              onClick={() => setView(`shelf:${shelf.id}`)}
+                              icon={<Layers3 size={15} />}
+                            />
+                            <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                              <button className="icon-button !h-8 !w-8" aria-label={`Rename ${shelf.name}`} onClick={() => void handleRenameShelf(shelf)}><Settings size={13} /></button>
+                              <button className="icon-button !h-8 !w-8" aria-label={`Delete ${shelf.name}`} disabled={libraryShelves.length <= 1} title={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'shelf', item: shelf })}><Trash2 size={13} /></button>
+                            </div>
+                          </div>
+                          {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
+                            <div key={notebook.id} className="group ml-3 flex items-center gap-1">
+                              <NavButton
+                                active={view === `notebook:${notebook.id}`}
+                                label={notebook.name}
+                                count={notes.filter((note) => note.notebookId === notebook.id).length}
+                                onClick={() => setView(`notebook:${notebook.id}`)}
+                                icon={<Archive size={15} />}
+                              />
+                              <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                                <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void handleRename(notebook)}><Settings size={13} /></button>
+                                <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'notebook', item: notebook })}><Trash2 size={13} /></button>
+                              </div>
+                              <label className="sr-only" htmlFor={`move-notebook-${notebook.id}`}>Move {notebook.name} to shelf</label>
+                              <select
+                                id={`move-notebook-${notebook.id}`}
+                                className="small-input !min-h-8 max-w-24 !px-1 text-xs"
+                                aria-label={`Move ${notebook.name} to shelf`}
+                                value={notebook.shelfId ?? ''}
+                                onChange={(event) => void moveNotebook(notebook.id, event.target.value).then(refresh).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'The notebook could not be moved.'))}
+                              >
+                                {shelves.map((option) => <option key={option.id} value={option.id}>{libraries.find((item) => item.id === option.libraryId)?.name ?? 'Library'} · {option.name}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                          <form className="mt-1 flex gap-1" onSubmit={(event) => void createShelfFromForm(library, event)}>
+                            <label className="sr-only" htmlFor={`new-shelf-${library.id}`}>New shelf in {library.name}</label>
+                            <input id={`new-shelf-${library.id}`} className="small-input !min-h-8 min-w-0 flex-1 !px-2 text-xs" value={shelfNames[library.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [library.id]: event.target.value }))} placeholder="New shelf" />
+                            <button className="icon-button !h-8 !w-8" aria-label={`Add shelf to ${library.name}`} type="submit"><Plus size={15} /></button>
+                          </form>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </nav>
-            <form className="mt-3 flex gap-2" onSubmit={(event) => void createNotebookFromForm(event)}>
+            <form className="mt-3 flex gap-2" onSubmit={(event) => void createLibraryFromForm(event)}>
+              <label className="sr-only" htmlFor="new-library">New library name</label>
+              <input id="new-library" className="small-input min-w-0 flex-1" value={libraryName} onChange={(event) => setLibraryName(event.target.value)} placeholder="New library" />
+              <button className="icon-button" aria-label="Add library" type="submit"><Plus size={16} /></button>
+            </form>
+            <form className="mt-2 flex gap-2" onSubmit={(event) => void createNotebookFromForm(event)}>
               <label className="sr-only" htmlFor="new-notebook">New notebook name</label>
               <input id="new-notebook" className="small-input min-w-0 flex-1" value={notebookName} onChange={(event) => setNotebookName(event.target.value)} placeholder="New notebook" />
               <button className="icon-button" aria-label="Add notebook" type="submit"><Plus size={16} /></button>
@@ -510,27 +734,120 @@ function App() {
           </header>
           {error && <div role="alert" className="notice notice-error mb-5">{error}<button onClick={() => setError(null)} aria-label="Dismiss error"><X size={15} /></button></div>}
           {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => setNotice(null)} aria-label="Dismiss notice"><X size={15} /></button></div>}
+          {view.startsWith('shelf:') && (
+            <form className="mb-5 flex max-w-xl gap-2" onSubmit={(event) => void createNotebookFromForm(event)}>
+              <label className="sr-only" htmlFor="shelf-new-notebook">New notebook in {viewLabel}</label>
+              <input id="shelf-new-notebook" className="small-input min-w-0 flex-1" value={notebookName} onChange={(event) => setNotebookName(event.target.value)} placeholder={`New notebook in ${viewLabel}`} />
+              <button className="secondary-button" type="submit"><Plus size={15} /> Add notebook</button>
+            </form>
+          )}
+          {view.startsWith('notebook:') && (
+            <div className="mb-5 max-w-xl md:hidden">
+              <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mobile-notebook-shelf">Move notebook to shelf</label>
+              <select
+                id="mobile-notebook-shelf"
+                className="small-input w-full"
+                value={notebooks.find((notebook) => notebook.id === view.slice(9))?.shelfId ?? ''}
+                onChange={(event) => void moveNotebook(view.slice(9), event.target.value).then(refresh).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'The notebook could not be moved.'))}
+              >
+                {shelves.map((shelf) => <option key={shelf.id} value={shelf.id}>{libraries.find((library) => library.id === shelf.libraryId)?.name ?? 'Library'} · {shelf.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="mb-5 flex items-center gap-3">
             <label className="sr-only" htmlFor="mobile-view">Filter notes</label>
             <select id="mobile-view" className="small-input max-w-48 md:hidden" value={view} onChange={(event) => setView(event.target.value as View)}>
               <option value="all">All Notes</option>
               <option value="favorites">Favorites</option>
               <option value="trash">Trash ({trash.length})</option>
+              <option value="graph">Knowledge Graph</option>
+              {libraries.map((library) => <option key={library.id} value={`library:${library.id}`}>Library: {library.name}</option>)}
+              {shelves.map((shelf) => <option key={shelf.id} value={`shelf:${shelf.id}`}>Shelf: {shelf.name}</option>)}
               {notebooks.map((notebook) => <option key={notebook.id} value={`notebook:${notebook.id}`}>{notebook.name}</option>)}
               {tags.map((tag) => <option key={tag.id} value={`tag:${tag.id}`}>Tag: {tag.label}</option>)}
             </select>
-            <div className="search-field flex-1">
-              <Search size={18} aria-hidden="true" />
-              <label htmlFor="note-search" className="sr-only">Search notes, notebooks, and tags</label>
-              <input id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, content, tags, or notebooks..." />
-              {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
-            </div>
-            <p className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
-              {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
-            </p>
+            {view !== 'graph' && !view.startsWith('library:') && (
+              <>
+                <div className="search-field flex-1">
+                  <Search size={18} aria-hidden="true" />
+                  <label htmlFor="note-search" className="sr-only">Search notes, libraries, shelves, notebooks, and tags</label>
+                  <input id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, content, libraries, shelves, notebooks, or tags..." />
+                  {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
+                </div>
+                <p className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
+                  {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
+                </p>
+              </>
+            )}
           </div>
           {isLoading ? (
             <p role="status" className="py-16 text-center text-[var(--muted)]">Loading your notes…</p>
+          ) : view.startsWith('library:') ? (
+            <section aria-labelledby="library-home-title">
+              <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
+                <p className="section-label">Personal Knowledge Library</p>
+                <h2 id="library-home-title" className="mt-2 text-xl font-semibold">Library home</h2>
+                <p className="mt-2 text-sm text-[var(--muted)]">Organize notebooks and notes into shelves. Your notes remain available in All Notes at any time.</p>
+                {activeLibrary && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <button className="secondary-button" onClick={() => void handleRenameLibrary(activeLibrary)}>Rename library</button>
+                    <button className="danger-button" disabled={libraries.length <= 1} onClick={() => openDeleteStructure({ kind: 'library', item: activeLibrary })}>Delete library</button>
+                  </div>
+                )}
+              </div>
+              {activeLibrary && (
+                <div className="mb-5 grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:grid-cols-2">
+                  <form className="flex gap-2" onSubmit={(event) => void createShelfFromForm(activeLibrary, event)}>
+                    <label className="sr-only" htmlFor={`home-new-shelf-${activeLibrary.id}`}>New shelf in {activeLibrary.name}</label>
+                    <input id={`home-new-shelf-${activeLibrary.id}`} className="small-input min-w-0 flex-1" value={shelfNames[activeLibrary.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [activeLibrary.id]: event.target.value }))} placeholder="New shelf" />
+                    <button className="secondary-button" type="submit"><Plus size={15} /> Add shelf</button>
+                  </form>
+                  <form className="flex gap-2" onSubmit={(event) => void createLibraryFromForm(event)}>
+                    <label className="sr-only" htmlFor="home-new-library">New library name</label>
+                    <input id="home-new-library" className="small-input min-w-0 flex-1" value={libraryName} onChange={(event) => setLibraryName(event.target.value)} placeholder="New library" />
+                    <button className="secondary-button" type="submit"><Plus size={15} /> Add library</button>
+                  </form>
+                </div>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {shelves.filter((shelf) => shelf.libraryId === view.slice(8)).map((shelf) => {
+                  const shelfNotebooks = notebooks.filter((notebook) => notebook.shelfId === shelf.id)
+                  const shelfNotes = notes.filter((note) => shelfNotebooks.some((notebook) => notebook.id === note.notebookId))
+                  return (
+                    <article key={shelf.id} className="note-card !min-h-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="section-label">Shelf</p>
+                          <h3 className="mt-2 text-lg font-semibold">{shelf.name}</h3>
+                          <p className="mt-1 text-sm text-[var(--muted)]">{shelfNotebooks.length} notebooks · {shelfNotes.length} notes</p>
+                        </div>
+                        <Layers3 size={20} className="text-[var(--accent)]" aria-hidden="true" />
+                      </div>
+                      {shelfNotebooks.length > 0 && <p className="mt-4 text-sm text-[var(--muted)]">{shelfNotebooks.map((notebook) => notebook.name).join(' · ')}</p>}
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        <button className="secondary-button" onClick={() => setView(`shelf:${shelf.id}`)} aria-label={`Open ${shelf.name} shelf`}>Open shelf <ArrowLeft className="rotate-180" size={15} /></button>
+                        <button className="secondary-button" aria-label={`Rename ${shelf.name}`} onClick={() => void handleRenameShelf(shelf)}>Rename shelf</button>
+                        <button className="danger-button" aria-label={`Delete ${shelf.name}`} disabled={shelves.filter((item) => item.libraryId === shelf.libraryId).length <= 1} onClick={() => openDeleteStructure({ kind: 'shelf', item: shelf })}>Delete shelf</button>
+                      </div>
+                    </article>
+                  )
+                })}
+                {shelves.filter((shelf) => shelf.libraryId === view.slice(8)).length === 0 && (
+                  <div className="empty-state sm:col-span-2 xl:col-span-3">
+                    <span className="empty-icon"><Layers3 size={24} /></span>
+                    <h2 className="mt-4 text-lg font-semibold">No shelves yet</h2>
+                    <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">Add a shelf from the library navigation to start organizing this library.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : view === 'graph' ? (
+            <KnowledgeGraph
+              notes={[...notes, ...trash]}
+              links={links}
+              noteLabel={(note) => getNoteLinkLabel(note, [...notes, ...trash], notebooks)}
+              onOpenNote={openNote}
+            />
           ) : filteredNotes.length ? (
             <section aria-label={`${viewLabel} notes`} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredNotes.map((note) => (
@@ -569,9 +886,12 @@ function App() {
           isCreating={isCreating}
           notebooks={notebooks}
           tags={tags}
+          notes={notes}
+          trash={trash}
           onSave={handleSave}
           onRefresh={refresh}
           onClose={closeEditor}
+          onOpenNote={openNote}
           onDelete={() => handleDeleteNote(activeNote)}
           onError={setError}
         />
@@ -595,14 +915,32 @@ function App() {
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) closeDeleteDialog()
         }}>
-          <section className="dialog-card max-w-md" role="dialog" aria-modal="true" aria-labelledby="delete-notebook-title" onKeyDown={(event) => keepFocusInDialog(event, closeDeleteDialog)}>
-            <div className="flex items-start justify-between"><div><h2 id="delete-notebook-title" className="text-xl font-semibold">Delete notebook?</h2><p className="mt-2 text-sm text-[var(--muted)]">Notes in “{deleteCandidate.name}” will be moved, not deleted.</p></div><button className="icon-button" onClick={closeDeleteDialog} aria-label="Close"><X size={17} /></button></div>
-            <label htmlFor="delete-destination" className="mt-5 block text-sm font-medium">Move notes to</label>
+          <section className="dialog-card max-w-md" role="dialog" aria-modal="true" aria-labelledby="delete-structure-title" onKeyDown={(event) => keepFocusInDialog(event, closeDeleteDialog)}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 id="delete-structure-title" className="text-xl font-semibold">
+                  Delete {deleteCandidate.kind}?
+                </h2>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  {deleteCandidate.kind === 'notebook'
+                    ? `Notes in “${deleteCandidate.item.name}” will be moved, not deleted.`
+                    : deleteCandidate.kind === 'shelf'
+                      ? `Notebooks in “${deleteCandidate.item.name}” will be moved, not deleted.`
+                      : `Shelves and notebooks in “${deleteCandidate.item.name}” will be moved, not deleted. Conflicting shelf names are renamed automatically.`}
+                </p>
+              </div>
+              <button className="icon-button" onClick={closeDeleteDialog} aria-label="Close"><X size={17} /></button>
+            </div>
+            <label htmlFor="delete-destination" className="mt-5 block text-sm font-medium">
+              {deleteCandidate.kind === 'notebook' ? 'Move notes to notebook' : deleteCandidate.kind === 'shelf' ? 'Move notebooks to shelf' : 'Move shelves to library'}
+            </label>
             <select ref={deleteDestinationRef} id="delete-destination" className="small-input mt-2 w-full" value={deleteDestination} onChange={(event) => setDeleteDestination(event.target.value)}>
-              {notebooks.filter((item) => item.id !== deleteCandidate.id).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              {deleteCandidate.kind === 'notebook' && notebooks.filter((item) => item.id !== deleteCandidate.item.id).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              {deleteCandidate.kind === 'shelf' && shelves.filter((item) => item.libraryId === deleteCandidate.item.libraryId && item.id !== deleteCandidate.item.id).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              {deleteCandidate.kind === 'library' && libraries.filter((item) => item.id !== deleteCandidate.item.id).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
             {deleteError && <p className="mt-4 text-sm text-red-700" role="alert">{deleteError}</p>}
-            <div className="mt-6 flex justify-end gap-2"><button className="secondary-button" onClick={closeDeleteDialog}>Cancel</button><button className="danger-button" onClick={() => void handleDeleteNotebook()}>Move notes and delete</button></div>
+            <div className="mt-6 flex justify-end gap-2"><button className="secondary-button" onClick={closeDeleteDialog}>Cancel</button><button className="danger-button" disabled={!deleteDestination} onClick={() => void handleDeleteStructure()}>Move contents and delete</button></div>
           </section>
         </div>
       )}
@@ -720,9 +1058,12 @@ function NoteEditor({
   isCreating,
   notebooks,
   tags,
+  notes,
+  trash,
   onSave,
   onRefresh,
   onClose,
+  onOpenNote,
   onDelete,
   onError,
 }: {
@@ -730,9 +1071,12 @@ function NoteEditor({
   isCreating: boolean
   notebooks: Notebook[]
   tags: Tag[]
+  notes: Note[]
+  trash: Note[]
   onSave: (note: Note) => Promise<void>
   onRefresh: () => Promise<void>
   onClose: () => void
+  onOpenNote: (note: Note) => void
   onDelete: () => Promise<boolean>
   onError: (message: string | null) => void
 }) {
@@ -749,6 +1093,10 @@ function NoteEditor({
   const [showHistory, setShowHistory] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<NoteAttachment[]>([])
+  const [links, setLinks] = useState<{ outgoing: NoteLink[]; backlinks: NoteLink[] }>({ outgoing: [], backlinks: [] })
+  const [linkTargetId, setLinkTargetId] = useState('')
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [persisted, setPersisted] = useState(!isCreating)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [isAddingAttachment, setIsAddingAttachment] = useState(false)
@@ -787,6 +1135,7 @@ function NoteEditor({
     }
     try {
       await onSave(next)
+      setPersisted(true)
       baseline.current = { title: draft.title, content: draft.content, tags: draft.noteTags, notebookId: draft.notebookId, pinned: draft.pinned, favorite: draft.favorite }
       setSaveState('saved')
       return true
@@ -818,6 +1167,20 @@ function NoteEditor({
         if (recording.recorder.state !== 'inactive') recording.recorder.stop()
         recording.stream.getTracks().forEach((track) => track.stop())
       }
+    }
+  }, [note.id])
+
+  useEffect(() => {
+    let active = true
+    getNoteLinks(note.id)
+      .then((saved) => {
+        if (active) setLinks(saved)
+      })
+      .catch(() => {
+        if (active) setLinkError('Note links could not be loaded.')
+      })
+    return () => {
+      active = false
     }
   }, [note.id])
 
@@ -945,6 +1308,38 @@ function NoteEditor({
     if (saved) onClose()
   }
 
+  async function addLink() {
+    if (!linkTargetId || !(await flush())) return
+    try {
+      if (!notes.some((item) => item.id === note.id)) {
+        setLinkError('Save this note and restore it from Trash before adding links.')
+        return
+      }
+      await linkNotes(note.id, linkTargetId)
+      setLinks(await getNoteLinks(note.id))
+      setLinkTargetId('')
+      setLinkError(null)
+    } catch (reason) {
+      setLinkError(reason instanceof Error ? reason.message : 'The note could not be linked.')
+    }
+  }
+
+  async function removeLink(targetNoteId: string) {
+    if (!(await flush())) return
+    try {
+      await unlinkNotes(note.id, targetNoteId)
+      setLinks(await getNoteLinks(note.id))
+      setLinkError(null)
+    } catch (reason) {
+      setLinkError(reason instanceof Error ? reason.message : 'The link could not be removed.')
+    }
+  }
+
+  async function openRelatedNote(related: Note) {
+    if (related.deletedAt !== undefined || !(await flush())) return
+    onOpenNote(related)
+  }
+
   async function deleteSafely() {
     const message = note.deletedAt === undefined
       ? `Move “${title.trim() || 'Untitled note'}” to Trash? You can restore it later.`
@@ -1021,6 +1416,16 @@ function NoteEditor({
   )
   const checklistProgress = getChecklistProgress(content)
   const checklistTaskLines = getChecklistTaskLines(content)
+  const allNotes = [...notes, ...trash]
+  const outgoingNotes = links.outgoing
+    .map((link) => allNotes.find((item) => item.id === link.targetNoteId))
+    .filter((item): item is Note => Boolean(item))
+  const backlinkNotes = links.backlinks
+    .map((link) => allNotes.find((item) => item.id === link.sourceNoteId))
+    .filter((item): item is Note => Boolean(item))
+  const linkedIds = new Set(links.outgoing.map((link) => link.targetNoteId))
+  const availableTargets = notes.filter((item) => item.id !== note.id && !linkedIds.has(item.id))
+  const canEditLinks = persisted && note.deletedAt === undefined
   const audioRecordingSupported =
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
   let taskInputIndex = 0
@@ -1076,6 +1481,63 @@ function NoteEditor({
               </div>
               {tagInput && suggestions.length > 0 && <div className="suggestion-list" role="listbox" aria-label="Tag suggestions">{suggestions.map((tag) => <button key={tag.id} role="option" aria-selected={false} onMouseDown={(event) => event.preventDefault()} onClick={() => addTag(tag.label)}>{tag.label}</button>)}</div>}
             </div>
+            <section className="note-links" aria-labelledby="note-links-heading">
+              <h3 id="note-links-heading" className="mb-2 flex items-center gap-2 text-sm font-semibold"><Link2 size={15} aria-hidden="true" /> Linked notes</h3>
+              {canEditLinks && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <label className="sr-only" htmlFor="link-note-target">Choose a note to link</label>
+                  <select
+                    id="link-note-target"
+                    className="small-input min-w-0 flex-1"
+                    value={linkTargetId}
+                    onChange={(event) => setLinkTargetId(event.target.value)}
+                    disabled={!availableTargets.length}
+                  >
+                    <option value="">Choose a note…</option>
+                    {availableTargets.map((item) => (
+                      <option key={item.id} value={item.id}>{getNoteLinkLabel(item, allNotes, notebooks)}</option>
+                    ))}
+                  </select>
+                  <button className="secondary-button" onClick={() => void addLink()} disabled={!linkTargetId}>Add link</button>
+                </div>
+              )}
+              {linkError && <p className="mb-2 text-sm text-red-700" role="alert">{linkError}</p>}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">Links from this note</h4>
+                  {outgoingNotes.length ? (
+                    <ul className="note-link-list" aria-label="Links from this note">
+                      {outgoingNotes.map((related) => (
+                        <li key={related.id}>
+                          {related.deletedAt === undefined ? (
+                            <>
+                              <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{getNoteLinkLabel(related, allNotes, notebooks)}</button>
+                              {canEditLinks && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${getNoteLinkLabel(related, allNotes, notebooks)}`}>Remove</button>}
+                            </>
+                          ) : <span>{getNoteLinkLabel(related, allNotes, notebooks)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">No linked notes yet.</p>}
+                </div>
+                <div>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">Backlinks</h4>
+                  {backlinkNotes.length ? (
+                    <ul className="note-link-list" aria-label="Backlinks">
+                      {backlinkNotes.map((related) => (
+                        <li key={related.id}>
+                          {related.deletedAt === undefined ? (
+                            <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{getNoteLinkLabel(related, allNotes, notebooks)}</button>
+                          ) : <span>{getNoteLinkLabel(related, allNotes, notebooks)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">No backlinks yet.</p>}
+                </div>
+              </div>
+              {!canEditLinks && !note.deletedAt && <p className="mt-2 text-xs text-[var(--muted)]">Save this note before linking it.</p>}
+              {note.deletedAt !== undefined && <p className="mt-2 text-xs text-[var(--muted)]">Links are preserved while this note is in Trash.</p>}
+            </section>
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
                 <label htmlFor="note-content" className="section-label mb-2 block">Markdown</label>
