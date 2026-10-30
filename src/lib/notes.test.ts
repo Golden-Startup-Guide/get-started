@@ -55,8 +55,11 @@ describe('IndexedDB storage and backup', () => {
       'Work',
     ])
     const db = await storage.openNotesDatabase()
-    expect(db.version).toBe(5)
-    expect([...db.objectStoreNames]).toEqual(expect.arrayContaining(['notes', 'notebooks', 'settings', 'tags', 'history', 'attachments', 'noteLinks']))
+    expect(db.version).toBe(6)
+    expect([...db.objectStoreNames]).toEqual(expect.arrayContaining(['notes', 'notebooks', 'libraries', 'shelves', 'settings', 'tags', 'history', 'attachments', 'noteLinks']))
+    expect(await storage.getLibraries()).toContainEqual(expect.objectContaining({ id: 'starter-library', name: 'Personal Library' }))
+    expect(await storage.getShelves()).toContainEqual(expect.objectContaining({ id: 'starter-shelf', libraryId: 'starter-library', name: 'General' }))
+    expect((await storage.getNotebooks()).every((notebook) => notebook.shelfId === 'starter-shelf')).toBe(true)
   })
 
   it('supports notebook and tagged note CRUD, pins, and favorites', async () => {
@@ -101,6 +104,48 @@ describe('IndexedDB storage and backup', () => {
       expect.objectContaining({ notebookId: 'starter-personal' }),
     )
     await expect(storage.createNotebook('personal')).rejects.toThrow('already exists')
+  })
+
+  it('creates, moves, and safely deletes libraries and shelves without deleting notes', async () => {
+    const library = await storage.createLibrary('Field Library')
+    const shelf = await storage.createShelf(library.id, 'Growing')
+    const notebook = await storage.createNotebook('Crop journal', shelf.id)
+    const note: Note = {
+      id: 'library-shelf-note',
+      title: 'Seedling observations',
+      content: 'Keep this note intact.',
+      createdAt: 123,
+      updatedAt: 456,
+      notebookId: notebook.id,
+      tags: ['field'],
+      favorite: true,
+      pinned: true,
+    }
+    await storage.saveNote(note)
+    await storage.renameLibrary(library.id, 'Field Library Renamed')
+    await storage.renameShelf(shelf.id, 'Growing Shelf')
+    expect(await storage.getLibraries()).toContainEqual(expect.objectContaining({ id: library.id, name: 'Field Library Renamed' }))
+    expect(await storage.getShelves()).toContainEqual(expect.objectContaining({ id: shelf.id, name: 'Growing Shelf' }))
+
+    await expect(storage.deleteShelf(shelf.id, 'starter-shelf')).rejects.toThrow('same library')
+    await expect(storage.deleteLibrary(library.id, library.id)).rejects.toThrow('different existing library')
+    await storage.deleteLibrary(library.id, 'starter-library')
+    expect(await storage.getLibraries()).not.toContainEqual(expect.objectContaining({ id: library.id }))
+    expect(await storage.getShelves()).toContainEqual(expect.objectContaining({
+      id: shelf.id,
+      libraryId: 'starter-library',
+      name: 'Growing Shelf',
+    }))
+    expect(await storage.getNotebooks()).toContainEqual(expect.objectContaining({ id: notebook.id, shelfId: shelf.id }))
+    expect(await storage.getNotes()).toContainEqual(note)
+
+    const secondShelf = await storage.createShelf('starter-library', 'Archive')
+    await storage.moveNotebook(notebook.id, secondShelf.id)
+    await storage.deleteShelf(shelf.id, secondShelf.id)
+    expect(await storage.getShelves()).not.toContainEqual(expect.objectContaining({ id: shelf.id }))
+    expect(await storage.getNotebooks()).toContainEqual(expect.objectContaining({ id: notebook.id, shelfId: secondShelf.id }))
+    expect(await storage.getNotes()).toContainEqual(note)
+    await expect(storage.createShelf('starter-library', 'archive')).rejects.toThrow('already exists')
   })
 
   it('keeps content revisions and restores the previous saved version', async () => {
@@ -206,7 +251,7 @@ describe('IndexedDB storage and backup', () => {
     await storage.saveNote(target)
     await storage.linkNotes(source.id, target.id)
     const backup = await storage.exportBackup()
-    expect(backup.version).toBe(3)
+    expect(backup.version).toBe(4)
     expect(backup.links).toContainEqual({ sourceNoteId: source.id, targetNoteId: target.id })
 
     await storage.trashNote(source.id)
@@ -284,7 +329,9 @@ describe('IndexedDB storage and backup', () => {
     const backup = await storage.exportBackup()
     expect(backup).toEqual(expect.objectContaining({
       format: 'my-notes-backup',
-      version: 3,
+      version: 4,
+      libraries: expect.arrayContaining([expect.objectContaining({ id: 'starter-library' })]),
+      shelves: expect.arrayContaining([expect.objectContaining({ id: 'starter-shelf' })]),
       settings: { id: 'preferences', theme: 'dark' },
     }))
     expect(backup.notes).toContainEqual(expect.objectContaining({ id: note.id, favorite: true, pinned: true }))
@@ -315,6 +362,48 @@ describe('IndexedDB storage and backup', () => {
     const { attachments: _attachments, links: _links, ...legacyBackup } = backup
     const legacyResult = await storage.importBackupFile(jsonFile(JSON.stringify({ ...legacyBackup, version: 1 })))
     expect(legacyResult.attachmentsAdded).toBe(0)
+  })
+
+  it('imports version 1 through 3 backups into the default hierarchy', async () => {
+    for (const version of [1, 2, 3]) {
+      const notebook = {
+        id: `legacy-notebook-${version}`,
+        name: `Legacy notebook ${version}`,
+        createdAt: version,
+        updatedAt: version,
+      }
+      const note: Note = {
+        id: `legacy-backup-note-${version}`,
+        title: `Legacy note ${version}`,
+        content: 'Keep legacy content.',
+        createdAt: version,
+        updatedAt: version,
+        notebookId: notebook.id,
+      }
+      const backup = {
+        format: 'my-notes-backup',
+        version,
+        exportedAt: version,
+        notes: [note],
+        notebooks: [notebook],
+        tags: [],
+        settings: { id: 'preferences', theme: 'system' },
+        history: [],
+        ...(version >= 2 ? { attachments: [] } : {}),
+        ...(version >= 3 ? { links: [] } : {}),
+      }
+
+      await expect(storage.importBackupFile(jsonFile(JSON.stringify(backup)))).resolves.toEqual(
+        expect.objectContaining({ notesAdded: 1 }),
+      )
+      const restoredNotebook = (await storage.getNotebooks()).find((item) => item.id === notebook.id)
+      expect(restoredNotebook?.shelfId).toBeTruthy()
+      expect(await storage.getShelves()).toContainEqual(expect.objectContaining({
+        id: restoredNotebook?.shelfId,
+        libraryId: 'starter-library',
+      }))
+      expect(await storage.getNotes()).toContainEqual(expect.objectContaining(note))
+    }
   })
 
   it('rejects malformed, duplicate-ID, and oversized backup files before importing', async () => {
@@ -389,6 +478,7 @@ describe('IndexedDB storage and backup', () => {
         notes.createIndex('by-tags', 'tags', { multiEntry: true })
         const notebooks = db.createObjectStore('notebooks', { keyPath: 'id' })
         notebooks.createIndex('by-name', 'name')
+        notebooks.put({ id: 'starter-personal', name: 'Personal', createdAt: 1, updatedAt: 1 })
         db.createObjectStore('settings', { keyPath: 'id' })
         const tags = db.createObjectStore('tags', { keyPath: 'id' })
         tags.createIndex('by-label', 'label')
@@ -416,6 +506,8 @@ describe('IndexedDB storage and backup', () => {
 
     expect(await storage.getTrash()).toEqual([note])
     expect(await storage.getNoteAttachments(note.id)).toEqual([])
-    expect((await storage.openNotesDatabase()).version).toBe(5)
+    expect(await storage.getNotebooks()).toContainEqual(expect.objectContaining({ id: 'starter-personal', shelfId: 'starter-shelf' }))
+    expect(await (await storage.openNotesDatabase()).get('notes', note.id)).toEqual(note)
+    expect((await storage.openNotesDatabase()).version).toBe(6)
   })
 })

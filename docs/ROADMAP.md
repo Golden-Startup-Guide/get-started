@@ -98,11 +98,11 @@ Status:
 ### Current implementation baseline
 
 - The application is a React and TypeScript single-page app built with Vite and Tailwind CSS.
-- `src/types.ts` defines note, notebook, tag, settings, history, and attachment records.
-- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 5. Its upgrades migrate V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`; v3 adds the optional `deletedAt` lifecycle field, v4 adds a separate attachment store, and v5 adds ID-based note relationships without rewriting existing note records.
-- `src/App.tsx` provides notebook/tag navigation, title/content/tag/notebook search, a debounced Markdown editor, attachments, history, theme and backup settings. Existing notes remain browser-local.
-- The database has `notes`, `notebooks`, `settings`, `tags`, `history`, and `attachments` stores. New installations include the starter notebooks Personal, Work, Ideas, Research, and Health Handbook; All Notes is a virtual view.
-- Version 3 JSON backups include active and trashed notes, history, attachments, and linked-note relationships; version 1 and 2 backups remain importable. Restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs and their attachments, restores links whenever both endpoint IDs exist after the merge (including locally existing notes), skips missing endpoints and existing relationships, remaps conflicting notebook and attachment IDs, and applies accepted records atomically. Import files are limited to 40 MiB.
+- `src/types.ts` defines note, library, shelf, notebook, tag, settings, history, and attachment records.
+- `src/lib/notes.ts` uses the `idb` library and the `my-notes` IndexedDB database at schema version 6. Its upgrades migrate V1 notes in place, retaining IDs/content/timestamps and assigning them to `Personal`; v3 adds the optional `deletedAt` lifecycle field, v4 adds a separate attachment store, v5 adds ID-based note relationships, and v6 adds libraries and shelves and assigns existing notebooks to the default shelf without rewriting notes.
+- `src/App.tsx` provides library, shelf, notebook, and tag navigation, a Library home page, title/content/tag/notebook search, a debounced Markdown editor, attachments, history, theme and backup settings. All Notes remains a direct view and all data remains browser-local.
+- The database has `notes`, `notebooks`, `libraries`, `shelves`, `settings`, `tags`, `history`, `attachments`, and `noteLinks` stores. New installations include the starter notebooks Personal, Work, Ideas, Research, and Health Handbook under Personal Library → General; All Notes is a virtual view.
+- Version 4 JSON backups include active and trashed notes, libraries, shelves, notebooks, history, attachments, and linked-note relationships; version 1, 2, and 3 backups remain importable. Restore validates the full backup before writing, merges without replacing existing notes, skips conflicting note IDs and their attachments, restores links whenever both endpoint IDs exist after the merge (including locally existing notes), skips missing endpoints and existing relationships, remaps conflicting hierarchy, notebook, and attachment IDs, and applies accepted records atomically. Import files are limited to 40 MiB.
 - Deleting a note moves it to Trash, where it can be restored. Permanent deletion is only available from Trash and removes the note's history; notebook and tag data are preserved appropriately.
 - History records the previously saved note for each successful debounced title/content change; identical content and organization-only changes do not create revisions. History is not silently pruned.
 - Automated tests use Vitest, React Testing Library, and fake IndexedDB to cover the V1 migration, storage features, backup validation/round trips, autosave, search, favorites, and theme persistence.
@@ -416,7 +416,7 @@ Requirements:
 
 Status:
 
-**Future**
+**Completed** — the offline-first hierarchy is Library → Shelf → Notebook → Note. The Library home lists its shelves; navigation supports every level and preserves a direct All Notes view. Libraries and shelves can be created, renamed, and deleted only with an explicit destination for their contents. Schema version 6 assigns existing notebooks to Personal Library → General without changing note IDs or content. Version 4 backups preserve the hierarchy and remain compatible with versions 1–3.
 
 # Phase 9 - AI Features
 
@@ -504,7 +504,7 @@ This historical order was based on the V1 code: a single `Note` record with stri
 | 13 | Note History | Medium to high | High | Requires revision retention limits, timestamps, comparison UI, and restore semantics. Build after autosave and the richer content model so revision boundaries are reliable and storage growth is controlled. |
 | 14 | Linked Notes and Backlinks | High | Medium to high | **Completed.** Stable note-ID relationships, editor link management, backlinks, Trash integrity, and version 3 backup/restore support. The relationship model is independent from graph rendering. |
 | 15 | Knowledge Graph | Medium | High | Depends on linked-note relationships and a useful amount of user data. Begin with a bounded, accessible relationship explorer; assess graph library bundle cost before adoption. |
-| 16 | Personal Knowledge Library / Shelves | High long-term | High | A hierarchy redesign affecting navigation, migrations, imports, and notebook ownership. Implement only after notebook semantics have settled; preserve the current flat “All notes” access and migrate existing data safely. |
+| 16 | Personal Knowledge Library / Shelves | High long-term | High | **Completed.** Library → Shelf → Notebook → Note navigation, Library home, safe schema migration and backup compatibility, and a direct All Notes view. |
 | 17 | AI Summaries and AI Search | Variable | High / privacy-sensitive | Depends on a mature content model and clear user consent, processing location, cost, and offline behavior. Prototype opt-in integrations independently; do not make AI a prerequisite for search or core note operations. |
 
 ### Delivery guardrails

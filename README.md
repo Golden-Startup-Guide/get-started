@@ -24,15 +24,17 @@ Notes stay in the browser profile where they were created. Clearing that browser
 
 Organize notes with notebooks and tags, mark important notes as pinned or favorite, search titles/content/tags/notebook names, and edit with a safe live Markdown preview. Changes autosave locally; previous content revisions can be restored from note history. Light, dark, and system themes are available in Settings.
 
+Organize notebooks into shelves and shelves into libraries from the workspace navigation. Each library has a home page with its shelves; deleting a library or shelf requires choosing where its contents will move. **All Notes** remains available as a direct, flat view.
+
 Markdown task-list checkboxes are interactive in the live preview, with a saved completion count. Toggling a task updates the Markdown source and autosaves like other note edits.
 
 Attach files, images, and audio recordings to notes. Common raster images preview inline, browser-supported audio plays locally, and other file types download from the editor rather than being rendered. Attachments are stored in IndexedDB and remain available offline; each attachment is limited to 5 MiB and each note to 20 MiB of attachments. Recording requires browser microphone support, a secure context, and permission.
 
 Deleting a note moves it to **Trash**, where it can be restored or permanently deleted. Permanent deletion also removes that note's history. Backups include notes in Trash, so they can be recovered after restoring a backup.
 
-Use **Settings → Export JSON backup** to download a backup, including attachments. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting notebook IDs are remapped. Files larger than 40 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
+Use **Settings → Export JSON backup** to download a backup, including library and shelf organization, attachments, and note links. Import merges a validated backup without overwriting existing notes; duplicate note IDs are skipped, and conflicting library, shelf, notebook, and attachment IDs are remapped. Version 1–3 backups remain importable. Files larger than 40 MiB are rejected. Keep backups somewhere separate from this browser profile for recovery if local site data is cleared.
 
-V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook. Later IndexedDB upgrades retain existing notes, history, settings, and notebooks; version 4 adds attachment storage without rewriting note records.
+V1 notes are migrated in place when the app opens. Their IDs and content are preserved and they are assigned to the Personal notebook. Schema version 6 adds Personal Library → General and assigns existing notebooks to that shelf without rewriting note records; prior upgrades retain notes, history, settings, notebooks, attachments, and links.
 
 ## Tests
 
