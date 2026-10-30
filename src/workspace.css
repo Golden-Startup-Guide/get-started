@@ -484,6 +484,17 @@ html[data-theme='dark'] .workspace .primary-button {
 .prose-notes pre code { background: transparent; padding: 0; }
 .prose-notes input[type='checkbox'] { margin-right: 0.4rem; accent-color: var(--accent); }
 
+.checklist-progress {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  padding: 0.2rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
 .history-panel {
   width: 280px;
   flex: 0 0 auto;

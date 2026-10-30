@@ -74,6 +74,16 @@ Status:
 
 **Completed**
 
+## Version 4 - Rich Content
+
+- Interactive Markdown task-list checkboxes
+- Accessible checklist completion progress
+- Checklist updates are written to Markdown source and follow normal autosave/history behavior
+
+Status:
+
+**Completed**
+
 ### Current implementation baseline
 
 - The application is a React and TypeScript single-page app built with Vite and Tailwind CSS.
@@ -284,7 +294,7 @@ Requirements:
 
 Status:
 
-**Planned**
+**Completed**
 
 ## Feature: Image Attachments
 
@@ -476,7 +486,7 @@ This historical order was based on the V1 code: a single `Note` record with stri
 | 8 | Notebooks | High | Medium to high | Requires a notebook store, a migration assigning existing notes to a default notebook, defined delete behavior, and move operations. Implement before shelves so notebooks can be the stable organizational unit beneath them. |
 | 9 | Trash Bin | High | Medium | **Completed in Version 3.** Soft delete, restore, permanent deletion with history cleanup, and backup coverage for trashed notes. |
 | 10 | Markdown Support | Medium | Medium | Decide whether Markdown source replaces plain text or is a compatible rendering layer. Add safe rendering (including safe handling of raw HTML and links), editor/preview controls, and migration behavior without changing existing plain-text notes unexpectedly. |
-| 11 | Checklists | Medium | Medium | Choose between Markdown task syntax and structured checklist data. This decision should follow the Markdown/content-model decision to avoid incompatible parallel formats. |
+| 11 | Checklists | Medium | Medium | **Completed in Version 4.** Uses GFM Markdown task items, accessible interactive checkboxes, and completion progress; changes remain portable Markdown. |
 | 12 | File, image, and audio attachments | High | High | Share a common attachment model and IndexedDB storage strategy where possible. Define file-size/type limits, quota errors, export/import behavior, deletion cleanup, and graceful offline previews before exposing uploads. Add image preview and audio recording/playback as scoped interfaces over that foundation. |
 | 13 | Note History | Medium to high | High | Requires revision retention limits, timestamps, comparison UI, and restore semantics. Build after autosave and the richer content model so revision boundaries are reliable and storage growth is controlled. |
 | 14 | Linked Notes and Backlinks | High | Medium to high | Depends on stable note IDs and explicit link integrity behavior when a linked note is deleted or moved. Start with textual links/backlinks; keep the relationship model independent from graph rendering. |

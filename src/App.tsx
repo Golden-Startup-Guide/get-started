@@ -51,6 +51,11 @@ import type {
 } from './types'
 import './workspace.css'
 import { useDebouncedAutosave } from './features/notes/useDebouncedAutosave'
+import {
+  getChecklistProgress,
+  getChecklistTaskLines,
+  toggleChecklistItem,
+} from './features/notes/checklists'
 
 type View = 'all' | 'favorites' | 'trash' | `notebook:${string}` | `tag:${string}`
 type SaveState = 'saved' | 'unsaved' | 'saving'
@@ -828,6 +833,13 @@ function NoteEditor({
     tag.label.toLocaleLowerCase().includes(tagInput.trim().toLocaleLowerCase()) &&
     !noteTags.some((item) => item.toLocaleLowerCase() === tag.id),
   )
+  const checklistProgress = getChecklistProgress(content)
+  const checklistTaskLines = getChecklistTaskLines(content)
+  let taskInputIndex = 0
+
+  function toggleTask(lineNumber: number) {
+    setContent((current) => toggleChecklistItem(current, lineNumber))
+  }
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
@@ -882,9 +894,33 @@ function NoteEditor({
                 <textarea id="note-content" className="content-input" value={content} onChange={(event) => setContent(event.target.value)} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
               </div>}
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
-                <p className="section-label mb-2">Live preview</p>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="section-label">Live preview</p>
+                  {checklistProgress.total > 0 && <span className="checklist-progress" role="progressbar" aria-label="Checklist progress" aria-valuemin={0} aria-valuemax={checklistProgress.total} aria-valuenow={checklistProgress.completed}>
+                    {checklistProgress.completed} of {checklistProgress.total} complete
+                  </span>}
+                </div>
                 <div className="prose-notes">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || '_Nothing to preview yet._'}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      input: ({ checked, ...props }) => {
+                        const lineNumber = checklistTaskLines[taskInputIndex++]
+                        const line = lineNumber ? content.split(/\r?\n/)[lineNumber - 1] ?? '' : ''
+                        const taskText = line.replace(/^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s*/, '').trim()
+                        return <input
+                          {...props}
+                          type="checkbox"
+                          checked={Boolean(checked)}
+                          disabled={false}
+                          aria-label={taskText ? `Mark task ${taskText} ${checked ? 'incomplete' : 'complete'}` : 'Toggle checklist task'}
+                          onChange={() => lineNumber && toggleTask(lineNumber)}
+                        />
+                      },
+                    }}
+                  >
+                    {content || '_Nothing to preview yet._'}
+                  </ReactMarkdown>
                 </div>
               </article>
             </div>
