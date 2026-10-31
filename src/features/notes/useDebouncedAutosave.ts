@@ -5,6 +5,8 @@ export function useDebouncedAutosave(
   draftKey: string,
   save: () => Promise<boolean>,
   delay = 650,
+  /** Stops the debounce timer only; explicit flushes and page-exit saves still run. */
+  paused = false,
 ) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestSave = useRef(save)
@@ -63,14 +65,14 @@ export function useDebouncedAutosave(
   }, [])
 
   useEffect(() => {
-    if (!dirty) return
+    if (!dirty || paused) return
     clearTimer()
     timer.current = setTimeout(() => {
       timer.current = null
       void saveLatest()
     }, delay)
     return clearTimer
-  }, [clearTimer, delay, dirty, draftKey, saveLatest])
+  }, [clearTimer, delay, dirty, draftKey, paused, saveLatest])
 
   useEffect(
     () => () => {

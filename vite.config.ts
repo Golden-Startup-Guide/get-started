@@ -1,10 +1,38 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// Production only: the dev server injects an inline script (React refresh) that this
+// policy would block. Remote https images are allowed because the preview loads them on
+// request; everything else must come from the app itself.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data: https:",
+  "media-src 'self' blob:",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ')
+
+function contentSecurityPolicyPlugin(): Plugin {
+  return {
+    name: 'my-notes-content-security-policy',
+    apply: 'build',
+    transformIndexHtml: () => [
+      { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy }, injectTo: 'head-prepend' },
+    ],
+  }
+}
 
 export default defineConfig({
   plugins: [
     react(),
+    contentSecurityPolicyPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['my-notes.svg', 'apple-touch-icon.png'],

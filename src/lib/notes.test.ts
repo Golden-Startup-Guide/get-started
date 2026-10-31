@@ -170,6 +170,45 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(0)
   })
 
+  it('restores only title and text, keeping Trash state and organization', async () => {
+    const note: Note = { id: 'restore-scope-note', title: 'Old title', content: 'Old text', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Before'] }
+    await storage.saveNote(note)
+    await storage.saveNote({ ...note, title: 'New title', content: 'New text', notebookId: 'starter-work', tags: ['After'], pinned: true, favorite: true, updatedAt: 2 })
+    await storage.trashNote(note.id)
+    const [revision] = await storage.getNoteHistory(note.id)
+
+    const restored = await storage.restoreHistory(revision.id)
+    const stored = await (await storage.openNotesDatabase()).get('notes', note.id)
+    expect(stored).toEqual(restored)
+    expect(stored).toEqual(expect.objectContaining({
+      title: 'Old title',
+      content: 'Old text',
+      notebookId: 'starter-work',
+      tags: ['After'],
+      pinned: true,
+      favorite: true,
+    }))
+    expect(stored?.deletedAt).toBeDefined()
+    expect((await storage.getNoteHistory(note.id))[0].snapshot.content).toBe('New text')
+    await storage.permanentlyDeleteNote(note.id)
+  })
+
+  it('keeps tag counts correct when content-only saves skip the tag rebuild', async () => {
+    const note: Note = { id: 'tag-count-note', title: 'Tags', content: 'a', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Countable'] }
+    const count = async () => (await storage.getTags()).find((tag) => tag.id === 'countable')?.count ?? 0
+    const before = await count()
+    await storage.saveNote(note)
+    expect(await count()).toBe(before + 1)
+    await storage.saveNote({ ...note, content: 'b', updatedAt: 2 })
+    expect(await count()).toBe(before + 1)
+    await storage.saveNote({ ...note, content: 'c', tags: ['Renamed'], updatedAt: 3 })
+    expect(await count()).toBe(before)
+    expect((await storage.getTags()).find((tag) => tag.id === 'renamed')?.count).toBe(1)
+    await storage.trashNote(note.id)
+    expect((await storage.getTags()).find((tag) => tag.id === 'renamed')).toBeUndefined()
+    await storage.permanentlyDeleteNote(note.id)
+  })
+
   it('keeps one revision per editing burst and caps revisions per note', async () => {
     let now = 1_800_000_000_000
     const clock = vi.spyOn(Date, 'now').mockImplementation(() => now)

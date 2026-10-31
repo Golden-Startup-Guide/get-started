@@ -12,12 +12,21 @@ import type {
   ThemePreference,
 } from '../types'
 import {
-  MAX_ATTACHMENT_SIZE_BYTES,
   MAX_ATTACHMENTS_PER_NOTE,
   MAX_BACKUP_SIZE_BYTES,
   MAX_NOTE_ATTACHMENT_BYTES,
   validateAttachmentDetails,
 } from '../features/notes/attachments'
+import {
+  base64ToArrayBuffer,
+  bytesToBase64,
+  DEFAULT_LIBRARY_ID,
+  DEFAULT_SHELF_ID,
+  validateBackup,
+  type NotesBackup,
+} from './backupFormat'
+
+export type { NotesBackup } from './backupFormat'
 
 interface StoredNoteAttachment extends Omit<NoteAttachment, 'blob'> {
   data: ArrayBuffer
@@ -59,10 +68,62 @@ const starterNotebooks = [
   ['starter-health', 'Health Handbook'],
 ] as const
 
-const DEFAULT_LIBRARY_ID = 'starter-library'
-const DEFAULT_SHELF_ID = 'starter-shelf'
 
-const database = openDB<NotesDatabase>('my-notes', 6, {
+export const DATABASE_VERSION = 6
+
+export type StorageEvent =
+  /** Another tab changed data. An empty noteIds list means anything may have changed. */
+  | { type: 'changed'; noteIds: string[] }
+  /** An older tab is keeping this tab's database upgrade from finishing. */
+  | { type: 'blocked' }
+  /** A newer version of the app opened in another tab; this connection was closed. */
+  | { type: 'version-change' }
+  /** The browser closed the database connection unexpectedly. */
+  | { type: 'terminated' }
+
+const storageListeners = new Set<(event: StorageEvent) => void>()
+
+export function subscribeToStorage(listener: (event: StorageEvent) => void): () => void {
+  storageListeners.add(listener)
+  return () => storageListeners.delete(listener)
+}
+
+function emitStorageEvent(event: StorageEvent) {
+  for (const listener of storageListeners) listener(event)
+}
+
+// Tabs share one database, so each write tells the other tabs which notes it touched.
+// BroadcastChannel never delivers a message back to the tab that sent it.
+const changeChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('my-notes-changes') : undefined
+changeChannel?.addEventListener('message', (event: MessageEvent) => {
+  const data: unknown = event.data
+  if (
+    typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'changed' &&
+    Array.isArray((data as { noteIds?: unknown }).noteIds)
+  ) {
+    emitStorageEvent({
+      type: 'changed',
+      noteIds: (data as { noteIds: unknown[] }).noteIds.filter((id): id is string => typeof id === 'string'),
+    })
+  }
+})
+
+function announceChange(noteIds: string[] = []) {
+  changeChannel?.postMessage({ type: 'changed', noteIds })
+}
+
+const database = openDB<NotesDatabase>('my-notes', DATABASE_VERSION, {
+  blocked() {
+    emitStorageEvent({ type: 'blocked' })
+  },
+  blocking() {
+    // Close so the newer tab can upgrade instead of waiting forever on this one.
+    void database.then((db) => db.close())
+    emitStorageEvent({ type: 'version-change' })
+  },
+  terminated() {
+    emitStorageEvent({ type: 'terminated' })
+  },
   async upgrade(db, oldVersion, _newVersion, transaction) {
     const now = Date.now()
     if (oldVersion < 1) {
@@ -216,6 +277,11 @@ export async function getNotes(): Promise<Note[]> {
   )
 }
 
+export async function getNote(id: string): Promise<Note | undefined> {
+  const db = await database
+  return db.get('notes', id)
+}
+
 export async function getNoteLinks(noteId: string): Promise<{ outgoing: NoteLink[]; backlinks: NoteLink[] }> {
   const db = await database
   const [outgoing, backlinks] = await Promise.all([
@@ -249,11 +315,13 @@ export async function linkNotes(sourceNoteId: string, targetNoteId: string): Pro
   }
   await transaction.objectStore('noteLinks').put({ sourceNoteId, targetNoteId })
   await transaction.done
+  announceChange([sourceNoteId, targetNoteId])
 }
 
 export async function unlinkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
   const db = await database
   await db.delete('noteLinks', [sourceNoteId, targetNoteId])
+  announceChange([sourceNoteId, targetNoteId])
 }
 
 export async function getTrash(): Promise<Note[]> {
@@ -294,8 +362,20 @@ export async function saveNote(input: Note, options: { forceHistory?: boolean } 
     }
   }
   await transaction.objectStore('notes').put(note)
-  await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
+  // Rebuilding tag counts reads every note, so skip it for the common autosave case where
+  // only the title or content changed.
+  if (!existing || !sameTagContribution(existing, note)) {
+    await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
+  }
   await transaction.done
+  announceChange([note.id])
+}
+
+function sameTagContribution(before: Note, after: Note): boolean {
+  if ((before.deletedAt === undefined) !== (after.deletedAt === undefined)) return false
+  const beforeTags = cleanTags(before.tags ?? [])
+  const afterTags = cleanTags(after.tags ?? [])
+  return beforeTags.length === afterTags.length && beforeTags.every((tag, index) => tag === afterTags[index])
 }
 
 export async function getNoteAttachments(noteId: string): Promise<NoteAttachment[]> {
@@ -361,6 +441,7 @@ export async function addNoteAttachment(
     }
     throw failure
   }
+  announceChange([noteId])
   return { ...attachment, blob: new Blob([data], { type: attachment.type }) }
 }
 
@@ -378,6 +459,7 @@ export async function deleteNoteAttachment(id: string): Promise<void> {
   const note = await noteStore.get(attachment.noteId)
   if (note) await noteStore.put({ ...note, updatedAt: Date.now() })
   await transaction.done
+  announceChange([attachment.noteId])
 }
 
 export async function trashNote(id: string): Promise<void> {
@@ -396,6 +478,7 @@ export async function trashNote(id: string): Promise<void> {
   await store.put({ ...note, deletedAt: Date.now() })
   await refreshTags(store, transaction.objectStore('tags'))
   await transaction.done
+  announceChange([id])
 }
 
 export async function restoreNote(id: string): Promise<void> {
@@ -415,6 +498,7 @@ export async function restoreNote(id: string): Promise<void> {
   await store.put(restored)
   await refreshTags(store, transaction.objectStore('tags'))
   await transaction.done
+  announceChange([id])
 }
 
 export async function permanentlyDeleteNote(id: string): Promise<void> {
@@ -447,6 +531,7 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   }
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
+  announceChange([id])
 }
 
 export async function deleteNote(id: string): Promise<void> {
@@ -491,6 +576,7 @@ export async function createLibrary(name: string): Promise<Library> {
     updatedAt: now,
   })
   await transaction.done
+  announceChange()
   return library
 }
 
@@ -512,6 +598,7 @@ export async function renameLibrary(id: string, name: string): Promise<void> {
   }
   await store.put({ ...library, name: cleaned, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function createShelf(libraryId: string, name: string): Promise<Shelf> {
@@ -532,6 +619,7 @@ export async function createShelf(libraryId: string, name: string): Promise<Shel
   const shelf = { id: crypto.randomUUID(), libraryId, name: cleaned, createdAt: now, updatedAt: now }
   await transaction.objectStore('shelves').add(shelf)
   await transaction.done
+  announceChange()
   return shelf
 }
 
@@ -553,6 +641,7 @@ export async function renameShelf(id: string, name: string): Promise<void> {
   }
   await store.put({ ...shelf, name: cleaned, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function deleteShelf(id: string, destinationId: string): Promise<void> {
@@ -575,6 +664,7 @@ export async function deleteShelf(id: string, destinationId: string): Promise<vo
   }
   await shelves.delete(id)
   await transaction.done
+  announceChange()
 }
 
 export async function deleteLibrary(id: string, destinationId: string): Promise<void> {
@@ -612,6 +702,7 @@ export async function deleteLibrary(id: string, destinationId: string): Promise<
   }
   await libraries.delete(id)
   await transaction.done
+  announceChange()
 }
 
 export async function moveNotebook(notebookId: string, shelfId: string): Promise<void> {
@@ -629,6 +720,7 @@ export async function moveNotebook(notebookId: string, shelfId: string): Promise
   }
   await notebooks.put({ ...notebook, shelfId, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function createNotebook(name: string, shelfId?: string): Promise<Notebook> {
@@ -651,6 +743,7 @@ export async function createNotebook(name: string, shelfId?: string): Promise<No
   const notebook = { id: crypto.randomUUID(), name: cleaned, shelfId: targetShelfId, createdAt: now, updatedAt: now }
   await notebooksStore.add(notebook)
   await transaction.done
+  announceChange()
   return notebook
 }
 
@@ -675,6 +768,7 @@ export async function renameNotebook(id: string, name: string): Promise<void> {
   }
   await transaction.store.put({ ...notebook, name: cleaned, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function deleteNotebook(id: string, destinationId: string): Promise<void> {
@@ -710,6 +804,7 @@ export async function deleteNotebook(id: string, destinationId: string): Promise
   }
   await notebooks.delete(id)
   await transaction.done
+  announceChange(notes.map((note) => note.id))
 }
 
 export async function moveNote(noteId: string, notebookId: string): Promise<void> {
@@ -727,6 +822,7 @@ export async function moveNote(noteId: string, notebookId: string): Promise<void
   }
   await notes.put({ ...note, notebookId, updatedAt: Date.now() })
   await transaction.done
+  announceChange([noteId])
 }
 
 export async function getTags(): Promise<Tag[]> {
@@ -742,6 +838,7 @@ export async function getSettings(): Promise<AppSettings> {
 export async function saveTheme(theme: ThemePreference): Promise<void> {
   const db = await database
   await db.put('settings', { id: 'preferences', theme })
+  announceChange()
 }
 
 export async function setNoteFlag(
@@ -762,82 +859,17 @@ export async function getNoteHistory(noteId: string): Promise<NoteHistoryEntry[]
   )
 }
 
-export async function restoreHistory(revisionId: string): Promise<void> {
+// Restores only the title and text; notebook, tags, pin, favorite, and Trash state stay
+// as they are now, since history records content changes rather than organization.
+export async function restoreHistory(revisionId: string): Promise<Note> {
   const db = await database
   const revision = await db.get('history', revisionId)
   if (!revision) throw new Error('History revision not found.')
   const current = await db.get('notes', revision.noteId)
   if (!current) throw new Error('The note for this revision no longer exists.')
-  await saveNote({
-    ...revision.snapshot,
-    id: current.id,
-    createdAt: current.createdAt,
-    updatedAt: Date.now(),
-    ...(current.deletedAt !== undefined ? { deletedAt: current.deletedAt } : {}),
-  }, { forceHistory: true })
-}
-
-interface LegacyNotesBackup {
-  format: 'my-notes-backup'
-  version: 1
-  exportedAt: number
-  notes: Note[]
-  notebooks: Notebook[]
-  tags: Tag[]
-  settings: AppSettings
-  history: NoteHistoryEntry[]
-}
-
-interface VersionTwoNotesBackup extends Omit<LegacyNotesBackup, 'version'> {
-  version: 2
-  attachments: AttachmentBackup[]
-}
-
-interface VersionThreeNotesBackup extends Omit<VersionTwoNotesBackup, 'version'> {
-  version: 3
-  links: NoteLink[]
-}
-
-interface AttachmentBackup extends Omit<NoteAttachment, 'blob'> {
-  data: string
-}
-
-export interface NotesBackup {
-  format: 'my-notes-backup'
-  version: 4
-  exportedAt: number
-  notes: Note[]
-  notebooks: Notebook[]
-  libraries: Library[]
-  shelves: Shelf[]
-  tags: Tag[]
-  settings: AppSettings
-  history: NoteHistoryEntry[]
-  attachments: AttachmentBackup[]
-  links: NoteLink[]
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ''
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
-  }
-  return btoa(binary)
-}
-
-function base64ByteLength(value: string): number | undefined {
-  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
-    return undefined
-  }
-  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0
-  return (value.length / 4) * 3 - padding
-}
-
-function base64ToArrayBuffer(value: string): ArrayBuffer {
-  const binary = atob(value)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
-  return bytes.buffer
+  const restored = { ...current, title: revision.snapshot.title, content: revision.snapshot.content, updatedAt: Date.now() }
+  await saveNote(restored, { forceHistory: true })
+  return normalizeNote(restored)
 }
 
 function readBlob(blob: Blob): Promise<ArrayBuffer> {
@@ -918,247 +950,6 @@ export async function exportBackup(options: BackupOptions = {}): Promise<NotesBa
 /** Builds and serializes a backup once, ready to download. */
 export async function exportBackupFile(options: BackupOptions = {}): Promise<Blob> {
   return new Blob([serializeBackup(await buildBackup(options))], { type: 'application/json' })
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function validNote(value: unknown): value is Note {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' && value.id.length > 0 &&
-    typeof value.title === 'string' &&
-    typeof value.content === 'string' &&
-    Number.isFinite(value.createdAt) &&
-    Number.isFinite(value.updatedAt) &&
-    (value.notebookId === undefined || typeof value.notebookId === 'string') &&
-    (value.tags === undefined ||
-      (Array.isArray(value.tags) && value.tags.every((tag) => typeof tag === 'string'))) &&
-    (value.pinned === undefined || typeof value.pinned === 'boolean') &&
-    (value.favorite === undefined || typeof value.favorite === 'boolean') &&
-    (value.deletedAt === undefined || Number.isFinite(value.deletedAt))
-  )
-}
-
-function hasUniqueIds(values: unknown[], key = 'id'): boolean {
-  const ids = values.map((value) => (isRecord(value) ? value[key] : undefined))
-  return ids.every((id) => typeof id === 'string' && id.length > 0) && new Set(ids).size === ids.length
-}
-
-function validNotebook(value: unknown): value is Notebook {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    value.id.length > 0 &&
-    typeof value.name === 'string' &&
-    value.name.trim().length > 0 &&
-    Number.isFinite(value.createdAt) &&
-    Number.isFinite(value.updatedAt) &&
-    (value.shelfId === undefined || (typeof value.shelfId === 'string' && value.shelfId.length > 0))
-  )
-}
-
-function validLibrary(value: unknown): value is Library {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    value.id.length > 0 &&
-    typeof value.name === 'string' &&
-    value.name.trim().length > 0 &&
-    Number.isFinite(value.createdAt) &&
-    Number.isFinite(value.updatedAt)
-  )
-}
-
-function validShelf(value: unknown): value is Shelf {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    value.id.length > 0 &&
-    typeof value.libraryId === 'string' &&
-    value.libraryId.length > 0 &&
-    typeof value.name === 'string' &&
-    value.name.trim().length > 0 &&
-    Number.isFinite(value.createdAt) &&
-    Number.isFinite(value.updatedAt)
-  )
-}
-
-function validTag(value: unknown): value is Tag {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    value.id.length > 0 &&
-    typeof value.label === 'string' &&
-    value.label.trim().length > 0 &&
-    Number.isFinite(value.count) &&
-    Number(value.count) >= 0
-  )
-}
-
-function validSettings(value: unknown): value is AppSettings {
-  return (
-    isRecord(value) &&
-    value.id === 'preferences' &&
-    ['light', 'dark', 'system'].includes(String(value.theme))
-  )
-}
-
-function validHistory(value: unknown): value is NoteHistoryEntry {
-  return (
-    isRecord(value) &&
-    typeof value.noteId === 'string' &&
-    Number.isFinite(value.savedAt) &&
-    validNote(value.snapshot) &&
-    value.snapshot.id === value.noteId
-  )
-}
-
-function validAttachmentBackup(value: unknown): value is AttachmentBackup {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== 'string' ||
-    !value.id ||
-    typeof value.noteId !== 'string' ||
-    !value.noteId ||
-    typeof value.name !== 'string' ||
-    !value.name.trim() ||
-    value.name.length > 255 ||
-    typeof value.type !== 'string' ||
-    value.type.length > 255 ||
-    !Number.isSafeInteger(value.size) ||
-    Number(value.size) < 0 ||
-    Number(value.size) > MAX_ATTACHMENT_SIZE_BYTES ||
-    !Number.isFinite(value.createdAt) ||
-    typeof value.data !== 'string'
-  ) {
-    return false
-  }
-  return base64ByteLength(value.data) === value.size
-}
-
-function validNoteLink(value: unknown): value is NoteLink {
-  return (
-    isRecord(value) &&
-    typeof value.sourceNoteId === 'string' &&
-    value.sourceNoteId.length > 0 &&
-    typeof value.targetNoteId === 'string' &&
-    value.targetNoteId.length > 0 &&
-    value.sourceNoteId !== value.targetNoteId
-  )
-}
-
-function isNotesBackup(
-  value: unknown,
-): value is NotesBackup | VersionThreeNotesBackup | VersionTwoNotesBackup | LegacyNotesBackup {
-  if (
-    !isRecord(value) ||
-    value.format !== 'my-notes-backup' ||
-    (value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4) ||
-    !Number.isFinite(value.exportedAt) ||
-    !Array.isArray(value.notes) ||
-    !Array.isArray(value.notebooks) ||
-    !Array.isArray(value.tags) ||
-    !Array.isArray(value.history) ||
-    (value.version >= 2 && !Array.isArray(value.attachments)) ||
-    (value.version >= 3 && !Array.isArray(value.links)) ||
-    (value.version === 4 && (!Array.isArray(value.libraries) || !Array.isArray(value.shelves))) ||
-    !validSettings(value.settings)
-  ) {
-    return false
-  }
-  const notebooks: unknown[] = value.notebooks
-  const notes: unknown[] = value.notes
-  const tags: unknown[] = value.tags
-  const history: unknown[] = value.history
-  const attachments: unknown[] =
-    value.version >= 2 && Array.isArray(value.attachments) ? value.attachments : []
-  const links: unknown[] = value.version >= 3 && Array.isArray(value.links) ? value.links : []
-  const libraries: unknown[] = value.version === 4 && Array.isArray(value.libraries) ? value.libraries : []
-  const shelves: unknown[] = value.version === 4 && Array.isArray(value.shelves) ? value.shelves : []
-  if (
-    !hasUniqueIds(notebooks) ||
-    !notebooks.every(validNotebook) ||
-    !hasUniqueIds(notes) ||
-    !notes.every(validNote) ||
-    !hasUniqueIds(tags) ||
-    !tags.every(validTag) ||
-    !hasUniqueIds(history) ||
-    !history.every(validHistory) ||
-    !hasUniqueIds(attachments) ||
-    !attachments.every(validAttachmentBackup) ||
-    !hasUniqueIds(libraries) ||
-    !libraries.every(validLibrary) ||
-    !hasUniqueIds(shelves) ||
-    !shelves.every(validShelf) ||
-    !links.every(validNoteLink) ||
-    new Set(links.map((link) =>
-      isRecord(link) ? JSON.stringify([link.sourceNoteId, link.targetNoteId]) : '',
-    )).size !== links.length
-  ) {
-    return false
-  }
-  const validatedNotebooks = notebooks.filter(validNotebook)
-  const validatedNotes = notes.filter(validNote)
-  const validatedAttachments = attachments.filter(validAttachmentBackup)
-  const validatedLibraries = libraries.filter(validLibrary)
-  const validatedShelves = shelves.filter(validShelf)
-  const notebookNames = validatedNotebooks.map((item) => item.name.toLocaleLowerCase())
-  const noteIds = new Set(validatedNotes.map((item) => item.id))
-  const attachmentCounts = new Map<string, { count: number; bytes: number }>()
-  const libraryIds = new Set(validatedLibraries.map((item) => item.id))
-  const shelfIds = new Set(validatedShelves.map((item) => item.id))
-  const shelfNames = validatedShelves.map((item) => `${item.libraryId}\u0000${item.name.toLocaleLowerCase()}`)
-  const libraryNames = validatedLibraries.map((item) => item.name.toLocaleLowerCase())
-  for (const attachment of validatedAttachments) {
-    if (!noteIds.has(attachment.noteId)) return false
-    const current = attachmentCounts.get(attachment.noteId) ?? { count: 0, bytes: 0 }
-    current.count += 1
-    current.bytes += attachment.size
-    if (current.count > MAX_ATTACHMENTS_PER_NOTE || current.bytes > MAX_NOTE_ATTACHMENT_BYTES) {
-      return false
-    }
-    attachmentCounts.set(attachment.noteId, current)
-  }
-  if (
-    new Set(notebookNames).size !== notebookNames.length ||
-    new Set(libraryNames).size !== libraryNames.length ||
-    new Set(shelfNames).size !== shelfNames.length ||
-    validatedShelves.some((item) => !libraryIds.has(item.libraryId)) ||
-    (value.version === 4 && validatedNotebooks.some((item) => !item.shelfId || !shelfIds.has(item.shelfId))) ||
-    (value.version === 4 && validatedShelves.length === 0)
-  ) {
-    return false
-  }
-  return true
-}
-
-function validateBackup(value: unknown): NotesBackup {
-  if (!isNotesBackup(value)) throw new Error('This backup contains invalid, duplicate, or unsupported records.')
-  const defaultLibrary = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: value.exportedAt, updatedAt: value.exportedAt }
-  const defaultShelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: value.exportedAt, updatedAt: value.exportedAt }
-  const libraries = value.version === 4 ? value.libraries : [defaultLibrary]
-  const shelves = value.version === 4 ? value.shelves : [defaultShelf]
-  const shelfIdByNotebook = new Map(
-    value.notebooks.map((notebook) => [
-      notebook.id,
-      value.version === 4 ? notebook.shelfId ?? DEFAULT_SHELF_ID : DEFAULT_SHELF_ID,
-    ]),
-  )
-  const normalizedNotebooks = value.notebooks.map((notebook) => ({
-    ...notebook,
-    shelfId: shelfIdByNotebook.get(notebook.id) ?? DEFAULT_SHELF_ID,
-  }))
-  return {
-    ...value,
-    version: 4,
-    libraries,
-    shelves: shelves.length ? shelves : [defaultShelf],
-    notebooks: normalizedNotebooks,
-    attachments: value.version === 1 ? [] : value.attachments,
-    links: value.version === 1 || value.version === 2 ? [] : value.links,
-  }
 }
 
 export interface ImportSummary {
@@ -1350,6 +1141,7 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   if (!hasLocalSettings) await settingsStore.put(backup.settings)
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
+  announceChange()
   return {
     notesAdded,
     notesSkipped,
