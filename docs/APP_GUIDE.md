@@ -193,6 +193,8 @@ Import is a **merge**, not a replace operation:
   records do not replace local records.
 - Links are restored when both endpoint notes exist after the merge; invalid
   endpoints and already-existing relationships are skipped.
+- Notes or history entries that reference a notebook missing from the backup
+  are placed in an existing notebook instead of rejecting the whole file.
 - Older supported backup formats remain importable.
 - Files larger than 40 MiB are rejected.
 

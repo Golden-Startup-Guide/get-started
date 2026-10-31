@@ -168,6 +168,23 @@ function normalizeNote(note: Note): Note {
   }
 }
 
+// A note must always reference an existing notebook; otherwise its backups fail validation.
+// Falls back to the note's stored notebook, then to the oldest notebook.
+async function resolveNotebookId<
+  StoreNames extends ArrayLike<
+    'notes' | 'notebooks' | 'libraries' | 'shelves' | 'settings' | 'tags' | 'history' | 'attachments' | 'noteLinks'
+  >,
+>(
+  notebooksStore: IDBPObjectStore<NotesDatabase, StoreNames, 'notebooks', 'readwrite'>,
+  ...candidates: Array<string | undefined>
+): Promise<string | undefined> {
+  for (const candidate of candidates) {
+    if (candidate && (await notebooksStore.get(candidate))) return candidate
+  }
+  const notebooks = await notebooksStore.getAll()
+  return notebooks.sort((a, b) => a.createdAt - b.createdAt || a.name.localeCompare(b.name))[0]?.id
+}
+
 async function refreshTags<
   StoreNames extends ArrayLike<
     'notes' | 'notebooks' | 'libraries' | 'shelves' | 'settings' | 'tags' | 'history' | 'attachments' | 'noteLinks'
@@ -247,10 +264,19 @@ export async function getTrash(): Promise<Note[]> {
 }
 
 export async function saveNote(input: Note): Promise<void> {
-  const note = normalizeNote(input)
   const db = await database
-  const transaction = db.transaction(['notes', 'tags', 'history'], 'readwrite')
-  const existing = await transaction.objectStore('notes').get(note.id)
+  const transaction = db.transaction(['notes', 'notebooks', 'tags', 'history'], 'readwrite')
+  const existing = await transaction.objectStore('notes').get(input.id)
+  const notebookId = await resolveNotebookId(
+    transaction.objectStore('notebooks'),
+    input.notebookId,
+    existing?.notebookId,
+  )
+  if (!notebookId) {
+    await transaction.done
+    throw new Error('Create a notebook before saving notes.')
+  }
+  const note = normalizeNote({ ...input, notebookId })
   if (existing && (existing.title !== note.title || existing.content !== note.content)) {
     await transaction.objectStore('history').put({
       id: crypto.randomUUID(),
@@ -659,18 +685,20 @@ export async function deleteNotebook(id: string, destinationId: string): Promise
   }
   const noteStore = transaction.objectStore('notes')
   const notes = await noteStore.index('by-notebook').getAll(id)
-  const historyStore = transaction.objectStore('history')
   for (const note of notes) {
     await noteStore.put({ ...note, notebookId: destinationId, updatedAt: Date.now() })
-    const revisions = await historyStore.index('by-note').getAll(note.id)
-    for (const revision of revisions) {
-      if (revision.snapshot.notebookId === id) {
-        await historyStore.put({
-          ...revision,
-          snapshot: { ...revision.snapshot, notebookId: destinationId },
-        })
-      }
+  }
+  // Snapshots of notes that have since moved elsewhere can still reference this notebook.
+  const historyStore = transaction.objectStore('history')
+  let cursor = await historyStore.openCursor()
+  while (cursor) {
+    if (cursor.value.snapshot.notebookId === id) {
+      await cursor.update({
+        ...cursor.value,
+        snapshot: { ...cursor.value.snapshot, notebookId: destinationId },
+      })
     }
+    cursor = await cursor.continue()
   }
   await notebooks.delete(id)
   await transaction.done
@@ -1039,11 +1067,9 @@ function isNotesBackup(
   }
   const validatedNotebooks = notebooks.filter(validNotebook)
   const validatedNotes = notes.filter(validNote)
-  const validatedHistory = history.filter(validHistory)
   const validatedAttachments = attachments.filter(validAttachmentBackup)
   const validatedLibraries = libraries.filter(validLibrary)
   const validatedShelves = shelves.filter(validShelf)
-  const notebookIds = new Set(validatedNotebooks.map((item) => item.id))
   const notebookNames = validatedNotebooks.map((item) => item.name.toLocaleLowerCase())
   const noteIds = new Set(validatedNotes.map((item) => item.id))
   const attachmentCounts = new Map<string, { count: number; bytes: number }>()
@@ -1067,16 +1093,7 @@ function isNotesBackup(
     new Set(shelfNames).size !== shelfNames.length ||
     validatedShelves.some((item) => !libraryIds.has(item.libraryId)) ||
     (value.version === 4 && validatedNotebooks.some((item) => !item.shelfId || !shelfIds.has(item.shelfId))) ||
-    (value.version === 4 && validatedShelves.length === 0) ||
-    validatedNotes.some(
-      (item) => item.notebookId && !notebookIds.has(item.notebookId),
-    ) ||
-    validatedHistory.some((entry) => {
-      return (
-        !validatedNotes.some((note) => note.id === entry.noteId) ||
-        (entry.snapshot.notebookId !== undefined && !notebookIds.has(entry.snapshot.notebookId))
-      )
-    })
+    (value.version === 4 && validatedShelves.length === 0)
   ) {
     return false
   }
@@ -1229,23 +1246,29 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
 
   let notesAdded = 0
   let notesSkipped = 0
+  // Older exports could reference notebooks that no longer existed. Those records are
+  // reassigned instead of rejecting the whole backup.
+  const fallbackNotebookId =
+    notebookIdMap.get('starter-personal') ??
+    (notebookById.has('starter-personal') ? 'starter-personal' : undefined) ??
+    currentNotebooks[0]?.id
+  if (!fallbackNotebookId) {
+    transaction.abort()
+    throw new Error('A notebook is not available for imported notes.')
+  }
   const acceptedNoteIds = new Set<string>()
+  const importedNotebookByNote = new Map<string, string>()
   for (const imported of backup.notes) {
     if (noteIds.has(imported.id)) {
       notesSkipped += 1
       continue
     }
-    const notebookId = imported.notebookId
-      ? notebookIdMap.get(imported.notebookId)
-      : notebookIdMap.get('starter-personal') ?? currentNotebooks[0]?.id
-    if (!notebookId) {
-      transaction.abort()
-      throw new Error('A backup note refers to a notebook that could not be restored.')
-    }
+    const notebookId = notebookIdMap.get(imported.notebookId ?? '') ?? fallbackNotebookId
     const note = normalizeNote({ ...imported, notebookId })
     await noteStore.put(note)
     noteIds.add(note.id)
     acceptedNoteIds.add(note.id)
+    importedNotebookByNote.set(note.id, notebookId)
     notesAdded += 1
   }
 
@@ -1253,16 +1276,10 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   for (const imported of backup.history) {
     if (!acceptedNoteIds.has(imported.noteId)) continue
     const snapshot = imported.snapshot
-    const originalNotebookId =
-      snapshot.notebookId ?? backup.notes.find((note) => note.id === imported.noteId)?.notebookId
-    const snapshotNotebookId = originalNotebookId
-      ? notebookIdMap.get(originalNotebookId) ??
-        ((await notebookStore.get(originalNotebookId)) ? originalNotebookId : undefined)
-      : notebookIdMap.get('starter-personal') ?? currentNotebooks[0]?.id
-    if (!snapshotNotebookId) {
-      transaction.abort()
-      throw new Error('A history entry refers to a notebook that could not be restored.')
-    }
+    const snapshotNotebookId =
+      notebookIdMap.get(snapshot.notebookId ?? '') ??
+      importedNotebookByNote.get(imported.noteId) ??
+      fallbackNotebookId
     await historyStore.put({
       ...imported,
       id: (await historyStore.get(imported.id)) ? crypto.randomUUID() : imported.id,

@@ -9,7 +9,7 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
 
 | # | Severity | Finding |
 |---|----------|---------|
-| 1 | High | Backups can become impossible to restore (reproduced) |
+| 1 | High | Backups can become impossible to restore (reproduced) - **Fixed** |
 | 2 | High | Note history grows without limit |
 | 3 | High | Export fails above 40 MiB while storage is unlimited |
 | 4 | High | Autosave cost grows with total data size |
@@ -34,6 +34,8 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
   - "New note" falls back to the hardcoded IDs `'starter-library'` and `'starter-personal'` (`src/App.tsx:427-438`), and `saveNote` never checks that the notebook exists.
 
 **Recommendation:** update every history snapshot that references a deleted notebook; validate `notebookId` in `saveNote`; make import remap or skip invalid history entries instead of rejecting the whole file.
+
+**Status: Fixed.** `deleteNotebook` now updates every history snapshot that references the deleted notebook; `saveNote` always stores an existing notebook; "New note" and the editor no longer fall back to a missing notebook; and import reassigns notes and history with missing notebooks instead of rejecting the file, so backups exported before the fix also restore.
 
 ### 2. Note history grows without limit
 
