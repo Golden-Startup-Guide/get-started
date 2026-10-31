@@ -37,12 +37,63 @@ html[data-theme='dark'] .workspace {
   position: sticky;
   top: 0;
   align-self: flex-start;
+  display: flex;
+  width: 18rem;
+  flex: 0 0 18rem;
   height: 100vh;
   height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
   background: var(--canvas);
   border-color: var(--border);
+}
+
+.workspace-sidebar[data-collapsed='true'] {
+  display: none;
+}
+
+.navigation-close {
+  display: none;
+}
+
+.navigation-backdrop {
+  display: none;
+}
+
+.workspace-breadcrumb ol,
+.workspace-breadcrumb li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.workspace-breadcrumb ol {
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.workspace-breadcrumb button {
+  border-radius: 0.25rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.workspace-breadcrumb button:hover {
+  color: var(--text);
+}
+
+.workspace-breadcrumb button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tree-disclosure svg {
+  transition: transform 120ms ease;
+}
+
+.tree-disclosure[aria-expanded='false'] svg {
+  transform: rotate(-90deg);
 }
 
 .library-tree-notebook {
@@ -706,6 +757,59 @@ html[data-theme='dark'] .workspace .primary-button {
     bottom: 0;
     background: var(--surface);
     padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .workspace-sidebar,
+  .workspace-sidebar[data-collapsed='true'] {
+    position: fixed;
+    display: flex;
+    z-index: 60;
+    inset: 0 auto 0 0;
+    width: min(88vw, 340px);
+    max-width: calc(100vw - 3rem);
+    height: 100vh;
+    height: 100dvh;
+    transform: translateX(-105%);
+    visibility: hidden;
+    pointer-events: none;
+    box-shadow: 12px 0 36px rgb(0 0 0 / 18%);
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    transition: transform 180ms ease, visibility 180ms ease;
+  }
+
+  .workspace-sidebar[data-open='true'] {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .navigation-close {
+    display: inline-grid;
+    flex: 0 0 auto;
+  }
+
+  .navigation-backdrop {
+    position: fixed;
+    z-index: 50;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgb(18 19 17 / 55%);
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 420px) {
+  .new-note-label {
+    display: none;
+  }
+
+  .workspace-breadcrumb ol {
+    font-size: 0.68rem;
   }
 }
 

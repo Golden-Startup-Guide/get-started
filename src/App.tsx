@@ -5,6 +5,7 @@ import {
   Archive,
   ArrowLeft,
   Check,
+  ChevronDown,
   Clock3,
   Download,
   FileText,
@@ -15,6 +16,9 @@ import {
   Mic,
   Moon,
   Network,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Paperclip,
   Pin,
   Plus,
@@ -177,6 +181,13 @@ function App() {
   const [links, setLinks] = useState<NoteLink[]>([])
   const [settings, setSettings] = useState<AppSettings>({ id: 'preferences', theme: 'system' })
   const [view, setView] = useState<View>('all')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [navigationOpen, setNavigationOpen] = useState(false)
+  const [isCompactNavigation, setIsCompactNavigation] = useState(
+    () => window.matchMedia?.('(max-width: 1023px)').matches ?? false,
+  )
+  const [collapsedLibraries, setCollapsedLibraries] = useState<string[]>([])
+  const [collapsedShelves, setCollapsedShelves] = useState<string[]>([])
   const [query, setQuery] = useState('')
   const [activeNote, setActiveNote] = useState<Note | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -192,6 +203,9 @@ function App() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [storage, setStorage] = useState({ notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, attachments: 0, attachmentBytes: 0, estimatedBytes: 0 })
   const newNoteRef = useRef<HTMLButtonElement>(null)
+  const navigationToggleRef = useRef<HTMLButtonElement>(null)
+  const navigationCloseRef = useRef<HTMLButtonElement>(null)
+  const pageHeadingRef = useRef<HTMLHeadingElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const focusReturnRef = useRef<HTMLElement | null>(null)
   const settingsFocusReturnRef = useRef<HTMLElement | null>(null)
@@ -245,6 +259,29 @@ function App() {
     media.addEventListener?.('change', update)
     return () => media.removeEventListener?.('change', update)
   }, [settings.theme])
+
+  useEffect(() => {
+    const media = window.matchMedia?.('(max-width: 1023px)')
+    if (!media) return
+    const update = () => {
+      setIsCompactNavigation(media.matches)
+      if (!media.matches) setNavigationOpen(false)
+    }
+    update()
+    media.addEventListener?.('change', update)
+    return () => media.removeEventListener?.('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (!navigationOpen || !isCompactNavigation) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    requestAnimationFrame(() => navigationCloseRef.current?.focus())
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isCompactNavigation, navigationOpen])
+
   const theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
 
   useEffect(() => {
@@ -296,6 +333,76 @@ function App() {
   const activeLibrary = view.startsWith('library:')
     ? libraries.find((library) => library.id === view.slice(8))
     : undefined
+  const activeShelf = view.startsWith('shelf:')
+    ? shelves.find((shelf) => shelf.id === view.slice(6))
+    : undefined
+  const activeNotebook = view.startsWith('notebook:')
+    ? notebooks.find((notebook) => notebook.id === view.slice(9))
+    : undefined
+  const activeNotebookShelf = activeNotebook
+    ? shelves.find((shelf) => shelf.id === activeNotebook.shelfId)
+    : undefined
+  const breadcrumbItems: Array<{ label: string; view: View }> = activeLibrary
+    ? [{ label: 'Knowledge Library', view: 'all' }]
+    : activeShelf
+      ? [
+          { label: 'Knowledge Library', view: 'all' },
+          {
+            label: libraries.find((library) => library.id === activeShelf.libraryId)?.name ?? 'Library',
+            view: `library:${activeShelf.libraryId}`,
+          },
+        ]
+      : activeNotebook
+        ? [
+            { label: 'Knowledge Library', view: 'all' },
+            ...(activeNotebookShelf
+              ? [
+                  {
+                    label: libraries.find((library) => library.id === activeNotebookShelf.libraryId)?.name ?? 'Library',
+                    view: `library:${activeNotebookShelf.libraryId}` as View,
+                  },
+                  { label: activeNotebookShelf.name, view: `shelf:${activeNotebookShelf.id}` as View },
+                ]
+              : []),
+          ]
+        : []
+
+  function closeNavigation() {
+    setNavigationOpen(false)
+    requestAnimationFrame(() => navigationToggleRef.current?.focus())
+  }
+
+  function navigateToView(nextView: View) {
+    setView(nextView)
+    if (isCompactNavigation) {
+      setNavigationOpen(false)
+      requestAnimationFrame(() => pageHeadingRef.current?.focus())
+    }
+  }
+
+  function toggleNavigation() {
+    if (isCompactNavigation) {
+      setNavigationOpen((current) => !current)
+      return
+    }
+    setSidebarCollapsed((current) => !current)
+  }
+
+  function toggleLibraryExpanded(libraryId: string) {
+    setCollapsedLibraries((current) =>
+      current.includes(libraryId)
+        ? current.filter((id) => id !== libraryId)
+        : [...current, libraryId],
+    )
+  }
+
+  function toggleShelfExpanded(shelfId: string) {
+    setCollapsedShelves((current) =>
+      current.includes(shelfId)
+        ? current.filter((id) => id !== shelfId)
+        : [...current, shelfId],
+    )
+  }
 
   async function handleSave(note: Note) {
     await saveNote(note)
@@ -310,7 +417,12 @@ function App() {
   }
 
   function openNewNote() {
-    focusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    focusReturnRef.current = isCompactNavigation && navigationOpen
+      ? navigationToggleRef.current
+      : document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    if (isCompactNavigation && navigationOpen) setNavigationOpen(false)
     const activeLibraryId = view.startsWith('shelf:')
       ? shelves.find((shelf) => shelf.id === view.slice(6))?.libraryId ?? 'starter-library'
       : view.startsWith('library:')
@@ -354,7 +466,12 @@ function App() {
   }
 
   function openSettings() {
-    settingsFocusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    settingsFocusReturnRef.current = isCompactNavigation && navigationOpen
+      ? navigationToggleRef.current
+      : document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    if (isCompactNavigation && navigationOpen) setNavigationOpen(false)
     setShowSettings(true)
   }
 
@@ -394,7 +511,7 @@ function App() {
           ?? shelves.find((shelf) => shelf.libraryId === (view.startsWith('library:') ? view.slice(8) : 'starter-library'))?.id
       const created = await createNotebook(notebookName, currentShelfId)
       setNotebookName('')
-      setView(`notebook:${created.id}`)
+      navigateToView(`notebook:${created.id}`)
       await refresh()
       setError(null)
     } catch (reason) {
@@ -442,7 +559,7 @@ function App() {
     try {
       const created = await createLibrary(libraryName)
       setLibraryName('')
-      setView(`library:${created.id}`)
+      navigateToView(`library:${created.id}`)
       await refresh()
       setError(null)
     } catch (reason) {
@@ -455,7 +572,7 @@ function App() {
     try {
       const created = await createShelf(library.id, shelfNames[library.id] ?? '')
       setShelfNames((current) => ({ ...current, [library.id]: '' }))
-      setView(`shelf:${created.id}`)
+      navigateToView(`shelf:${created.id}`)
       await refresh()
       setError(null)
     } catch (reason) {
@@ -600,23 +717,46 @@ function App() {
   }
 
   return (
-    <div className="workspace" data-theme={theme}>
+    <div className="workspace" data-theme={theme} data-navigation-open={navigationOpen && isCompactNavigation}>
+      {isCompactNavigation && navigationOpen && (
+        <button className="navigation-backdrop" onClick={closeNavigation} aria-label="Close navigation" tabIndex={-1} />
+      )}
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
-        <aside className="workspace-sidebar hidden w-72 shrink-0 flex-col border-r p-5 md:flex">
-          <a href="/" className="mb-8 flex items-center gap-3 px-2 text-lg font-semibold" aria-label="My Notes home">
+        <aside
+          id="workspace-navigation"
+          className="workspace-sidebar w-72 shrink-0 flex-col border-r p-5"
+          data-collapsed={sidebarCollapsed && !isCompactNavigation}
+          data-open={navigationOpen}
+          aria-hidden={isCompactNavigation && !navigationOpen}
+          role={isCompactNavigation && navigationOpen ? 'dialog' : undefined}
+          aria-modal={isCompactNavigation && navigationOpen ? true : undefined}
+          aria-label="Primary navigation"
+          onKeyDown={isCompactNavigation && navigationOpen ? (event) => keepFocusInDialog(event, closeNavigation) : undefined}
+        >
+          <div className="mb-6 flex items-center justify-between gap-2">
+            <a href="/" className="flex min-w-0 items-center gap-3 px-2 text-lg font-semibold" aria-label="My Notes home">
             <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#d77762] text-white">
               <FileText size={20} aria-hidden="true" />
             </span>
-            my notes
-          </a>
-          <button ref={newNoteRef} onClick={openNewNote} className="primary-button mb-5 flex items-center justify-center gap-2" aria-label="Create a new note">
+              <span className="truncate">My Notes</span>
+            </a>
+            <button
+              ref={navigationCloseRef}
+              className="icon-button navigation-close"
+              onClick={closeNavigation}
+              aria-label="Close navigation"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <button ref={newNoteRef} onClick={openNewNote} className="primary-button mb-5 flex items-center justify-center gap-2" aria-label="Create a new note from navigation">
             <Plus size={17} aria-hidden="true" /> New note
           </button>
           <nav aria-label="Note views" className="space-y-1">
-            <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => setView('all')} icon={<FileText size={16} />} />
-            <NavButton active={view === 'favorites'} label="Favorites" count={notes.filter((note) => note.favorite).length} onClick={() => setView('favorites')} icon={<Heart size={16} />} />
-            <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => setView('trash')} icon={<Trash2 size={16} />} />
-            <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => setView('graph')} icon={<Network size={16} />} />
+            <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => navigateToView('all')} icon={<FileText size={16} />} />
+            <NavButton active={view === 'favorites'} label="Favorites" count={notes.filter((note) => note.favorite).length} onClick={() => navigateToView('favorites')} icon={<Heart size={16} />} />
+            <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => navigateToView('trash')} icon={<Trash2 size={16} />} />
+            <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => navigateToView('graph')} icon={<Network size={16} />} />
           </nav>
           <div className="library-tree mt-8 min-w-0">
             <div className="mb-2 flex items-center justify-between px-2">
@@ -629,14 +769,24 @@ function App() {
                 const libraryNotebookIds = notebooks
                   .filter((notebook) => libraryShelves.some((shelf) => shelf.id === notebook.shelfId))
                   .map((notebook) => notebook.id)
+                const libraryExpanded = !collapsedLibraries.includes(library.id)
                 return (
                   <div key={library.id} className="min-w-0">
                     <div className="group flex min-w-0 items-center gap-1">
+                      <button
+                        className="icon-button tree-disclosure !h-8 !w-8 shrink-0"
+                        aria-label={`${libraryExpanded ? 'Collapse' : 'Expand'} ${library.name}`}
+                        aria-expanded={libraryExpanded}
+                        aria-controls={`library-contents-${library.id}`}
+                        onClick={() => toggleLibraryExpanded(library.id)}
+                      >
+                        <ChevronDown size={15} aria-hidden="true" />
+                      </button>
                       <NavButton
                         active={view === `library:${library.id}`}
                         label={library.name}
                         count={notes.filter((note) => libraryNotebookIds.includes(note.notebookId ?? '')).length}
-                        onClick={() => setView(`library:${library.id}`)}
+                        onClick={() => navigateToView(`library:${library.id}`)}
                         icon={<LibraryBig size={16} />}
                         className="min-w-0 flex-1 !w-auto"
                       />
@@ -645,58 +795,78 @@ function App() {
                         <button className="icon-button !h-8 !w-8" aria-label={`Delete ${library.name}`} disabled={libraries.length <= 1} title={libraries.length <= 1 ? 'The last library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'library', item: library })}><Trash2 size={13} /></button>
                       </div>
                     </div>
-                    <div className="ml-3 min-w-0 border-l border-[var(--border)] pl-2">
-                      {libraryShelves.map((shelf) => (
-                        <div key={shelf.id} className="mb-2">
-                          <div className="group flex min-w-0 items-center gap-1">
-                            <NavButton
-                              active={view === `shelf:${shelf.id}`}
-                              label={shelf.name}
-                              count={notes.filter((note) => notebooks.some((notebook) => notebook.id === note.notebookId && notebook.shelfId === shelf.id)).length}
-                              onClick={() => setView(`shelf:${shelf.id}`)}
-                              icon={<Layers3 size={15} />}
-                              className="min-w-0 flex-1 !w-auto"
-                            />
-                            <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                              <button className="icon-button !h-8 !w-8" aria-label={`Rename ${shelf.name}`} onClick={() => void handleRenameShelf(shelf)}><Settings size={13} /></button>
-                              <button className="icon-button !h-8 !w-8" aria-label={`Delete ${shelf.name}`} disabled={libraryShelves.length <= 1} title={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'shelf', item: shelf })}><Trash2 size={13} /></button>
-                            </div>
-                          </div>
-                          {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
-                            <div key={notebook.id} className="library-tree-notebook ml-3 min-w-0">
+                    <div
+                      id={`library-contents-${library.id}`}
+                      role="group"
+                      aria-label={`${library.name} shelves`}
+                      hidden={!libraryExpanded}
+                      className="ml-3 min-w-0 border-l border-[var(--border)] pl-2"
+                    >
+                        {libraryShelves.map((shelf) => {
+                          const shelfExpanded = !collapsedShelves.includes(shelf.id)
+                          return (
+                            <div key={shelf.id} className="mb-2">
                               <div className="group flex min-w-0 items-center gap-1">
+                                <button
+                                  className="icon-button tree-disclosure !h-8 !w-8 shrink-0"
+                                  aria-label={`${shelfExpanded ? 'Collapse' : 'Expand'} ${shelf.name}`}
+                                  aria-expanded={shelfExpanded}
+                                  aria-controls={`shelf-contents-${shelf.id}`}
+                                  onClick={() => toggleShelfExpanded(shelf.id)}
+                                >
+                                  <ChevronDown size={14} aria-hidden="true" />
+                                </button>
                                 <NavButton
-                                  active={view === `notebook:${notebook.id}`}
-                                  label={notebook.name}
-                                  count={notes.filter((note) => note.notebookId === notebook.id).length}
-                                  onClick={() => setView(`notebook:${notebook.id}`)}
-                                  icon={<Archive size={15} />}
+                                  active={view === `shelf:${shelf.id}`}
+                                  label={shelf.name}
+                                  count={notes.filter((note) => notebooks.some((notebook) => notebook.id === note.notebookId && notebook.shelfId === shelf.id)).length}
+                                  onClick={() => navigateToView(`shelf:${shelf.id}`)}
+                                  icon={<Layers3 size={15} />}
                                   className="min-w-0 flex-1 !w-auto"
                                 />
                                 <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                                  <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void handleRename(notebook)}><Settings size={13} /></button>
-                                  <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'notebook', item: notebook })}><Trash2 size={13} /></button>
+                                  <button className="icon-button !h-8 !w-8" aria-label={`Rename ${shelf.name}`} onClick={() => void handleRenameShelf(shelf)}><Settings size={13} /></button>
+                                  <button className="icon-button !h-8 !w-8" aria-label={`Delete ${shelf.name}`} disabled={libraryShelves.length <= 1} title={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'shelf', item: shelf })}><Trash2 size={13} /></button>
                                 </div>
                               </div>
-                              <label className="sr-only" htmlFor={`move-notebook-${notebook.id}`}>Move {notebook.name} to shelf</label>
-                              <select
-                                id={`move-notebook-${notebook.id}`}
-                                className="small-input library-notebook-move !min-h-8 !px-2 text-xs"
-                                aria-label={`Move ${notebook.name} to shelf`}
-                                value={notebook.shelfId ?? ''}
-                                onChange={(event) => void moveNotebook(notebook.id, event.target.value).then(refresh).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'The notebook could not be moved.'))}
-                              >
-                                {shelves.map((option) => <option key={option.id} value={option.id}>{libraries.find((item) => item.id === option.libraryId)?.name ?? 'Library'} · {option.name}</option>)}
-                              </select>
+                              <div id={`shelf-contents-${shelf.id}`} role="group" aria-label={`${shelf.name} notebooks`} hidden={!shelfExpanded}>
+                                  {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
+                                    <div key={notebook.id} className="library-tree-notebook ml-3 min-w-0">
+                                      <div className="group flex min-w-0 items-center gap-1">
+                                        <NavButton
+                                          active={view === `notebook:${notebook.id}`}
+                                          label={notebook.name}
+                                          count={notes.filter((note) => note.notebookId === notebook.id).length}
+                                          onClick={() => navigateToView(`notebook:${notebook.id}`)}
+                                          icon={<Archive size={15} />}
+                                          className="min-w-0 flex-1 !w-auto"
+                                        />
+                                        <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                                          <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void handleRename(notebook)}><Settings size={13} /></button>
+                                          <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'notebook', item: notebook })}><Trash2 size={13} /></button>
+                                        </div>
+                                      </div>
+                                      <label className="sr-only" htmlFor={`move-notebook-${notebook.id}`}>Move {notebook.name} to shelf</label>
+                                      <select
+                                        id={`move-notebook-${notebook.id}`}
+                                        className="small-input library-notebook-move !min-h-8 !px-2 text-xs"
+                                        aria-label={`Move ${notebook.name} to shelf`}
+                                        value={notebook.shelfId ?? ''}
+                                        onChange={(event) => void moveNotebook(notebook.id, event.target.value).then(refresh).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'The notebook could not be moved.'))}
+                                      >
+                                        {shelves.map((option) => <option key={option.id} value={option.id}>{libraries.find((item) => item.id === option.libraryId)?.name ?? 'Library'} · {option.name}</option>)}
+                                      </select>
+                                    </div>
+                                  ))}
+                              </div>
                             </div>
-                          ))}
-                          <form className="mt-1 flex min-w-0 gap-1" onSubmit={(event) => void createShelfFromForm(library, event)}>
-                            <label className="sr-only" htmlFor={`new-shelf-${library.id}`}>New shelf in {library.name}</label>
-                            <input id={`new-shelf-${library.id}`} className="small-input !min-h-8 min-w-0 flex-1 !px-2 text-xs" value={shelfNames[library.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [library.id]: event.target.value }))} placeholder="New shelf" />
-                            <button className="icon-button !h-8 !w-8" aria-label={`Add shelf to ${library.name}`} type="submit"><Plus size={15} /></button>
-                          </form>
-                        </div>
-                      ))}
+                          )
+                        })}
+                        <form className="mt-1 flex min-w-0 gap-1" onSubmit={(event) => void createShelfFromForm(library, event)}>
+                          <label className="sr-only" htmlFor={`new-shelf-${library.id}`}>New shelf in {library.name}</label>
+                          <input id={`new-shelf-${library.id}`} className="small-input !min-h-8 min-w-0 flex-1 !px-2 text-xs" value={shelfNames[library.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [library.id]: event.target.value }))} placeholder="New shelf" />
+                          <button className="icon-button !h-8 !w-8" aria-label={`Add shelf to ${library.name}`} type="submit"><Plus size={15} /></button>
+                        </form>
                     </div>
                   </div>
                 )
@@ -717,7 +887,7 @@ function App() {
             <h2 className="section-label mb-2 px-2">Tags</h2>
             <nav aria-label="Tags" className="space-y-1">
               {tags.map((tag) => (
-                <NavButton key={tag.id} active={view === `tag:${tag.id}`} label={tag.label} count={tag.count} onClick={() => setView(`tag:${tag.id}`)} icon={<TagIcon size={15} />} />
+                <NavButton key={tag.id} active={view === `tag:${tag.id}`} label={tag.label} count={tag.count} onClick={() => navigateToView(`tag:${tag.id}`)} icon={<TagIcon size={15} />} />
               ))}
               {tags.length === 0 && <p className="px-3 py-1 text-xs text-[var(--muted)]">Tags you add to notes appear here.</p>}
             </nav>
@@ -725,16 +895,49 @@ function App() {
           <button onClick={openSettings} className="nav-button mt-auto flex items-center gap-3" aria-label="Open settings"><Settings size={17} /> Settings</button>
         </aside>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-8 lg:p-10">
+        <main id="main-content" className="min-w-0 flex-1 p-4 sm:p-8 lg:p-10">
           <header className="mb-8 flex items-center justify-between gap-4">
-            <div>
-              <p className="section-label mb-1">Workspace</p>
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{viewLabel}</h1>
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                ref={navigationToggleRef}
+                className="icon-button navigation-toggle shrink-0"
+                onClick={toggleNavigation}
+                aria-label={
+                  isCompactNavigation
+                    ? navigationOpen ? 'Close navigation' : 'Open navigation'
+                    : sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
+                }
+                aria-expanded={isCompactNavigation ? navigationOpen : !sidebarCollapsed}
+                aria-controls="workspace-navigation"
+              >
+                {isCompactNavigation
+                  ? navigationOpen
+                    ? <X size={18} aria-hidden="true" />
+                    : <Menu size={18} aria-hidden="true" />
+                  : sidebarCollapsed
+                    ? <PanelLeftOpen size={18} aria-hidden="true" />
+                    : <PanelLeftClose size={18} aria-hidden="true" />}
+              </button>
+              <div className="min-w-0">
+                <p className="section-label mb-1">Personal Knowledge Library</p>
+                {breadcrumbItems.length > 0 && (
+                  <nav className="workspace-breadcrumb mb-1" aria-label="Breadcrumb">
+                    <ol>
+                      {breadcrumbItems.map((item, index) => (
+                        <li key={`${item.label}-${index}`}>
+                          <button onClick={() => navigateToView(item.view)}>{item.label}</button>
+                          <span aria-hidden="true">/</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </nav>
+                )}
+                <h1 ref={pageHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight sm:text-3xl">{viewLabel}</h1>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="icon-button md:hidden" onClick={openSettings} aria-label="Open settings"><Settings size={18} /></button>
-              <button className="primary-button flex items-center gap-2 md:hidden" onClick={openNewNote}><Plus size={17} /> New note</button>
-              <button className="icon-button hidden md:inline-flex" onClick={openSettings} aria-label="Open settings"><Settings size={18} /></button>
+              <button className="icon-button" onClick={openSettings} aria-label="Open settings"><Settings size={18} /></button>
+              <button className="primary-button flex items-center gap-2" onClick={openNewNote} aria-label="Create a new note"><Plus size={17} /><span className="new-note-label">New note</span></button>
             </div>
           </header>
           {error && <div role="alert" className="notice notice-error mb-5">{error}<button onClick={() => setError(null)} aria-label="Dismiss error"><X size={15} /></button></div>}
@@ -759,18 +962,7 @@ function App() {
               </select>
             </div>
           )}
-          <div className="mb-5 flex items-center gap-3">
-            <label className="sr-only" htmlFor="mobile-view">Filter notes</label>
-            <select id="mobile-view" className="small-input max-w-48 md:hidden" value={view} onChange={(event) => setView(event.target.value as View)}>
-              <option value="all">All Notes</option>
-              <option value="favorites">Favorites</option>
-              <option value="trash">Trash ({trash.length})</option>
-              <option value="graph">Knowledge Graph</option>
-              {libraries.map((library) => <option key={library.id} value={`library:${library.id}`}>Library: {library.name}</option>)}
-              {shelves.map((shelf) => <option key={shelf.id} value={`shelf:${shelf.id}`}>Shelf: {shelf.name}</option>)}
-              {notebooks.map((notebook) => <option key={notebook.id} value={`notebook:${notebook.id}`}>{notebook.name}</option>)}
-              {tags.map((tag) => <option key={tag.id} value={`tag:${tag.id}`}>Tag: {tag.label}</option>)}
-            </select>
+          <div className="mb-5 flex min-w-0 items-center gap-3">
             {view !== 'graph' && !view.startsWith('library:') && (
               <>
                 <div className="search-field flex-1">
@@ -830,7 +1022,7 @@ function App() {
                       </div>
                       {shelfNotebooks.length > 0 && <p className="mt-4 text-sm text-[var(--muted)]">{shelfNotebooks.map((notebook) => notebook.name).join(' · ')}</p>}
                       <div className="mt-5 flex flex-wrap gap-2">
-                        <button className="secondary-button" onClick={() => setView(`shelf:${shelf.id}`)} aria-label={`Open ${shelf.name} shelf`}>Open shelf <ArrowLeft className="rotate-180" size={15} /></button>
+                        <button className="secondary-button" onClick={() => navigateToView(`shelf:${shelf.id}`)} aria-label={`Open ${shelf.name} shelf`}>Open shelf <ArrowLeft className="rotate-180" size={15} /></button>
                         <button className="secondary-button" aria-label={`Rename ${shelf.name}`} onClick={() => void handleRenameShelf(shelf)}>Rename shelf</button>
                         <button className="danger-button" aria-label={`Delete ${shelf.name}`} disabled={shelves.filter((item) => item.libraryId === shelf.libraryId).length <= 1} onClick={() => openDeleteStructure({ kind: 'shelf', item: shelf })}>Delete shelf</button>
                       </div>
