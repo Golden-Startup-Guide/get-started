@@ -14,7 +14,7 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
 | 3 | High | Export fails above 40 MiB while storage is unlimited |
 | 4 | High | Autosave cost grows with total data size |
 | 5 | High | Last edits lost on tab close, reload, or link navigation |
-| 6 | High | Persistent storage is never requested |
+| 6 | High | Persistent storage is never requested - **Fixed** |
 | 7 | Medium | Checklist toggles the wrong item (reproduced) |
 | 8 | Medium | Restoring a revision of a trashed note silently un-trashes it |
 | 9 | Medium | Restoring a revision reverts notebook, tags, pin, and favorite |
@@ -72,6 +72,8 @@ With large attachments, typing becomes noticeably slow.
 `navigator.storage.persist()` is never called. Because the browser holds the only copy of the user's notes, best-effort storage may be evicted under storage pressure; Safari also clears data for non-installed sites after 7 days without use.
 
 **Recommendation:** request persistent storage on first save and show the result in Settings.
+
+**Status: Fixed.** The app requests persistent storage once per session after the first successful save, and Settings shows the current status with a **Keep notes on this device** button to ask again.
 
 ## Medium severity
 
