@@ -86,6 +86,9 @@ for storage, backup, migration, and feature details.
 - [Product roadmap](docs/ROADMAP.md) — current status and future direction.
 - [Code and data-safety audit](docs/AUDIT.md) — audit findings, severities,
   and recommended fix order.
+- [Architecture vision](docs/ARCHITECTURE_VISION.md) — long-term technical
+  direction for a world-class, AI-free platform; read before proposing
+  architectural changes.
 
 ## Development
 
