@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import {
   Archive,
   ArrowLeft,
@@ -83,11 +81,8 @@ import type {
 } from './types'
 import './workspace.css'
 import { useDebouncedAutosave } from './features/notes/useDebouncedAutosave'
-import {
-  getChecklistProgress,
-  getChecklistTaskLines,
-  toggleChecklistItem,
-} from './features/notes/checklists'
+import { getChecklistProgress, toggleChecklistItem } from './features/notes/checklists'
+import { MarkdownPreview } from './features/notes/MarkdownPreview'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './features/notes/attachments'
 import {
   getStoragePersistence,
@@ -1665,7 +1660,6 @@ function NoteEditor({
     !noteTags.some((item) => item.toLocaleLowerCase() === tag.id),
   )
   const checklistProgress = getChecklistProgress(content)
-  const checklistTaskLines = getChecklistTaskLines(content)
   const allNotes = [...notes, ...trash]
   const outgoingNotes = links.outgoing
     .map((link) => allNotes.find((item) => item.id === link.targetNoteId))
@@ -1678,7 +1672,6 @@ function NoteEditor({
   const canEditLinks = persisted && note.deletedAt === undefined
   const audioRecordingSupported =
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
-  let taskInputIndex = 0
 
   function toggleTask(lineNumber: number) {
     setContent((current) => toggleChecklistItem(current, lineNumber))
@@ -1801,30 +1794,7 @@ function NoteEditor({
                   </span>}
                 </div>
                 <div className="prose-notes">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      // Following a link in this tab would leave the app mid-edit.
-                      a: ({ node: _node, ...props }) => props.href?.startsWith('#')
-                        ? <a {...props} />
-                        : <a {...props} target="_blank" rel="noopener noreferrer" />,
-                      input: ({ checked, ...props }) => {
-                        const lineNumber = checklistTaskLines[taskInputIndex++]
-                        const line = lineNumber ? content.split(/\r?\n/)[lineNumber - 1] ?? '' : ''
-                        const taskText = line.replace(/^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s*/, '').trim()
-                        return <input
-                          {...props}
-                          type="checkbox"
-                          checked={Boolean(checked)}
-                          disabled={false}
-                          aria-label={taskText ? `Mark task ${taskText} ${checked ? 'incomplete' : 'complete'}` : 'Toggle checklist task'}
-                          onChange={() => lineNumber && toggleTask(lineNumber)}
-                        />
-                      },
-                    }}
-                  >
-                    {content || '_Nothing to preview yet._'}
-                  </ReactMarkdown>
+                  <MarkdownPreview markdown={content} onToggleTask={toggleTask} />
                 </div>
               </article>
             </div>

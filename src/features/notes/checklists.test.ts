@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getChecklistProgress, getChecklistTaskLines, toggleChecklistItem } from './checklists'
+import { getChecklistProgress, getChecklistTaskLines, getChecklistTaskText, toggleChecklistItem } from './checklists'
 
 describe('Markdown checklists', () => {
   it('counts completed and incomplete tasks across GFM list markers', () => {
@@ -26,5 +26,19 @@ describe('Markdown checklists', () => {
       completed: 0,
       total: 0,
     })
+  })
+
+
+  it('ignores task syntax inside fenced code blocks', () => {
+    const markdown = '```md\n- [x] Example\n```\n~~~\n- [ ] Also literal\n~~~\n- [ ] Real task'
+    expect(getChecklistTaskLines(markdown)).toEqual([7])
+    expect(getChecklistProgress(markdown)).toEqual({ completed: 0, total: 1 })
+  })
+
+  it('counts and toggles tasks inside blockquotes', () => {
+    const markdown = '> - [ ] Quoted task\n> > * [x] Nested quote'
+    expect(getChecklistProgress(markdown)).toEqual({ completed: 1, total: 2 })
+    expect(toggleChecklistItem(markdown, 1)).toBe('> - [x] Quoted task\n> > * [x] Nested quote')
+    expect(getChecklistTaskText(markdown, 2)).toBe('Nested quote')
   })
 })
