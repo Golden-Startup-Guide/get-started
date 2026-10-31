@@ -13,7 +13,7 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
 | 2 | High | Note history grows without limit |
 | 3 | High | Export fails above 40 MiB while storage is unlimited |
 | 4 | High | Autosave cost grows with total data size |
-| 5 | High | Last edits lost on tab close, reload, or link navigation |
+| 5 | High | Last edits lost on tab close, reload, or link navigation - **Fixed** |
 | 6 | High | Persistent storage is never requested - **Fixed** |
 | 7 | Medium | Checklist toggles the wrong item (reproduced) |
 | 8 | Medium | Restoring a revision of a trashed note silently un-trashes it |
@@ -66,6 +66,8 @@ With large attachments, typing becomes noticeably slow.
 - Links in the Markdown preview and the logo link (`src/App.tsx:737`) navigate the app's own tab away, with the same loss.
 
 **Recommendation:** flush the draft on `pagehide`/`visibilitychange`; open preview links in a new tab with `rel="noopener noreferrer"`.
+
+**Status: Fixed.** The editor saves pending edits as soon as the page is hidden and on `pagehide`, and the browser asks for confirmation before closing or reloading while a change is unsaved or still saving. External preview links open in a new tab with `rel="noopener noreferrer"`; in-page footnote links are unchanged. The logo link needed no change: the editor is a modal that covers it, so it cannot be clicked with a draft open.
 
 ### 6. Persistent storage is never requested
 

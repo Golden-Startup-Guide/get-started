@@ -106,9 +106,14 @@ editor indicates whether changes are unsaved, saving, or saved. The save path
 serializes in-flight writes to prevent an older autosave from overwriting a
 newer note state or a deletion.
 
+Pending edits are also saved immediately when the page is hidden (switching
+tabs or apps, or closing the tab). While a change is unsaved or still being
+written, the browser asks for confirmation before the page closes or reloads.
+
 Markdown is rendered with `react-markdown` and `remark-gfm`; raw HTML rendering
 is not enabled. Links and other rendered content are not a general-purpose
-HTML execution surface.
+HTML execution surface. External links in the preview open in a new tab, so following
+one never navigates the app away from an open note.
 
 ### 2.5 History and restore
 

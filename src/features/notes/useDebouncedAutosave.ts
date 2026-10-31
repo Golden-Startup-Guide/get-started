@@ -80,5 +80,38 @@ export function useDebouncedAutosave(
     [clearTimer, saveLatest],
   )
 
+  const latestDirty = useRef(dirty)
+  latestDirty.current = dirty
+
+  // Unmount cleanup does not run when the tab closes or reloads, so save as soon as the
+  // page is hidden and warn before leaving while a draft is unsaved or still saving.
+  useEffect(() => {
+    // While a delete is in progress (skipUnmountSave), saving would recreate the note.
+    const hasPendingWork = () =>
+      saveOnUnmount.current && (latestDirty.current || inFlight.current !== null)
+    const saveNow = () => {
+      if (!hasPendingWork()) return
+      clearTimer()
+      void saveLatest().catch(() => undefined)
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') saveNow()
+    }
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasPendingWork()) return
+      saveNow()
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', saveNow)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', saveNow)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [clearTimer, saveLatest])
+
   return { flush, cancel, skipUnmountSave, resumeUnmountSave }
 }

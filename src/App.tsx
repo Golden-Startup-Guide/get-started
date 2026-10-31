@@ -1791,6 +1791,10 @@ function NoteEditor({
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
+                      // Following a link in this tab would leave the app mid-edit.
+                      a: ({ node: _node, ...props }) => props.href?.startsWith('#')
+                        ? <a {...props} />
+                        : <a {...props} target="_blank" rel="noopener noreferrer" />,
                       input: ({ checked, ...props }) => {
                         const lineNumber = checklistTaskLines[taskInputIndex++]
                         const line = lineNumber ? content.split(/\r?\n/)[lineNumber - 1] ?? '' : ''
