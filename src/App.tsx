@@ -224,7 +224,7 @@ function App() {
   )
 
   async function refresh() {
-    const [savedNotes, savedTrash, savedNotebooks, savedLibraries, savedShelves, savedTags, savedSettings, storageSnapshot, savedLinks] = await Promise.all([
+    const [savedNotes, savedTrash, savedNotebooks, savedLibraries, savedShelves, savedTags, savedSettings, savedLinks] = await Promise.all([
       getNotes(),
       getTrash(),
       getNotebooks(),
@@ -232,7 +232,6 @@ function App() {
       getShelves(),
       getTags(),
       getSettings(),
-      getStorageSnapshot(),
       getAllNoteLinks(),
     ])
     setNotes(sortNotes(savedNotes))
@@ -243,7 +242,6 @@ function App() {
     setTags(savedTags)
     setLinks(savedLinks)
     setSettings(savedSettings)
-    setStorage(storageSnapshot)
   }
 
   useEffect(() => {
@@ -259,6 +257,21 @@ function App() {
       active = false
     }
   }, [])
+
+  // The snapshot reads every record, including attachment data, so only compute it while
+  // Settings is open (and again whenever the data it summarizes changes).
+  useEffect(() => {
+    if (!showSettings) return
+    let active = true
+    getStorageSnapshot()
+      .then((snapshot) => {
+        if (active) setStorage(snapshot)
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [showSettings, notes, trash, notebooks, tags, links])
 
   useEffect(() => {
     let active = true
@@ -431,7 +444,7 @@ function App() {
       setTrash((current) => [note, ...current.filter((item) => item.id !== note.id)])
     }
     setError(null)
-    await Promise.all([getTags().then(setTags), getStorageSnapshot().then(setStorage)])
+    setTags(await getTags())
     // Ask once per session, after the first save, so there is real data worth protecting.
     if (persistence === 'best-effort' && !persistenceRequested.current) {
       persistenceRequested.current = true

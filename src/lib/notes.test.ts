@@ -170,6 +170,22 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(0)
   })
 
+  it('keeps tag counts correct when content-only saves skip the tag rebuild', async () => {
+    const note: Note = { id: 'tag-count-note', title: 'Tags', content: 'a', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Countable'] }
+    const count = async () => (await storage.getTags()).find((tag) => tag.id === 'countable')?.count ?? 0
+    const before = await count()
+    await storage.saveNote(note)
+    expect(await count()).toBe(before + 1)
+    await storage.saveNote({ ...note, content: 'b', updatedAt: 2 })
+    expect(await count()).toBe(before + 1)
+    await storage.saveNote({ ...note, content: 'c', tags: ['Renamed'], updatedAt: 3 })
+    expect(await count()).toBe(before)
+    expect((await storage.getTags()).find((tag) => tag.id === 'renamed')?.count).toBe(1)
+    await storage.trashNote(note.id)
+    expect((await storage.getTags()).find((tag) => tag.id === 'renamed')).toBeUndefined()
+    await storage.permanentlyDeleteNote(note.id)
+  })
+
   it('keeps one revision per editing burst and caps revisions per note', async () => {
     let now = 1_800_000_000_000
     const clock = vi.spyOn(Date, 'now').mockImplementation(() => now)

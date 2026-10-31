@@ -294,8 +294,19 @@ export async function saveNote(input: Note, options: { forceHistory?: boolean } 
     }
   }
   await transaction.objectStore('notes').put(note)
-  await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
+  // Rebuilding tag counts reads every note, so skip it for the common autosave case where
+  // only the title or content changed.
+  if (!existing || !sameTagContribution(existing, note)) {
+    await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
+  }
   await transaction.done
+}
+
+function sameTagContribution(before: Note, after: Note): boolean {
+  if ((before.deletedAt === undefined) !== (after.deletedAt === undefined)) return false
+  const beforeTags = cleanTags(before.tags ?? [])
+  const afterTags = cleanTags(after.tags ?? [])
+  return beforeTags.length === afterTags.length && beforeTags.every((tag, index) => tag === afterTags[index])
 }
 
 export async function getNoteAttachments(noteId: string): Promise<NoteAttachment[]> {
