@@ -248,6 +248,16 @@ Data belongs to the app's origin (scheme, hostname, and port), browser profile,
 and device where it was created. Opening the app at a different origin or in a
 different profile uses a separate database and can make existing notes appear
 missing. It does not automatically synchronize between browsers or devices.
+
+### Persistent storage
+
+By default, browsers treat site data as "best-effort" and may clear it when the
+device runs low on space; Safari can also clear data for sites that are not
+installed after seven days without use. After the first note is saved in a
+session, My Notes asks the browser to make its storage persistent. Settings →
+Storage on this device shows whether persistent storage is on and, when it is
+off, offers **Keep notes on this device** to ask again. Browsers decide whether
+to grant it (installing the app usually helps), so keep exporting backups.
 Browser storage may be cleared by the user or browser, and available capacity
 varies by platform; regular exports are recommended. If notes appear missing,
 verify the original app URL and browser profile before taking any action on

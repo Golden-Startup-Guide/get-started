@@ -182,6 +182,38 @@ describe('My Notes workspace', () => {
     expect(sidebar).toHaveAttribute('data-collapsed', 'false')
   }, 15000)
 
+  it('asks once for persistent storage after the first save and lets Settings ask again', async () => {
+    const persist = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    Object.defineProperty(navigator, 'storage', {
+      configurable: true,
+      value: { persisted: vi.fn().mockResolvedValue(false), persist },
+    })
+    try {
+      const { default: App } = await import('./App')
+      const user = userEvent.setup()
+      render(<App />)
+      await screen.findByRole('heading', { name: 'All Notes' })
+      expect(persist).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'Create a new note' }))
+      fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Keep me' } })
+      await waitFor(() => expect(persist).toHaveBeenCalledOnce(), { timeout: 3000 })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'More text' } })
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
+      expect(persist).toHaveBeenCalledOnce()
+      await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
+
+      await user.click(screen.getAllByRole('button', { name: 'Open settings' })[0])
+      expect(await screen.findByText(/Persistent storage is off/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Keep notes on this device' }))
+      expect(await screen.findByText(/Persistent storage is on/)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Keep notes on this device' })).not.toBeInTheDocument()
+      expect(persist).toHaveBeenCalledTimes(2)
+    } finally {
+      Reflect.deleteProperty(navigator, 'storage')
+    }
+  }, 15000)
+
   it('opens a keyboard-accessible navigation drawer on compact screens', async () => {
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query === '(max-width: 1023px)',

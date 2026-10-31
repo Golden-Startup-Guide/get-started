@@ -88,6 +88,11 @@ import {
   toggleChecklistItem,
 } from './features/notes/checklists'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './features/notes/attachments'
+import {
+  getStoragePersistence,
+  requestStoragePersistence,
+  type StoragePersistence,
+} from './features/notes/storagePersistence'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 
 type View = 'all' | 'favorites' | 'trash' | 'graph' | `library:${string}` | `shelf:${string}` | `notebook:${string}` | `tag:${string}`
@@ -201,6 +206,8 @@ function App() {
   const [deleteCandidate, setDeleteCandidate] = useState<DeleteCandidate | null>(null)
   const [deleteDestination, setDeleteDestination] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [persistence, setPersistence] = useState<StoragePersistence>('unsupported')
+  const persistenceRequested = useRef(false)
   const [storage, setStorage] = useState({ notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, attachments: 0, attachmentBytes: 0, estimatedBytes: 0 })
   const newNoteRef = useRef<HTMLButtonElement>(null)
   const navigationToggleRef = useRef<HTMLButtonElement>(null)
@@ -247,6 +254,16 @@ function App() {
       .finally(() => {
         if (active) setIsLoading(false)
       })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    void getStoragePersistence().then((status) => {
+      if (active) setPersistence(status)
+    })
     return () => {
       active = false
     }
@@ -414,6 +431,20 @@ function App() {
     }
     setError(null)
     await Promise.all([getTags().then(setTags), getStorageSnapshot().then(setStorage)])
+    // Ask once per session, after the first save, so there is real data worth protecting.
+    if (persistence === 'best-effort' && !persistenceRequested.current) {
+      persistenceRequested.current = true
+      setPersistence(await requestStoragePersistence())
+    }
+  }
+
+  async function handleRequestPersistence() {
+    persistenceRequested.current = true
+    const status = await requestStoragePersistence()
+    setPersistence(status)
+    if (status !== 'persisted') {
+      setNotice('The browser did not grant persistent storage. Installing My Notes as an app, or bookmarking it, can help. Keep exporting backups.')
+    }
   }
 
   function openNewNote() {
@@ -1098,6 +1129,8 @@ function App() {
         <SettingsDialog
           settings={settings}
           storage={storage}
+          persistence={persistence}
+          onRequestPersistence={() => void handleRequestPersistence()}
           fileRef={fileRef}
           onClose={closeSettings}
           onTheme={(value) => void handleTheme(value)}
@@ -1847,6 +1880,8 @@ function NoteEditor({
 function SettingsDialog({
   settings,
   storage,
+  persistence,
+  onRequestPersistence,
   fileRef,
   onClose,
   onTheme,
@@ -1859,6 +1894,8 @@ function SettingsDialog({
 }: {
   settings: AppSettings
   storage: { notes: number; trash: number; notebooks: number; tags: number; revisions: number; attachments: number; attachmentBytes: number; estimatedBytes: number }
+  persistence: StoragePersistence
+  onRequestPersistence: () => void
   fileRef: React.RefObject<HTMLInputElement>
   onClose: () => void
   onTheme: (theme: ThemePreference) => void
@@ -1920,6 +1957,18 @@ function SettingsDialog({
             <div><dt>Notes</dt><dd>{storage.notes}</dd></div><div><dt>Trash</dt><dd>{storage.trash}</dd></div><div><dt>Notebooks</dt><dd>{storage.notebooks}</dd></div><div><dt>Tags</dt><dd>{storage.tags}</dd></div><div><dt>History revisions</dt><dd>{storage.revisions}</dd></div><div><dt>Attachments</dt><dd>{storage.attachments}</dd></div><div><dt>Attachment data</dt><dd>{formatBytes(storage.attachmentBytes)}</dd></div><div><dt>Estimated content size</dt><dd>{formatBytes(storage.estimatedBytes)}</dd></div>
           </dl>
           <p className="mt-2 text-xs text-[var(--muted)]">Includes attachment data; browser quota may differ.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2" aria-live="polite">
+            <p className="text-sm">
+              {persistence === 'persisted'
+                ? 'Persistent storage is on: the browser will not clear your notes to free up space.'
+                : persistence === 'best-effort'
+                  ? 'Persistent storage is off: the browser may clear your notes if the device runs low on space.'
+                  : 'This browser does not report whether your notes are protected from automatic clearing.'}
+            </p>
+            {persistence === 'best-effort' && (
+              <button className="secondary-button" onClick={onRequestPersistence}>Keep notes on this device</button>
+            )}
+          </div>
         </section>
         <section className="mt-7 border-t border-[var(--border)] pt-5">
           <h3 className="text-sm font-semibold">About My Notes</h3>
