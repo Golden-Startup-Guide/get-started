@@ -435,7 +435,8 @@ function App() {
       ? view.slice(9)
       : notebooks.find((notebook) => notebook.shelfId === activeShelfId)?.id
         ?? notebooks.find((notebook) => shelves.some((shelf) => shelf.id === notebook.shelfId && shelf.libraryId === activeLibraryId))?.id
-        ?? 'starter-personal'
+        ?? notebooks.find((notebook) => notebook.id === 'starter-personal')?.id
+        ?? notebooks[0]?.id
     setIsCreating(true)
     setActiveNote({
       id: crypto.randomUUID(),
@@ -1282,7 +1283,11 @@ function NoteEditor({
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const [noteTags, setNoteTags] = useState(note.tags ?? [])
-  const [notebookId, setNotebookId] = useState(note.notebookId ?? notebooks[0]?.id ?? '')
+  // The select can only show existing notebooks, so never keep an ID it cannot display.
+  const initialNotebookId = notebooks.some((notebook) => notebook.id === note.notebookId)
+    ? note.notebookId ?? ''
+    : notebooks[0]?.id ?? ''
+  const [notebookId, setNotebookId] = useState(initialNotebookId)
   const [pinned, setPinned] = useState(Boolean(note.pinned))
   const [favorite, setFavorite] = useState(Boolean(note.favorite))
   const [tagInput, setTagInput] = useState('')
@@ -1308,7 +1313,7 @@ function NoteEditor({
     exceeded: boolean
   } | null>(null)
   const latest = useRef({ title, content, noteTags, notebookId, pinned, favorite })
-  const baseline = useRef({ title: note.title, content: note.content, tags: note.tags ?? [], notebookId: note.notebookId ?? notebooks[0]?.id ?? '', pinned: Boolean(note.pinned), favorite: Boolean(note.favorite) })
+  const baseline = useRef({ title: note.title, content: note.content, tags: note.tags ?? [], notebookId: initialNotebookId, pinned: Boolean(note.pinned), favorite: Boolean(note.favorite) })
   const saveRef = useRef<() => Promise<boolean>>(async () => false)
 
   latest.current = { title, content, noteTags, notebookId, pinned, favorite }

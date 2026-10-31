@@ -406,6 +406,85 @@ describe('IndexedDB storage and backup', () => {
     }
   })
 
+  it('keeps backups restorable after a note moves and its earlier notebook is deleted', async () => {
+    const formerNotebook = await storage.createNotebook('Former home')
+    const note: Note = {
+      id: 'moved-before-notebook-deletion',
+      title: 'Moved note',
+      content: 'First version',
+      createdAt: 1,
+      updatedAt: 1,
+      notebookId: formerNotebook.id,
+    }
+    await storage.saveNote(note)
+    await storage.saveNote({ ...note, content: 'Second version', updatedAt: 2 })
+    await storage.moveNote(note.id, 'starter-work')
+    await storage.deleteNotebook(formerNotebook.id, 'starter-ideas')
+
+    const [revision] = await storage.getNoteHistory(note.id)
+    expect(revision.snapshot.notebookId).toBe('starter-ideas')
+
+    const backup = await storage.exportBackup()
+    const fresh = {
+      ...backup,
+      notes: backup.notes.map((item) => (item.id === note.id ? { ...item, id: 'fresh-moved-note' } : item)),
+      history: backup.history
+        .filter((entry) => entry.noteId === note.id)
+        .map((entry) => ({
+          ...entry,
+          id: 'fresh-moved-revision',
+          noteId: 'fresh-moved-note',
+          snapshot: { ...entry.snapshot, id: 'fresh-moved-note' },
+        })),
+      attachments: [],
+      links: [],
+    }
+    await expect(storage.importBackupFile(jsonFile(JSON.stringify(fresh)))).resolves.toEqual(
+      expect.objectContaining({ notesAdded: 1, historyAdded: 1 }),
+    )
+  })
+
+  it('reassigns notes and history that reference missing notebooks in older backups', async () => {
+    const backup = {
+      format: 'my-notes-backup',
+      version: 3,
+      exportedAt: 10,
+      notes: [{ id: 'orphaned-note', title: 'Orphan', content: 'Keep me', createdAt: 10, updatedAt: 10, notebookId: 'missing-notebook' }],
+      notebooks: [{ id: 'kept-notebook', name: 'Kept notebook', createdAt: 10, updatedAt: 10 }],
+      tags: [],
+      settings: { id: 'preferences', theme: 'system' },
+      history: [{
+        id: 'orphaned-revision',
+        noteId: 'orphaned-note',
+        savedAt: 9,
+        snapshot: { id: 'orphaned-note', title: 'Orphan', content: 'Old', createdAt: 10, updatedAt: 9, notebookId: 'deleted-notebook' },
+      }],
+      attachments: [],
+      links: [],
+    }
+    await expect(storage.importBackupFile(jsonFile(JSON.stringify(backup)))).resolves.toEqual(
+      expect.objectContaining({ notesAdded: 1, historyAdded: 1 }),
+    )
+    const notebookIds = new Set((await storage.getNotebooks()).map((notebook) => notebook.id))
+    const restored = (await storage.getNotes()).find((item) => item.id === 'orphaned-note')
+    expect(notebookIds.has(restored?.notebookId ?? '')).toBe(true)
+    const [revision] = await storage.getNoteHistory('orphaned-note')
+    expect(revision.snapshot.notebookId).toBe(restored?.notebookId)
+  })
+
+  it('never saves a note that references a missing notebook', async () => {
+    await storage.saveNote({
+      id: 'missing-notebook-note',
+      title: 'No home',
+      content: '',
+      createdAt: 1,
+      updatedAt: 1,
+      notebookId: 'does-not-exist',
+    })
+    const saved = await (await storage.openNotesDatabase()).get('notes', 'missing-notebook-note')
+    expect((await storage.getNotebooks()).some((notebook) => notebook.id === saved?.notebookId)).toBe(true)
+  })
+
   it('rejects malformed, duplicate-ID, and oversized backup files before importing', async () => {
     const malformed = jsonFile('{broken', 'bad.json')
     await expect(storage.importBackupFile(malformed)).rejects.toThrow('valid JSON')
