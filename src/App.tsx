@@ -618,65 +618,70 @@ function App() {
             <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => setView('trash')} icon={<Trash2 size={16} />} />
             <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => setView('graph')} icon={<Network size={16} />} />
           </nav>
-          <div className="mt-8">
+          <div className="library-tree mt-8 min-w-0">
             <div className="mb-2 flex items-center justify-between px-2">
               <h2 className="section-label">Your Library</h2>
               <span className="text-xs text-[var(--muted)]">{libraries.length}</span>
             </div>
-            <nav aria-label="Libraries" className="space-y-3">
+            <nav aria-label="Libraries" className="min-w-0 space-y-3">
               {libraries.map((library) => {
                 const libraryShelves = shelves.filter((shelf) => shelf.libraryId === library.id)
                 const libraryNotebookIds = notebooks
                   .filter((notebook) => libraryShelves.some((shelf) => shelf.id === notebook.shelfId))
                   .map((notebook) => notebook.id)
                 return (
-                  <div key={library.id}>
-                    <div className="group flex items-center gap-1">
+                  <div key={library.id} className="min-w-0">
+                    <div className="group flex min-w-0 items-center gap-1">
                       <NavButton
                         active={view === `library:${library.id}`}
                         label={library.name}
                         count={notes.filter((note) => libraryNotebookIds.includes(note.notebookId ?? '')).length}
                         onClick={() => setView(`library:${library.id}`)}
                         icon={<LibraryBig size={16} />}
+                        className="min-w-0 flex-1 !w-auto"
                       />
-                      <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                      <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                         <button className="icon-button !h-8 !w-8" aria-label={`Rename ${library.name}`} onClick={() => void handleRenameLibrary(library)}><Settings size={13} /></button>
                         <button className="icon-button !h-8 !w-8" aria-label={`Delete ${library.name}`} disabled={libraries.length <= 1} title={libraries.length <= 1 ? 'The last library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'library', item: library })}><Trash2 size={13} /></button>
                       </div>
                     </div>
-                    <div className="ml-3 border-l border-[var(--border)] pl-2">
+                    <div className="ml-3 min-w-0 border-l border-[var(--border)] pl-2">
                       {libraryShelves.map((shelf) => (
                         <div key={shelf.id} className="mb-2">
-                          <div className="group flex items-center gap-1">
+                          <div className="group flex min-w-0 items-center gap-1">
                             <NavButton
                               active={view === `shelf:${shelf.id}`}
                               label={shelf.name}
                               count={notes.filter((note) => notebooks.some((notebook) => notebook.id === note.notebookId && notebook.shelfId === shelf.id)).length}
                               onClick={() => setView(`shelf:${shelf.id}`)}
                               icon={<Layers3 size={15} />}
+                              className="min-w-0 flex-1 !w-auto"
                             />
-                            <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                            <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                               <button className="icon-button !h-8 !w-8" aria-label={`Rename ${shelf.name}`} onClick={() => void handleRenameShelf(shelf)}><Settings size={13} /></button>
                               <button className="icon-button !h-8 !w-8" aria-label={`Delete ${shelf.name}`} disabled={libraryShelves.length <= 1} title={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'shelf', item: shelf })}><Trash2 size={13} /></button>
                             </div>
                           </div>
                           {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
-                            <div key={notebook.id} className="group ml-3 flex items-center gap-1">
-                              <NavButton
-                                active={view === `notebook:${notebook.id}`}
-                                label={notebook.name}
-                                count={notes.filter((note) => note.notebookId === notebook.id).length}
-                                onClick={() => setView(`notebook:${notebook.id}`)}
-                                icon={<Archive size={15} />}
-                              />
-                              <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                                <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void handleRename(notebook)}><Settings size={13} /></button>
-                                <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'notebook', item: notebook })}><Trash2 size={13} /></button>
+                            <div key={notebook.id} className="library-tree-notebook ml-3 min-w-0">
+                              <div className="group flex min-w-0 items-center gap-1">
+                                <NavButton
+                                  active={view === `notebook:${notebook.id}`}
+                                  label={notebook.name}
+                                  count={notes.filter((note) => note.notebookId === notebook.id).length}
+                                  onClick={() => setView(`notebook:${notebook.id}`)}
+                                  icon={<Archive size={15} />}
+                                  className="min-w-0 flex-1 !w-auto"
+                                />
+                                <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+                                  <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void handleRename(notebook)}><Settings size={13} /></button>
+                                  <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => openDeleteStructure({ kind: 'notebook', item: notebook })}><Trash2 size={13} /></button>
+                                </div>
                               </div>
                               <label className="sr-only" htmlFor={`move-notebook-${notebook.id}`}>Move {notebook.name} to shelf</label>
                               <select
                                 id={`move-notebook-${notebook.id}`}
-                                className="small-input !min-h-8 max-w-24 !px-1 text-xs"
+                                className="small-input library-notebook-move !min-h-8 !px-2 text-xs"
                                 aria-label={`Move ${notebook.name} to shelf`}
                                 value={notebook.shelfId ?? ''}
                                 onChange={(event) => void moveNotebook(notebook.id, event.target.value).then(refresh).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'The notebook could not be moved.'))}
@@ -685,7 +690,7 @@ function App() {
                               </select>
                             </div>
                           ))}
-                          <form className="mt-1 flex gap-1" onSubmit={(event) => void createShelfFromForm(library, event)}>
+                          <form className="mt-1 flex min-w-0 gap-1" onSubmit={(event) => void createShelfFromForm(library, event)}>
                             <label className="sr-only" htmlFor={`new-shelf-${library.id}`}>New shelf in {library.name}</label>
                             <input id={`new-shelf-${library.id}`} className="small-input !min-h-8 min-w-0 flex-1 !px-2 text-xs" value={shelfNames[library.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [library.id]: event.target.value }))} placeholder="New shelf" />
                             <button className="icon-button !h-8 !w-8" aria-label={`Add shelf to ${library.name}`} type="submit"><Plus size={15} /></button>
@@ -954,15 +959,17 @@ function NavButton({
   count,
   icon,
   onClick,
+  className = '',
 }: {
   active: boolean
   label: string
   count: number
   icon: React.ReactNode
   onClick: () => void
+  className?: string
 }) {
   return (
-    <button className={`nav-button flex w-full items-center gap-3 text-left ${active ? 'nav-button-active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
+    <button className={`nav-button flex w-full items-center gap-3 text-left ${className} ${active ? 'nav-button-active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
       <span className="shrink-0">{icon}</span><span className="min-w-0 flex-1 truncate">{label}</span><span className="text-xs tabular-nums text-[var(--muted)]">{count}</span>
     </button>
   )
