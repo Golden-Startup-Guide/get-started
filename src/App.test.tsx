@@ -80,7 +80,8 @@ describe('My Notes workspace', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
     await screen.findByRole('heading', { name: 'Garden notes' })
-    await expect((await import('./lib/notes')).getNoteHistory((await (await import('./lib/notes')).getNotes()).find((note) => note.title === 'Garden notes')!.id)).resolves.toHaveLength(2)
+    // Edits seconds apart form one editing burst, so they share a single revision.
+    await expect((await import('./lib/notes')).getNoteHistory((await (await import('./lib/notes')).getNotes()).find((note) => note.title === 'Garden notes')!.id)).resolves.toHaveLength(1)
     expect((await (await import('./lib/notes')).getNotes()).find((note) => note.title === 'Garden notes')?.content).toContain('- [x] Water plants')
     await user.click(within(screen.getByRole('navigation', { name: 'Tags' })).getByRole('button', { name: 'Seeds 1' }))
     expect(await screen.findByRole('heading', { name: 'Garden notes' })).toBeInTheDocument()

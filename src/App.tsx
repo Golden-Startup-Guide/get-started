@@ -40,7 +40,7 @@ import {
   deleteNotebook,
   deleteLibrary,
   deleteShelf,
-  exportBackup,
+  exportBackupFile,
   getNoteHistory,
   getNoteLinks,
   getAllNoteLinks,
@@ -67,6 +67,7 @@ import {
   setNoteFlag,
   trashNote,
   unlinkNotes,
+  type BackupOptions,
 } from './lib/notes'
 import type {
   AppSettings,
@@ -694,10 +695,9 @@ function App() {
     }
   }
 
-  async function handleExport() {
+  async function handleExport(options: BackupOptions) {
     try {
-      const backup = await exportBackup()
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const blob = await exportBackupFile(options)
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -1134,7 +1134,7 @@ function App() {
           fileRef={fileRef}
           onClose={closeSettings}
           onTheme={(value) => void handleTheme(value)}
-          onExport={() => void handleExport()}
+          onExport={(options) => void handleExport(options)}
           onImport={(event) => void handleImport(event)}
           error={error}
           notice={notice}
@@ -1903,7 +1903,7 @@ function SettingsDialog({
   fileRef: React.RefObject<HTMLInputElement>
   onClose: () => void
   onTheme: (theme: ThemePreference) => void
-  onExport: () => void
+  onExport: (options: BackupOptions) => void
   onImport: (event: FormEvent<HTMLFormElement>) => void
   error: string | null
   notice: string | null
@@ -1911,6 +1911,8 @@ function SettingsDialog({
   onDismissNotice: () => void
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const [includeAttachments, setIncludeAttachments] = useState(true)
+  const [includeHistory, setIncludeHistory] = useState(true)
   useEffect(() => closeRef.current?.focus(), [])
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
@@ -1946,14 +1948,19 @@ function SettingsDialog({
         <section className="mt-7">
           <h3 className="mb-3 text-sm font-semibold">Backup and restore</h3>
           <div className="flex flex-wrap gap-2">
-            <button className="secondary-button" onClick={onExport}><Download size={15} /> Export JSON backup</button>
+            <button className="secondary-button" onClick={() => onExport({ attachments: includeAttachments, history: includeHistory })}><Download size={15} /> Export JSON backup</button>
             <form className="flex items-center gap-2" onSubmit={onImport}>
               <label className="sr-only" htmlFor="backup-file">Choose a JSON backup</label>
               <input ref={fileRef} id="backup-file" type="file" accept="application/json,.json" className="max-w-48 text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-[var(--surface-alt)] file:px-3 file:py-2 file:text-[var(--text)]" />
               <button className="secondary-button" type="submit">Import</button>
             </form>
           </div>
-          <p className="mt-2 text-xs text-[var(--muted)]">Import adds notes without overwriting existing notes. JSON backups up to 40 MiB are supported.</p>
+          <fieldset className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <legend className="sr-only">Include in export</legend>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={includeAttachments} onChange={(event) => setIncludeAttachments(event.target.checked)} /> Include attachments ({formatBytes(storage.attachmentBytes)})</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={includeHistory} onChange={(event) => setIncludeHistory(event.target.checked)} /> Include history ({storage.revisions} {storage.revisions === 1 ? 'revision' : 'revisions'})</label>
+          </fieldset>
+          <p className="mt-2 text-xs text-[var(--muted)]">Import adds notes without overwriting existing notes. JSON backups up to 40 MiB are supported; if a backup is too large, export it without attachments or history.</p>
         </section>
         <section className="mt-7">
           <h3 className="mb-3 text-sm font-semibold">Storage on this device</h3>

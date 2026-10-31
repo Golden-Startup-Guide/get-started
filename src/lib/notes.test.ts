@@ -170,6 +170,38 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(0)
   })
 
+  it('keeps one revision per editing burst and caps revisions per note', async () => {
+    let now = 1_800_000_000_000
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    try {
+      const note: Note = { id: 'bursty-note', title: 'Draft', content: 'v0', createdAt: now, updatedAt: now, notebookId: 'starter-personal' }
+      await storage.saveNote(note)
+      for (let version = 1; version <= 5; version += 1) {
+        now += 1000
+        await storage.saveNote({ ...note, content: `v${version}`, updatedAt: now })
+      }
+      const burst = await storage.getNoteHistory(note.id)
+      expect(burst).toHaveLength(1)
+      expect(burst[0].snapshot.content).toBe('v0')
+
+      now += storage.HISTORY_SNAPSHOT_INTERVAL_MS
+      await storage.saveNote({ ...note, content: 'after a break', updatedAt: now })
+      const afterBreak = await storage.getNoteHistory(note.id)
+      expect(afterBreak.map((entry) => entry.snapshot.content)).toEqual(['v5', 'v0'])
+
+      for (let version = 0; version < storage.MAX_HISTORY_PER_NOTE + 5; version += 1) {
+        now += storage.HISTORY_SNAPSHOT_INTERVAL_MS
+        await storage.saveNote({ ...note, content: `long session ${version}`, updatedAt: now })
+      }
+      const capped = await storage.getNoteHistory(note.id)
+      expect(capped).toHaveLength(storage.MAX_HISTORY_PER_NOTE)
+      expect(capped.map((entry) => entry.snapshot.content)).not.toContain('v0')
+      expect(capped[0].snapshot.content).toBe(`long session ${storage.MAX_HISTORY_PER_NOTE + 3}`)
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
   it('moves notes to Trash, restores them with tags, and permanently removes them with history', async () => {
     const note: Note = {
       id: 'trash-test-note',
@@ -483,6 +515,40 @@ describe('IndexedDB storage and backup', () => {
     })
     const saved = await (await storage.openNotesDatabase()).get('notes', 'missing-notebook-note')
     expect((await storage.getNotebooks()).some((notebook) => notebook.id === saved?.notebookId)).toBe(true)
+  })
+
+  it('exports smaller backups without attachments or history that still import', async () => {
+    await storage.saveNote({ id: 'export-options-note', title: 'Options', content: 'one', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal' })
+    await storage.saveNote({ id: 'export-options-note', title: 'Options', content: 'two', createdAt: 1, updatedAt: 2, notebookId: 'starter-personal' })
+    await storage.addNoteAttachment('export-options-note', new Blob(['attached'], { type: 'text/plain' }), 'file.txt')
+
+    const full = await storage.exportBackup()
+    expect(full.history.length).toBeGreaterThan(0)
+    expect(full.attachments.length).toBeGreaterThan(0)
+
+    const slim = await storage.exportBackup({ attachments: false, history: false })
+    expect(slim.history).toEqual([])
+    expect(slim.attachments).toEqual([])
+    expect(slim.notes).toEqual(full.notes)
+
+    const file = await storage.exportBackupFile({ attachments: false })
+    expect(file.type).toBe('application/json')
+    const parsed = JSON.parse(await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.readAsText(file)
+    }))
+    expect(parsed.attachments).toEqual([])
+    expect(parsed.history.length).toBe(full.history.length)
+
+    const renamed = {
+      ...slim,
+      notes: slim.notes.filter((item) => item.id === 'export-options-note').map((item) => ({ ...item, id: 'slim-imported-note' })),
+      links: [],
+    }
+    await expect(storage.importBackupFile(jsonFile(JSON.stringify(renamed)))).resolves.toEqual(
+      expect.objectContaining({ notesAdded: 1, historyAdded: 0, attachmentsAdded: 0 }),
+    )
   })
 
   it('rejects malformed, duplicate-ID, and oversized backup files before importing', async () => {

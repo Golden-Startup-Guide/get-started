@@ -10,8 +10,8 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
 | # | Severity | Finding |
 |---|----------|---------|
 | 1 | High | Backups can become impossible to restore (reproduced) - **Fixed** |
-| 2 | High | Note history grows without limit |
-| 3 | High | Export fails above 40 MiB while storage is unlimited |
+| 2 | High | Note history grows without limit - **Fixed** |
+| 3 | High | Export fails above 40 MiB while storage is unlimited - **Fixed** |
 | 4 | High | Autosave cost grows with total data size |
 | 5 | High | Last edits lost on tab close, reload, or link navigation - **Fixed** |
 | 6 | High | Persistent storage is never requested - **Fixed** |
@@ -43,11 +43,15 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
 
 **Recommendation:** coalesce snapshots (for example, at most one per note every few minutes) and cap the number kept per note.
 
+**Status: Fixed.** `saveNote` creates a revision only when five minutes have passed since the note's latest one, and keeps at most 50 per note, pruning the oldest. Restoring a revision always records the current text first. Existing oversized histories are trimmed the next time each note gets a new revision.
+
 ### 3. Export fails above 40 MiB while storage is unlimited
 
 Export throws above 40 MiB (`src/lib/notes.ts:855`). Attachments grow by about a third when Base64-encoded into the backup, and history grows as in finding 2. A heavy user eventually cannot back up at all, and there is no option to export without attachments or history.
 
 **Recommendation:** offer partial exports (without attachments and/or history), or a multi-file/ZIP export.
+
+**Status: Fixed.** Settings now has **Include attachments** and **Include history** options for export, showing how much of each is stored, and the size error suggests excluding them. Export also serializes the backup once instead of twice. A multi-file export for very large attachment collections remains possible future work.
 
 ### 4. Autosave cost grows with total data size
 
