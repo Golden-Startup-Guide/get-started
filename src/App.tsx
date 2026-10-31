@@ -30,6 +30,7 @@ import {
   X,
 } from 'lucide-react'
 import {
+  DATABASE_VERSION,
   createLibrary,
   createNotebook,
   createShelf,
@@ -106,20 +107,30 @@ function sortNotes(notes: Note[]): Note[] {
   )
 }
 
+// Cards clamp to a few lines, so rendering a note's full text would only cost time.
+const CARD_PREVIEW_LENGTH = 600
+
+// Iterative so a long note with many matches cannot overflow the call stack.
 function highlight(text: string, query: string): React.ReactNode {
-  const term = query.trim()
+  const term = query.trim().toLocaleLowerCase()
   if (!term) return text
-  const index = text.toLocaleLowerCase().indexOf(term.toLocaleLowerCase())
-  if (index < 0) return text
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="rounded bg-amber-200 px-0.5 text-stone-950">
+  const lower = text.toLocaleLowerCase()
+  const parts: React.ReactNode[] = []
+  let start = 0
+  let index = lower.indexOf(term)
+  while (index >= 0) {
+    if (index > start) parts.push(text.slice(start, index))
+    parts.push(
+      <mark key={index} className="rounded bg-amber-200 px-0.5 text-stone-950">
         {text.slice(index, index + term.length)}
-      </mark>
-      {highlight(text.slice(index + term.length), term)}
-    </>
-  )
+      </mark>,
+    )
+    start = index + term.length
+    index = lower.indexOf(term, start)
+  }
+  if (!parts.length) return text
+  if (start < text.length) parts.push(text.slice(start))
+  return <>{parts}</>
 }
 
 function formatDate(timestamp: number): string {
@@ -1285,7 +1296,7 @@ function NoteCard({
           </div>}
         </div>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug">{highlight(note.title || 'Untitled note', query)}</h2>
-        <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed text-[var(--muted)]">{highlight(note.content, query) || 'No content yet.'}</p>
+        <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed text-[var(--muted)]">{highlight(note.content.slice(0, CARD_PREVIEW_LENGTH), query) || 'No content yet.'}</p>
         <div className="mt-4 flex flex-wrap gap-1.5">
           {(note.tags ?? []).map((tag) => <span className="tag-chip" key={tag}>{highlight(tag, query)}</span>)}
           {note.pinned && <span className="tag-chip tag-chip-pin"><Pin size={11} /> Pinned</span>}
@@ -1310,20 +1321,25 @@ function AttachmentCard({
   const [url, setUrl] = useState<string | null>(null)
   const isImagePreviewable = ['image/avif', 'image/bmp', 'image/gif', 'image/jpeg', 'image/png', 'image/webp']
     .includes(attachment.type.toLocaleLowerCase())
+  const isAudio = attachment.type.toLocaleLowerCase().startsWith('audio/')
+  const isRenderable = isImagePreviewable || isAudio
 
   useEffect(() => {
     if (typeof URL.createObjectURL !== 'function') return
-    const objectUrl = URL.createObjectURL(attachment.blob)
+    // A blob URL runs with the app's origin. Opening an HTML or SVG attachment's link in a
+    // new tab could then read every note, so anything not previewed here is download-only.
+    const blob = isRenderable ? attachment.blob : new Blob([attachment.blob], { type: 'application/octet-stream' })
+    const objectUrl = URL.createObjectURL(blob)
     setUrl(objectUrl)
     return () => URL.revokeObjectURL(objectUrl)
-  }, [attachment.blob])
+  }, [attachment.blob, isRenderable])
 
   return (
     <li className="attachment-card">
       {url && isImagePreviewable && (
         <img className="attachment-image" src={url} alt={`Preview of ${attachment.name}`} />
       )}
-      {url && attachment.type.startsWith('audio/') && (
+      {url && isAudio && (
         <audio className="attachment-audio" controls preload="metadata" src={url}>
           Audio playback is not supported by this browser.
         </audio>
@@ -2038,7 +2054,7 @@ function SettingsDialog({
         <section className="mt-7 border-t border-[var(--border)] pt-5">
           <h3 className="text-sm font-semibold">About My Notes</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">An offline-first, private notes app. Your notes stay in this browser’s local storage; no account or network connection is required.</p>
-          <p className="mt-2 text-xs text-[var(--muted)]">My Notes · IndexedDB schema 4 · Data stored locally</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">My Notes · IndexedDB schema {DATABASE_VERSION} · Backup format 4 · Data stored locally</p>
         </section>
       </section>
     </div>

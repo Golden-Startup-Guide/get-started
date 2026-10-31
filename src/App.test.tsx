@@ -394,7 +394,14 @@ describe('My Notes workspace', () => {
   it('attaches and previews local image files from a saved note', async () => {
     const createObjectURL = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
     const revokeObjectURL = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
-    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: () => 'blob:test-attachment' })
+    const objectUrlTypes: string[] = []
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: (blob: Blob) => {
+        objectUrlTypes.push(blob.type)
+        return 'blob:test-attachment'
+      },
+    })
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const { default: App } = await import('./App')
@@ -415,9 +422,17 @@ describe('My Notes workspace', () => {
       const audio = new File([new Uint8Array([1, 2, 3])], 'voice.webm', { type: 'audio/webm' })
       await user.upload(screen.getByLabelText('Choose files to attach'), audio)
       await waitFor(() => expect(document.querySelector('audio')).toHaveAttribute('src', 'blob:test-attachment'), { timeout: 5000 })
+      const page = new File(['<script>steal()</script>'], 'page.html', { type: 'text/html' })
+      await user.upload(screen.getByLabelText('Choose files to attach'), page)
+      await screen.findByRole('link', { name: 'Download page.html' }, { timeout: 5000 })
+      // Only previewable files keep their type; others cannot render in the app's origin.
+      expect(objectUrlTypes).toEqual(expect.arrayContaining(['image/png', 'audio/webm', 'application/octet-stream']))
+      expect(objectUrlTypes).not.toContain('text/html')
       await expect((await import('./lib/notes')).getStorageSnapshot()).resolves.toEqual(
-        expect.objectContaining({ attachments: 2, attachmentBytes: image.size + audio.size }),
+        expect.objectContaining({ attachments: 3, attachmentBytes: image.size + audio.size + page.size }),
       )
+      await user.click(screen.getByRole('button', { name: 'Remove attachment page.html' }))
+      await waitFor(() => expect(screen.queryByRole('link', { name: 'Download page.html' })).not.toBeInTheDocument())
 
       await user.click(screen.getByRole('button', { name: 'Remove attachment seedlings.png' }))
       await waitFor(() => expect(screen.queryByRole('img', { name: 'Preview of seedlings.png' })).not.toBeInTheDocument())
