@@ -79,7 +79,7 @@ describe('My Notes workspace', () => {
     await screen.findByRole('heading', { name: 'Garden notes' })
     await expect((await import('./lib/notes')).getNoteHistory((await (await import('./lib/notes')).getNotes()).find((note) => note.title === 'Garden notes')!.id)).resolves.toHaveLength(2)
     expect((await (await import('./lib/notes')).getNotes()).find((note) => note.title === 'Garden notes')?.content).toContain('- [x] Water plants')
-    fireEvent.change(screen.getByRole('combobox', { name: 'Filter notes' }), { target: { value: 'tag:seeds' } })
+    await user.click(within(screen.getByRole('navigation', { name: 'Tags' })).getByRole('button', { name: 'Seeds 1' }))
     expect(await screen.findByRole('heading', { name: 'Garden notes' })).toBeInTheDocument()
 
     await user.click(screen.getAllByRole('button', { name: 'Open settings' })[0])
@@ -112,7 +112,7 @@ describe('My Notes workspace', () => {
     await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 0' }))
     await screen.findByRole('heading', { name: 'Library home' })
     const main = screen.getByRole('main')
-    fireEvent.change(within(main).getByRole('textbox', { name: 'New library name' }), { target: { value: 'Garden Library' } })
+    await user.type(within(main).getByRole('textbox', { name: 'New library name' }), 'Garden Library')
     await user.click(within(main).getByRole('button', { name: 'Add library' }))
     await within(libraryNavigation).findByRole('button', { name: 'Garden Library 0' })
     const newShelf = within(main).getByRole('textbox', { name: 'New shelf in Garden Library' })
@@ -154,6 +154,67 @@ describe('My Notes workspace', () => {
     ))
     expect(await storage.getNotebooks()).toContainEqual(expect.objectContaining({ id: notebook.id, shelfId: destinationShelf.id }))
     expect(await storage.getNotes()).toContainEqual(expect.objectContaining(note))
+  }, 15000)
+
+  it('collapses the desktop sidebar and expands library tree sections accessibly', async () => {
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+
+    const sidebar = screen.getByRole('complementary', { name: 'Primary navigation' })
+    const libraryNavigation = within(sidebar).getByRole('navigation', { name: 'Libraries' })
+    await within(libraryNavigation).findByRole('button', { name: 'Personal Library 0' })
+    const toggle = screen.getByRole('button', { name: 'Collapse sidebar' })
+    const collapseLibrary = within(sidebar).getByRole('button', { name: 'Collapse Personal Library' })
+    const libraryContentsId = collapseLibrary.getAttribute('aria-controls')!
+    await user.click(collapseLibrary)
+    expect(within(sidebar).getByRole('button', { name: 'Expand Personal Library' })).toHaveAttribute('aria-expanded', 'false')
+    expect(document.getElementById(libraryContentsId)).toHaveAttribute('hidden')
+    expect(within(sidebar).queryByRole('button', { name: 'General 0' })).not.toBeInTheDocument()
+    await user.click(within(sidebar).getByRole('button', { name: 'Expand Personal Library' }))
+    expect(await within(sidebar).findByRole('button', { name: 'General 0' })).toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Expand sidebar' }))
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false')
+  }, 15000)
+
+  it('opens a keyboard-accessible navigation drawer on compact screens', async () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 1023px)',
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+
+    const toggle = screen.getByRole('button', { name: 'Open navigation' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await user.click(toggle)
+    const drawer = await screen.findByRole('dialog', { name: 'Primary navigation' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await waitFor(() => expect(within(drawer).getByRole('button', { name: 'Close navigation' })).toHaveFocus())
+
+    fireEvent.keyDown(drawer, { key: 'Escape' })
+    await waitFor(() => expect(toggle).toHaveFocus())
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+    const reopenedDrawer = await screen.findByRole('dialog', { name: 'Primary navigation' })
+    await user.click(within(reopenedDrawer).getByRole('button', { name: 'Favorites 0' }))
+    expect(await screen.findByRole('heading', { name: 'Favorites' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Favorites' })).toHaveFocus())
   }, 15000)
 
   it('creates, follows, disambiguates, and removes linked notes with backlinks', async () => {
