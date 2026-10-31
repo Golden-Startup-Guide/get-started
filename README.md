@@ -84,6 +84,8 @@ for storage, backup, migration, and feature details.
 - [UI design direction](docs/UI_DESIGN.md) — library-first information
   architecture, responsive navigation, and accessibility requirements.
 - [Product roadmap](docs/ROADMAP.md) — current status and future direction.
+- [Code and data-safety audit](docs/AUDIT.md) — audit findings, severities,
+  and recommended fix order.
 
 ## Development
 
