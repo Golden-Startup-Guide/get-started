@@ -122,9 +122,15 @@ title or Markdown content. Identical title/content saves and organization-only
 changes do not create a revision. Open a note's history to inspect saved
 revisions and restore an earlier snapshot.
 
-History is kept in local IndexedDB and is included in backups. Permanently
-deleting a note from Trash also removes its history. History is not silently
-pruned by a retention timer.
+Because autosave runs after every pause in typing, saves are grouped into
+editing bursts: a new revision is created only when at least five minutes have
+passed since the note's latest revision, and that revision holds the text from
+before the burst. Restoring a revision always records the current text first,
+so a restore can be undone. Each note keeps its 50 most recent revisions; older
+ones are removed when a new revision is added.
+
+History is kept in local IndexedDB and is included in backups unless excluded
+at export. Permanently deleting a note from Trash also removes its history.
 
 ### 2.6 Linked notes and knowledge graph
 
@@ -184,6 +190,12 @@ Use **Settings → Export JSON backup** to download a portable JSON file. The
 backup contains the supported application data, including active and trashed
 notes, libraries, shelves, notebooks, tags, theme settings, note history,
 attachments, and note links.
+
+Backups are limited to 40 MiB, and attachments take about a third more space in
+a backup than on the device. To keep a backup under the limit, clear **Include
+attachments** and/or **Include history** before exporting; Settings shows how
+much of each is stored. A backup without attachments or history imports
+normally and restores everything else.
 
 ### Import
 

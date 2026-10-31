@@ -263,7 +263,12 @@ export async function getTrash(): Promise<Note[]> {
     .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
 }
 
-export async function saveNote(input: Note): Promise<void> {
+// Autosave runs after every pause in typing, so keep at most one revision per editing
+// burst and a bounded number per note. Older revisions are pruned first.
+export const HISTORY_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000
+export const MAX_HISTORY_PER_NOTE = 50
+
+export async function saveNote(input: Note, options: { forceHistory?: boolean } = {}): Promise<void> {
   const db = await database
   const transaction = db.transaction(['notes', 'notebooks', 'tags', 'history'], 'readwrite')
   const existing = await transaction.objectStore('notes').get(input.id)
@@ -278,12 +283,15 @@ export async function saveNote(input: Note): Promise<void> {
   }
   const note = normalizeNote({ ...input, notebookId })
   if (existing && (existing.title !== note.title || existing.content !== note.content)) {
-    await transaction.objectStore('history').put({
-      id: crypto.randomUUID(),
-      noteId: existing.id,
-      savedAt: Date.now(),
-      snapshot: existing,
-    })
+    const historyStore = transaction.objectStore('history')
+    const revisions = (await historyStore.index('by-note').getAll(existing.id))
+      .sort((a, b) => b.savedAt - a.savedAt)
+    const now = Date.now()
+    // Within a burst, the newest revision already holds the text from before the burst.
+    if (options.forceHistory || !revisions.length || now - revisions[0].savedAt >= HISTORY_SNAPSHOT_INTERVAL_MS) {
+      await historyStore.put({ id: crypto.randomUUID(), noteId: existing.id, savedAt: now, snapshot: existing })
+      for (const revision of revisions.slice(MAX_HISTORY_PER_NOTE - 1)) await historyStore.delete(revision.id)
+    }
   }
   await transaction.objectStore('notes').put(note)
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
@@ -766,7 +774,7 @@ export async function restoreHistory(revisionId: string): Promise<void> {
     createdAt: current.createdAt,
     updatedAt: Date.now(),
     ...(current.deletedAt !== undefined ? { deletedAt: current.deletedAt } : {}),
-  })
+  }, { forceHistory: true })
 }
 
 interface LegacyNotesBackup {
@@ -849,7 +857,14 @@ function isQuotaExceeded(reason: unknown): boolean {
   return reason instanceof DOMException && reason.name === 'QuotaExceededError'
 }
 
-export async function exportBackup(): Promise<NotesBackup> {
+export interface BackupOptions {
+  /** Include attachment files (stored as Base64, about a third larger than the originals). */
+  attachments?: boolean
+  /** Include note history revisions. */
+  history?: boolean
+}
+
+async function buildBackup({ attachments: includeAttachments = true, history: includeHistory = true }: BackupOptions): Promise<NotesBackup> {
   const db = await database
   const [notes, notebooks, libraries, shelves, tags, settings, history, attachments, links] = await Promise.all([
     db.getAll('notes'),
@@ -858,15 +873,15 @@ export async function exportBackup(): Promise<NotesBackup> {
     db.getAll('shelves'),
     db.getAll('tags'),
     getSettings(),
-    db.getAll('history'),
-    db.getAll('attachments'),
+    includeHistory ? db.getAll('history') : [],
+    includeAttachments ? db.getAll('attachments') : [],
     db.getAll('noteLinks'),
   ])
   const backupAttachments = attachments.map(({ data, ...attachment }) => ({
     ...attachment,
     data: bytesToBase64(new Uint8Array(data)),
   }))
-  const backup: NotesBackup = {
+  return {
     format: 'my-notes-backup',
     version: 4,
     exportedAt: Date.now(),
@@ -880,10 +895,29 @@ export async function exportBackup(): Promise<NotesBackup> {
     attachments: backupAttachments,
     links,
   }
-  if (new Blob([JSON.stringify(backup, null, 2)]).size > MAX_BACKUP_SIZE_BYTES) {
-    throw new Error('This backup exceeds 40 MiB. Remove some attachments and try again.')
+}
+
+function serializeBackup(backup: NotesBackup): string {
+  const text = JSON.stringify(backup, null, 2)
+  if (new Blob([text]).size > MAX_BACKUP_SIZE_BYTES) {
+    throw new Error(
+      backup.attachments.length || backup.history.length
+        ? 'This backup exceeds 40 MiB. Export it without attachments or history, or remove some attachments, and try again.'
+        : 'This backup exceeds 40 MiB even without attachments and history.',
+    )
   }
+  return text
+}
+
+export async function exportBackup(options: BackupOptions = {}): Promise<NotesBackup> {
+  const backup = await buildBackup(options)
+  serializeBackup(backup)
   return backup
+}
+
+/** Builds and serializes a backup once, ready to download. */
+export async function exportBackupFile(options: BackupOptions = {}): Promise<Blob> {
+  return new Blob([serializeBackup(await buildBackup(options))], { type: 'application/json' })
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
