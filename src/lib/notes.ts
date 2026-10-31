@@ -62,7 +62,61 @@ const starterNotebooks = [
 const DEFAULT_LIBRARY_ID = 'starter-library'
 const DEFAULT_SHELF_ID = 'starter-shelf'
 
-const database = openDB<NotesDatabase>('my-notes', 6, {
+export const DATABASE_VERSION = 6
+
+export type StorageEvent =
+  /** Another tab changed data. An empty noteIds list means anything may have changed. */
+  | { type: 'changed'; noteIds: string[] }
+  /** An older tab is keeping this tab's database upgrade from finishing. */
+  | { type: 'blocked' }
+  /** A newer version of the app opened in another tab; this connection was closed. */
+  | { type: 'version-change' }
+  /** The browser closed the database connection unexpectedly. */
+  | { type: 'terminated' }
+
+const storageListeners = new Set<(event: StorageEvent) => void>()
+
+export function subscribeToStorage(listener: (event: StorageEvent) => void): () => void {
+  storageListeners.add(listener)
+  return () => storageListeners.delete(listener)
+}
+
+function emitStorageEvent(event: StorageEvent) {
+  for (const listener of storageListeners) listener(event)
+}
+
+// Tabs share one database, so each write tells the other tabs which notes it touched.
+// BroadcastChannel never delivers a message back to the tab that sent it.
+const changeChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('my-notes-changes') : undefined
+changeChannel?.addEventListener('message', (event: MessageEvent) => {
+  const data: unknown = event.data
+  if (
+    typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'changed' &&
+    Array.isArray((data as { noteIds?: unknown }).noteIds)
+  ) {
+    emitStorageEvent({
+      type: 'changed',
+      noteIds: (data as { noteIds: unknown[] }).noteIds.filter((id): id is string => typeof id === 'string'),
+    })
+  }
+})
+
+function announceChange(noteIds: string[] = []) {
+  changeChannel?.postMessage({ type: 'changed', noteIds })
+}
+
+const database = openDB<NotesDatabase>('my-notes', DATABASE_VERSION, {
+  blocked() {
+    emitStorageEvent({ type: 'blocked' })
+  },
+  blocking() {
+    // Close so the newer tab can upgrade instead of waiting forever on this one.
+    void database.then((db) => db.close())
+    emitStorageEvent({ type: 'version-change' })
+  },
+  terminated() {
+    emitStorageEvent({ type: 'terminated' })
+  },
   async upgrade(db, oldVersion, _newVersion, transaction) {
     const now = Date.now()
     if (oldVersion < 1) {
@@ -216,6 +270,11 @@ export async function getNotes(): Promise<Note[]> {
   )
 }
 
+export async function getNote(id: string): Promise<Note | undefined> {
+  const db = await database
+  return db.get('notes', id)
+}
+
 export async function getNoteLinks(noteId: string): Promise<{ outgoing: NoteLink[]; backlinks: NoteLink[] }> {
   const db = await database
   const [outgoing, backlinks] = await Promise.all([
@@ -249,11 +308,13 @@ export async function linkNotes(sourceNoteId: string, targetNoteId: string): Pro
   }
   await transaction.objectStore('noteLinks').put({ sourceNoteId, targetNoteId })
   await transaction.done
+  announceChange([sourceNoteId, targetNoteId])
 }
 
 export async function unlinkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
   const db = await database
   await db.delete('noteLinks', [sourceNoteId, targetNoteId])
+  announceChange([sourceNoteId, targetNoteId])
 }
 
 export async function getTrash(): Promise<Note[]> {
@@ -300,6 +361,7 @@ export async function saveNote(input: Note, options: { forceHistory?: boolean } 
     await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   }
   await transaction.done
+  announceChange([note.id])
 }
 
 function sameTagContribution(before: Note, after: Note): boolean {
@@ -372,6 +434,7 @@ export async function addNoteAttachment(
     }
     throw failure
   }
+  announceChange([noteId])
   return { ...attachment, blob: new Blob([data], { type: attachment.type }) }
 }
 
@@ -389,6 +452,7 @@ export async function deleteNoteAttachment(id: string): Promise<void> {
   const note = await noteStore.get(attachment.noteId)
   if (note) await noteStore.put({ ...note, updatedAt: Date.now() })
   await transaction.done
+  announceChange([attachment.noteId])
 }
 
 export async function trashNote(id: string): Promise<void> {
@@ -407,6 +471,7 @@ export async function trashNote(id: string): Promise<void> {
   await store.put({ ...note, deletedAt: Date.now() })
   await refreshTags(store, transaction.objectStore('tags'))
   await transaction.done
+  announceChange([id])
 }
 
 export async function restoreNote(id: string): Promise<void> {
@@ -426,6 +491,7 @@ export async function restoreNote(id: string): Promise<void> {
   await store.put(restored)
   await refreshTags(store, transaction.objectStore('tags'))
   await transaction.done
+  announceChange([id])
 }
 
 export async function permanentlyDeleteNote(id: string): Promise<void> {
@@ -458,6 +524,7 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   }
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
+  announceChange([id])
 }
 
 export async function deleteNote(id: string): Promise<void> {
@@ -502,6 +569,7 @@ export async function createLibrary(name: string): Promise<Library> {
     updatedAt: now,
   })
   await transaction.done
+  announceChange()
   return library
 }
 
@@ -523,6 +591,7 @@ export async function renameLibrary(id: string, name: string): Promise<void> {
   }
   await store.put({ ...library, name: cleaned, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function createShelf(libraryId: string, name: string): Promise<Shelf> {
@@ -543,6 +612,7 @@ export async function createShelf(libraryId: string, name: string): Promise<Shel
   const shelf = { id: crypto.randomUUID(), libraryId, name: cleaned, createdAt: now, updatedAt: now }
   await transaction.objectStore('shelves').add(shelf)
   await transaction.done
+  announceChange()
   return shelf
 }
 
@@ -564,6 +634,7 @@ export async function renameShelf(id: string, name: string): Promise<void> {
   }
   await store.put({ ...shelf, name: cleaned, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function deleteShelf(id: string, destinationId: string): Promise<void> {
@@ -586,6 +657,7 @@ export async function deleteShelf(id: string, destinationId: string): Promise<vo
   }
   await shelves.delete(id)
   await transaction.done
+  announceChange()
 }
 
 export async function deleteLibrary(id: string, destinationId: string): Promise<void> {
@@ -623,6 +695,7 @@ export async function deleteLibrary(id: string, destinationId: string): Promise<
   }
   await libraries.delete(id)
   await transaction.done
+  announceChange()
 }
 
 export async function moveNotebook(notebookId: string, shelfId: string): Promise<void> {
@@ -640,6 +713,7 @@ export async function moveNotebook(notebookId: string, shelfId: string): Promise
   }
   await notebooks.put({ ...notebook, shelfId, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function createNotebook(name: string, shelfId?: string): Promise<Notebook> {
@@ -662,6 +736,7 @@ export async function createNotebook(name: string, shelfId?: string): Promise<No
   const notebook = { id: crypto.randomUUID(), name: cleaned, shelfId: targetShelfId, createdAt: now, updatedAt: now }
   await notebooksStore.add(notebook)
   await transaction.done
+  announceChange()
   return notebook
 }
 
@@ -686,6 +761,7 @@ export async function renameNotebook(id: string, name: string): Promise<void> {
   }
   await transaction.store.put({ ...notebook, name: cleaned, updatedAt: Date.now() })
   await transaction.done
+  announceChange()
 }
 
 export async function deleteNotebook(id: string, destinationId: string): Promise<void> {
@@ -721,6 +797,7 @@ export async function deleteNotebook(id: string, destinationId: string): Promise
   }
   await notebooks.delete(id)
   await transaction.done
+  announceChange(notes.map((note) => note.id))
 }
 
 export async function moveNote(noteId: string, notebookId: string): Promise<void> {
@@ -738,6 +815,7 @@ export async function moveNote(noteId: string, notebookId: string): Promise<void
   }
   await notes.put({ ...note, notebookId, updatedAt: Date.now() })
   await transaction.done
+  announceChange([noteId])
 }
 
 export async function getTags(): Promise<Tag[]> {
@@ -753,6 +831,7 @@ export async function getSettings(): Promise<AppSettings> {
 export async function saveTheme(theme: ThemePreference): Promise<void> {
   const db = await database
   await db.put('settings', { id: 'preferences', theme })
+  announceChange()
 }
 
 export async function setNoteFlag(
@@ -1359,6 +1438,7 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   if (!hasLocalSettings) await settingsStore.put(backup.settings)
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
+  announceChange()
   return {
     notesAdded,
     notesSkipped,

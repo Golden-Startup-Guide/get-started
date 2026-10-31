@@ -39,6 +39,7 @@ import {
   deleteLibrary,
   deleteShelf,
   exportBackupFile,
+  getNote,
   getNoteHistory,
   getNoteLinks,
   getAllNoteLinks,
@@ -64,6 +65,7 @@ import {
   saveTheme,
   setNoteFlag,
   trashNote,
+  subscribeToStorage,
   unlinkNotes,
   type BackupOptions,
 } from './lib/notes'
@@ -191,6 +193,11 @@ function App() {
   const [collapsedShelves, setCollapsedShelves] = useState<string[]>([])
   const [query, setQuery] = useState('')
   const [activeNote, setActiveNote] = useState<Note | null>(null)
+  // Bumped to remount the editor with the latest stored copy of the same note.
+  const [editorRevision, setEditorRevision] = useState(0)
+  const [activeNoteChangedElsewhere, setActiveNoteChangedElsewhere] = useState(false)
+  const activeNoteIdRef = useRef<string | null>(null)
+  activeNoteIdRef.current = activeNote?.id ?? null
   const [isCreating, setIsCreating] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -277,6 +284,23 @@ function App() {
       active = false
     }
   }, [])
+
+  useEffect(() => subscribeToStorage((event) => {
+    if (event.type === 'changed') {
+      const activeId = activeNoteIdRef.current
+      // Writes that change notes always list them; unlisted changes are organization only.
+      if (activeId && event.noteIds.includes(activeId)) {
+        setActiveNoteChangedElsewhere(true)
+      }
+      refresh().catch(() => setError('Changes from another tab could not be loaded. Please refresh.'))
+    } else if (event.type === 'blocked') {
+      setError('Close other My Notes tabs or windows so this one can finish updating your notes.')
+    } else if (event.type === 'version-change') {
+      setError('My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved.')
+    } else {
+      setError('The browser closed the connection to your notes. Reload this page to keep working.')
+    }
+  }), [])
 
   useEffect(() => {
     if (settings.theme !== 'system' || !window.matchMedia) return
@@ -491,13 +515,31 @@ function App() {
     })
   }
 
+  async function reloadActiveNote() {
+    const id = activeNoteIdRef.current
+    if (!id) return
+    setActiveNoteChangedElsewhere(false)
+    const latest = await getNote(id)
+    if (!latest) {
+      setActiveNote(null)
+      setIsCreating(false)
+      setNotice('The note you were editing was permanently deleted in another tab.')
+      return
+    }
+    setIsCreating(false)
+    setActiveNote(latest)
+    setEditorRevision((current) => current + 1)
+  }
+
   function openNote(note: Note) {
+    setActiveNoteChangedElsewhere(false)
     focusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setIsCreating(false)
     setActiveNote(note)
   }
 
   function closeEditor() {
+    setActiveNoteChangedElsewhere(false)
     setActiveNote(null)
     setIsCreating(false)
     requestAnimationFrame(() => {
@@ -1118,7 +1160,7 @@ function App() {
 
       {activeNote && (
         <NoteEditor
-          key={activeNote.id}
+          key={`${activeNote.id}:${editorRevision}`}
           note={activeNote}
           isCreating={isCreating}
           notebooks={notebooks}
@@ -1131,6 +1173,9 @@ function App() {
           onOpenNote={openNote}
           onDelete={() => handleDeleteNote(activeNote)}
           onError={setError}
+          changedElsewhere={activeNoteChangedElsewhere}
+          onLoadLatest={() => void reloadActiveNote()}
+          onKeepMine={() => setActiveNoteChangedElsewhere(false)}
         />
       )}
       {showSettings && (
@@ -1307,6 +1352,9 @@ function NoteEditor({
   onOpenNote,
   onDelete,
   onError,
+  changedElsewhere,
+  onLoadLatest,
+  onKeepMine,
 }: {
   note: Note
   isCreating: boolean
@@ -1320,6 +1368,9 @@ function NoteEditor({
   onOpenNote: (note: Note) => void
   onDelete: () => Promise<boolean>
   onError: (message: string | null) => void
+  changedElsewhere: boolean
+  onLoadLatest: () => void
+  onKeepMine: () => void
 }) {
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
@@ -1437,6 +1488,8 @@ function NoteEditor({
     dirty,
     draftKey,
     () => saveRef.current(),
+    undefined,
+    changedElsewhere,
   )
 
   async function addAttachment(file: File) {
@@ -1547,6 +1600,18 @@ function NoteEditor({
   useEffect(() => {
     if (dirty) setSaveState('unsaved')
   }, [dirty])
+
+  // Discards this tab's draft, so the stale copy is never saved over the newer one.
+  function loadLatest() {
+    cancel()
+    skipUnmountSave()
+    onLoadLatest()
+  }
+
+  // With nothing unsaved here, show the other tab's changes right away.
+  useEffect(() => {
+    if (changedElsewhere && !dirty && saveState === 'saved') loadLatest()
+  }, [changedElsewhere, dirty, saveState])
 
   async function closeSafely() {
     const saved = await flush()
@@ -1708,6 +1773,15 @@ function NoteEditor({
         </div>
         <div className="editor-body">
           <div className="editor-fields">
+            {changedElsewhere && (dirty || saveState !== 'saved') && (
+              <div role="alert" className="notice notice-error flex-wrap">
+                <span>This note was changed in another tab. Autosave is paused so neither version is lost.</span>
+                <span className="flex flex-wrap gap-2">
+                  <button className="secondary-button" onClick={onKeepMine}>Keep my version</button>
+                  <button className="secondary-button" onClick={loadLatest}>Load the other version</button>
+                </span>
+              </div>
+            )}
             <label htmlFor="note-title" className="sr-only">Note title</label>
             <input ref={titleRef} id="note-title" className="title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Untitled note" />
             <div className="tag-editor">

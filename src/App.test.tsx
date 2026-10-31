@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteDB } from 'idb'
 import type { Note } from './types'
+import { FakeBroadcastChannel } from './test/fakeBroadcastChannel'
 
 describe('My Notes workspace', () => {
   beforeEach(async () => {
@@ -118,7 +119,7 @@ describe('My Notes workspace', () => {
     const main = screen.getByRole('main')
     await user.type(within(main).getByRole('textbox', { name: 'New library name' }), 'Garden Library')
     await user.click(within(main).getByRole('button', { name: 'Add library' }))
-    await within(libraryNavigation).findByRole('button', { name: 'Garden Library 0' })
+    await within(libraryNavigation).findByRole('button', { name: 'Garden Library 0' }, { timeout: 3000 })
     const newShelf = within(main).getByRole('textbox', { name: 'New shelf in Garden Library' })
     fireEvent.change(newShelf, { target: { value: 'Garden Shelf' } })
     await user.click(within(main).getByRole('button', { name: 'Add shelf' }))
@@ -217,6 +218,49 @@ describe('My Notes workspace', () => {
       Reflect.deleteProperty(navigator, 'storage')
     }
   }, 15000)
+
+  it('picks up edits from another tab and pauses autosave when both tabs changed a note', async () => {
+    vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel)
+    const otherTab = new FakeBroadcastChannel('my-notes-changes')
+    try {
+      const { default: App } = await import('./App')
+      const storage = await import('./lib/notes')
+      const user = userEvent.setup()
+      render(<App />)
+      await screen.findByRole('heading', { name: 'All Notes' })
+      await user.click(screen.getByRole('button', { name: 'Create a new note' }))
+      fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Shared note' } })
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
+      const id = (await storage.getNotes()).find((note) => note.title === 'Shared note')!.id
+
+      const editInOtherTab = async (content: string) => {
+        const db = await storage.openNotesDatabase()
+        await db.put('notes', { ...(await db.get('notes', id))!, content, updatedAt: Date.now() })
+        otherTab.postMessage({ type: 'changed', noteIds: [id] })
+      }
+
+      await editInOtherTab('Written in the other tab')
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Markdown' })).toHaveValue('Written in the other tab'))
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'My local draft' } })
+      await editInOtherTab('Second edit elsewhere')
+      expect(await screen.findByText(/changed in another tab/)).toBeInTheDocument()
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      expect((await storage.getNote(id))?.content).toBe('Second edit elsewhere')
+
+      await user.click(screen.getByRole('button', { name: 'Keep my version' }))
+      await waitFor(async () => expect((await storage.getNote(id))?.content).toBe('My local draft'), { timeout: 3000 })
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'Another local draft' } })
+      await editInOtherTab('Third edit elsewhere')
+      await user.click(await screen.findByRole('button', { name: 'Load the other version' }))
+      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Markdown' })).toHaveValue('Third edit elsewhere'))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      expect((await storage.getNote(id))?.content).toBe('Third edit elsewhere')
+    } finally {
+      otherTab.close()
+    }
+  }, 20000)
 
   it('opens a keyboard-accessible navigation drawer on compact screens', async () => {
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
