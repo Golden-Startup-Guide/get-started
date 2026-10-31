@@ -34,8 +34,26 @@ html[data-theme='dark'] .workspace {
 }
 
 .workspace-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--canvas);
   border-color: var(--border);
+}
+
+.library-tree-notebook {
+  padding-bottom: 0.35rem;
+}
+
+.library-notebook-move {
+  display: block;
+  width: calc(100% - 2rem);
+  min-width: 0;
+  margin: 0.2rem 0 0 2rem;
 }
 
 .nav-button {

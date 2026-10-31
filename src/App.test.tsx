@@ -119,6 +119,11 @@ describe('My Notes workspace', () => {
     fireEvent.change(newShelf, { target: { value: 'Garden Shelf' } })
     await user.click(within(main).getByRole('button', { name: 'Add shelf' }))
     expect(await screen.findByRole('heading', { name: 'Garden Shelf' })).toBeInTheDocument()
+    const gardenShelf = (await storage.getShelves()).find((item) => item.name === 'Garden Shelf')!
+    await user.selectOptions(within(libraryNavigation).getByRole('combobox', { name: 'Move Personal to shelf' }), gardenShelf.id)
+    await waitFor(async () => expect(await storage.getNotebooks()).toContainEqual(
+      expect.objectContaining({ id: 'starter-personal', shelfId: gardenShelf.id }),
+    ))
 
     fireEvent.change(within(main).getByRole('textbox', { name: 'New notebook in Garden Shelf' }), { target: { value: 'Seed Journal' } })
     await user.click(within(main).getByRole('button', { name: 'Add notebook' }))
