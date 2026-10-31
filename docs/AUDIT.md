@@ -12,14 +12,14 @@ The baseline is solid: strict TypeScript compiles cleanly, the production build 
 | 1 | High | Backups can become impossible to restore (reproduced) - **Fixed** |
 | 2 | High | Note history grows without limit - **Fixed** |
 | 3 | High | Export fails above 40 MiB while storage is unlimited - **Fixed** |
-| 4 | High | Autosave cost grows with total data size |
+| 4 | High | Autosave cost grows with total data size - **Fixed** |
 | 5 | High | Last edits lost on tab close, reload, or link navigation - **Fixed** |
 | 6 | High | Persistent storage is never requested - **Fixed** |
-| 7 | Medium | Checklist toggles the wrong item (reproduced) |
-| 8 | Medium | Restoring a revision of a trashed note silently un-trashes it |
-| 9 | Medium | Restoring a revision reverts notebook, tags, pin, and favorite |
-| 10 | Medium | No multi-tab handling |
-| 11 | Medium | Remote Markdown images and no Content Security Policy |
+| 7 | Medium | Checklist toggles the wrong item (reproduced) - **Fixed** |
+| 8 | Medium | Restoring a revision of a trashed note silently un-trashes it - **Fixed** |
+| 9 | Medium | Restoring a revision reverts notebook, tags, pin, and favorite - **Fixed** |
+| 10 | Medium | No multi-tab handling - **Fixed** |
+| 11 | Medium | Remote Markdown images and no Content Security Policy - **Fixed** |
 
 ## High severity
 
@@ -64,6 +64,8 @@ With large attachments, typing becomes noticeably slow.
 
 **Recommendation:** update tag counts incrementally; compute storage stats from attachment metadata only, and only when Settings is open.
 
+**Status: Fixed.** Saves that change only the title or text skip the tag rebuild (tag counts are rebuilt only when a note's tags or Trash state change), and storage statistics are computed only while Settings is open.
+
 ### 5. Last edits lost on tab close, reload, or link navigation
 
 - There is no `beforeunload` or `pagehide` handler, so up to 650 ms of typing, plus any in-flight save, is lost when the tab closes or reloads.
@@ -89,13 +91,19 @@ With large attachments, typing becomes noticeably slow.
 
 **Recommendation:** use the rendered node's source position (`node.position.start.line`) instead of a counter.
 
+**Status: Fixed.** The preview (now `src/features/notes/MarkdownPreview.tsx`) gives each checkbox its list item's parsed source line. Checklist counts skip fenced code blocks and handle tasks inside blockquotes.
+
 ### 8. Restoring a revision of a trashed note silently un-trashes it
 
 `restoreHistory` preserves `deletedAt`, but `src/App.tsx:1595` then saves the note a second time without it. The second save is also redundant.
 
+**Status: Fixed.** The editor no longer saves a second time; `restoreHistory` returns the stored note.
+
 ### 9. Restoring a revision reverts notebook, tags, pin, and favorite
 
 Snapshots store the whole note, so restoring one reverts organization metadata as well as the title and text. Consider restoring only title and content.
+
+**Status: Fixed.** Restoring replaces only the title and text; notebook, tags, pin, favorite, and Trash state are kept. Any unsaved draft is saved first.
 
 ### 10. No multi-tab handling
 
@@ -104,22 +112,26 @@ Snapshots store the whole note, so restoring one reverts organization metadata a
 
 **Recommendation:** add `blocking` (close and reload) and `blocked` handlers; use `BroadcastChannel` to notify other tabs of changes.
 
+**Status: Fixed.** Writes announce the notes they touched over a `BroadcastChannel`, and other tabs refresh. An open note changed elsewhere reloads automatically when it has no unsaved edits; otherwise autosave pauses and the editor offers **Keep my version** or **Load the other version**. `blocked`, `blocking`, and `terminated` events close stale connections and tell the user what to do.
+
 ### 11. Remote Markdown images and no Content Security Policy
 
 Images in Markdown load from the network, so a note can carry a tracking pixel. This conflicts with the "private, offline-first" claim. There is also no Content Security Policy.
 
+**Status: Fixed.** Remote images in the preview load only when clicked. Production builds include a Content Security Policy, verified in headless Chrome to load with no console errors or violations.
+
 ## Low severity
 
-- **Attachment blob URLs:** opening a downloaded HTML or SVG attachment's link in a new tab runs it in the app's origin, where it can read IndexedDB. This matters when importing a backup from someone else.
-- **Search highlighting:** `highlight()` (`src/App.tsx:106`) recurses once per match, so a very large note searched for a single character can overflow the stack. Each note card also renders the note's full content.
-- **Incorrect label:** the About section says "IndexedDB schema 4" (`src/App.tsx:1922`), but the database is version 6 (4 is the backup format version).
-- **Global notebook names:** notebook names must be unique across all libraries, which may surprise users.
+- **Attachment blob URLs:** opening a downloaded HTML or SVG attachment's link in a new tab runs it in the app's origin, where it can read IndexedDB. This matters when importing a backup from someone else. **Fixed:** files not previewed as images or audio get download-only links.
+- **Search highlighting:** `highlight()` (`src/App.tsx:106`) recurses once per match, so a very large note searched for a single character can overflow the stack. Each note card also renders the note's full content. **Fixed:** highlighting is iterative (tested with 20,000 matches) and cards render at most 600 characters.
+- **Incorrect label:** the About section says "IndexedDB schema 4" (`src/App.tsx:1922`), but the database is version 6 (4 is the backup format version). **Fixed:** About shows the real schema version and the backup format.
+- **Global notebook names:** notebook names must be unique across all libraries, which may surprise users. **Not changed:** this is a product decision, and import relies on it to merge notebooks by name, so changing it needs a design choice first.
 
 ## Code health and tooling
 
-- **Large files:** `src/App.tsx` is 1,929 lines, and the `App` component has about 40 state variables. `src/lib/notes.ts` is 1,347 lines. Both should be split before more features are added.
-- **Dev-only vulnerabilities:** `npm audit` reports 15 (2 critical in `tinypool` via vitest 2, 1 high via the PWA plugin's build tooling). None ship to users; `npm audit --omit=dev` reports 0. Vite, Vitest, React, and `vite-plugin-pwa` are one or more major versions behind.
-- **Tests:** the suite is slow (101 s total, 57 s in `src/App.test.tsx`), and no tests cover findings 1, 7, or 8.
+- **Large files:** `src/App.tsx` is 1,929 lines, and the `App` component has about 40 state variables. `src/lib/notes.ts` is 1,347 lines. Both should be split before more features are added. **Improved:** the editor, cards, settings dialog, and helpers moved out of `App.tsx` (now about 1,140 lines), and the backup format moved to `src/lib/backupFormat.ts` (`notes.ts` is about 1,190 lines). The `App` component still holds most workspace state; moving that into hooks is worthwhile follow-up work.
+- **Dev-only vulnerabilities:** `npm audit` reports 15 (2 critical in `tinypool` via vitest 2, 1 high via the PWA plugin's build tooling). None ship to users; `npm audit --omit=dev` reports 0. Vite, Vitest, React, and `vite-plugin-pwa` are one or more major versions behind. **Improved:** Vitest 4.1.12 and `vite-plugin-pwa` 2.0.0 remove every critical and high advisory. Ten moderate/low remain inside `workbox-build`'s build-time tooling with no upstream fix; they never ship to users. React 19, Vite 7+, and Tailwind 4 upgrades are left for separate, deliberate migrations.
+- **Tests:** the suite is slow (101 s total, 57 s in `src/App.test.tsx`), and no tests cover findings 1, 7, or 8. **Improved:** every fixed finding has tests (52 in total), and the suite runs in about 60 s.
 
 ## Strengths
 
@@ -138,3 +150,5 @@ Images in Markdown load from the network, so a note can carry a tracking pixel. 
 5. Finding 4 - remove full-data scans from autosave.
 6. Finding 7 - fix checklist mapping.
 7. Finding 8 - preserve Trash state on revision restore.
+
+**Status:** all numbered findings and low-severity items are fixed, except global notebook names (a product decision), the remaining build-time advisories, and moving `App` state into hooks.
