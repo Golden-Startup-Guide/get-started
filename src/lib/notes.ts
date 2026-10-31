@@ -773,19 +773,17 @@ export async function getNoteHistory(noteId: string): Promise<NoteHistoryEntry[]
   )
 }
 
-export async function restoreHistory(revisionId: string): Promise<void> {
+// Restores only the title and text; notebook, tags, pin, favorite, and Trash state stay
+// as they are now, since history records content changes rather than organization.
+export async function restoreHistory(revisionId: string): Promise<Note> {
   const db = await database
   const revision = await db.get('history', revisionId)
   if (!revision) throw new Error('History revision not found.')
   const current = await db.get('notes', revision.noteId)
   if (!current) throw new Error('The note for this revision no longer exists.')
-  await saveNote({
-    ...revision.snapshot,
-    id: current.id,
-    createdAt: current.createdAt,
-    updatedAt: Date.now(),
-    ...(current.deletedAt !== undefined ? { deletedAt: current.deletedAt } : {}),
-  }, { forceHistory: true })
+  const restored = { ...current, title: revision.snapshot.title, content: revision.snapshot.content, updatedAt: Date.now() }
+  await saveNote(restored, { forceHistory: true })
+  return normalizeNote(restored)
 }
 
 interface LegacyNotesBackup {

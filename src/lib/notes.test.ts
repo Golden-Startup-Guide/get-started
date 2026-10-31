@@ -170,6 +170,29 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(0)
   })
 
+  it('restores only title and text, keeping Trash state and organization', async () => {
+    const note: Note = { id: 'restore-scope-note', title: 'Old title', content: 'Old text', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Before'] }
+    await storage.saveNote(note)
+    await storage.saveNote({ ...note, title: 'New title', content: 'New text', notebookId: 'starter-work', tags: ['After'], pinned: true, favorite: true, updatedAt: 2 })
+    await storage.trashNote(note.id)
+    const [revision] = await storage.getNoteHistory(note.id)
+
+    const restored = await storage.restoreHistory(revision.id)
+    const stored = await (await storage.openNotesDatabase()).get('notes', note.id)
+    expect(stored).toEqual(restored)
+    expect(stored).toEqual(expect.objectContaining({
+      title: 'Old title',
+      content: 'Old text',
+      notebookId: 'starter-work',
+      tags: ['After'],
+      pinned: true,
+      favorite: true,
+    }))
+    expect(stored?.deletedAt).toBeDefined()
+    expect((await storage.getNoteHistory(note.id))[0].snapshot.content).toBe('New text')
+    await storage.permanentlyDeleteNote(note.id)
+  })
+
   it('keeps tag counts correct when content-only saves skip the tag rebuild', async () => {
     const note: Note = { id: 'tag-count-note', title: 'Tags', content: 'a', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Countable'] }
     const count = async () => (await storage.getTags()).find((tag) => tag.id === 'countable')?.count ?? 0

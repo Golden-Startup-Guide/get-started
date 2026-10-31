@@ -1636,17 +1636,14 @@ function NoteEditor({
 
   async function restore(revision: NoteHistoryEntry) {
     if (!window.confirm('Restore this saved version? Your current note will remain available in history.')) return
+    // Save the draft first so the restore records it as a revision instead of discarding it.
+    if (!(await flush())) return
     try {
-      await restoreHistory(revision.id)
-      const restored = { ...revision.snapshot, id: note.id, createdAt: note.createdAt, updatedAt: Date.now() }
+      const restored = await restoreHistory(revision.id)
+      baseline.current = { ...baseline.current, title: restored.title, content: restored.content }
       setTitle(restored.title)
       setContent(restored.content)
-      setNoteTags(restored.tags ?? [])
-      setNotebookId(restored.notebookId ?? notebookId)
-      setPinned(Boolean(restored.pinned))
-      setFavorite(Boolean(restored.favorite))
-      await onSave(restored)
-      baseline.current = { title: restored.title, content: restored.content, tags: restored.tags ?? [], notebookId: restored.notebookId ?? notebookId, pinned: Boolean(restored.pinned), favorite: Boolean(restored.favorite) }
+      await onRefresh()
       setHistory(await getNoteHistory(note.id))
       setSaveState('saved')
       setShowHistory(false)
