@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   FileText,
   Menu,
@@ -9,7 +9,7 @@ import {
   Settings,
   X,
 } from 'lucide-react'
-import { getNoteLinkLabel, sortNotes } from './features/notes/noteDisplay'
+import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteCard } from './features/notes/NoteCard'
 import { NoteEditor } from './features/notes/NoteEditor'
 import { SettingsDialog } from './features/settings/SettingsDialog'
@@ -35,6 +35,14 @@ import { usePersistenceStore } from './state/persistenceStore'
 import { compactNavigationQuery, useWorkspaceStore, type View } from './state/workspaceStore'
 import type { Note } from './types'
 import './workspace.css'
+
+// Module-level, so every note card receives the same functions on every render.
+const flagNote = (note: Note, flag: 'pinned' | 'favorite') => void toggleNoteFlag(note, flag)
+const restoreNoteFromTrash = (note: Note) => void restoreFromTrash(note)
+function confirmPermanentDelete(note: Note) {
+  if (!window.confirm(`Permanently delete “${note.title || 'Untitled note'}”? This cannot be undone.`)) return
+  void deleteForever(note)
+}
 
 function App() {
   const notes = useLibraryStore((state) => state.notes)
@@ -105,6 +113,10 @@ function App() {
       document.body.style.overflow = previousOverflow
     }
   }, [isCompactNavigation, navigationOpen])
+
+  const graphNotes = useMemo(() => [...notes, ...trash], [notes, trash])
+  const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
+  const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || 'Untitled note'), [linkLabels])
 
   const theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
 
@@ -230,10 +242,11 @@ function App() {
     }, { creating: true })
   }
 
-  function openNote(note: Note) {
+  // Stable (uses only a ref and the store), so memoized note cards keep the same handler.
+  const openNote = useCallback((note: Note) => {
     focusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     useEditorStore.getState().open(note)
-  }
+  }, [])
 
   function closeEditor() {
     useEditorStore.getState().close()
@@ -259,11 +272,6 @@ function App() {
       setShelfNotebookName('')
       navigateToView(`notebook:${created.id}`)
     })
-  }
-
-  function handlePermanentDelete(note: Note) {
-    if (!window.confirm(`Permanently delete “${note.title || 'Untitled note'}”? This cannot be undone.`)) return
-    void deleteForever(note)
   }
 
   return (
@@ -369,9 +377,9 @@ function App() {
             <LibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
           ) : view === 'graph' ? (
             <KnowledgeGraph
-              notes={[...notes, ...trash]}
+              notes={graphNotes}
               links={links}
-              noteLabel={(note) => getNoteLinkLabel(note, [...notes, ...trash], notebooks)}
+              noteLabel={noteLabel}
               onOpenNote={openNote}
             />
           ) : filteredNotes.length ? (
@@ -383,10 +391,10 @@ function App() {
                   notebook={notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'}
                   query={query}
                   isTrash={view === 'trash'}
-                  onOpen={() => openNote(note)}
-                  onFlag={(flag) => void toggleNoteFlag(note, flag)}
-                  onRestore={() => void restoreFromTrash(note)}
-                  onPermanentDelete={() => handlePermanentDelete(note)}
+                  onOpen={openNote}
+                  onFlag={flagNote}
+                  onRestore={restoreNoteFromTrash}
+                  onPermanentDelete={confirmPermanentDelete}
                 />
               ))}
             </section>

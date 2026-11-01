@@ -1,7 +1,7 @@
 # My Notes - Performance Baseline
 
 **Date:** 2026-11-01
-**Status:** Baseline, before any performance work. Targets come from [the architecture vision](ARCHITECTURE_VISION.md), section 3E.
+**Status:** Baseline recorded before any performance work; cause 1 (the link picker) has since been fixed, see [Progress](#progress). Targets come from [the architecture vision](ARCHITECTURE_VISION.md), section 3E.
 
 ## How it is measured
 
@@ -57,12 +57,12 @@ Shared CI machines vary between runs: a second run of the same code measured up 
 
 Each result file records where it was measured (`environment`). Playwright's desktop Chrome profile reports a Windows user agent on every OS, so the user agent is not a reliable indicator.
 
-**100,000 notes is not measured yet.** "Open a note" grows with the square of the library size (cause 1 below). At 100,000 notes a single measurement would take hours, so the default sizes are 1,000 and 10,000 until cause 1 is fixed.
+**100,000 notes is not measured yet.** In the baseline, "open a note" grew with the square of the library size (cause 1 below), so one measurement would have taken hours. Cause 1 is fixed, but the grid still renders every card (cause 2): at 100,000 notes that is about 1.9 million DOM nodes, so the default sizes stay at 1,000 and 10,000 until the grid is virtualized.
 
 ## Causes, by impact
 
-1. **The editor's link list is quadratic (dominant).** The "Choose a note to link" dropdown in `NoteEditor` renders an option for every other note. Each label comes from `getNoteLinkLabel`, which scans every note (lower-casing each title) to detect duplicate titles. That is n² work: about 100 million comparisons at 10,000 notes. It runs on **every editor render**, both when a note opens and on **every keystroke**, which is why typing and opening a note scale the same way. The knowledge graph's note picker uses the same function.
-2. **Every note card is rendered at once.** The note grid renders all matching notes: 189,121 DOM nodes at 10,000 notes. That drives cold start and search, and any re-render of the grid.
+1. **Fixed: the editor's link list was quadratic (dominant).** The "Choose a note to link" dropdown in `NoteEditor` renders an option for every other note. Each label comes from `getNoteLinkLabel`, which scans every note (lower-casing each title) to detect duplicate titles. That is n² work: about 100 million comparisons at 10,000 notes. It runs on **every editor render**, both when a note opens and on **every keystroke**, which is why typing and opening a note scale the same way. The knowledge graph's note picker uses the same function.
+2. **Every note card is rendered at once (now the dominant cause).** The note grid renders all matching notes: 189,121 DOM nodes at 10,000 notes. That drives cold start and search. It also makes opening a note slow: with the cards memoized, React no longer re-renders them, yet showing the editor over a page that large still costs seconds in browser style and layout work. Opening a note took 10.4 s with 10,000 cards in the grid and 1.5 s with search narrowing it to 100 (development PC).
 3. **The Markdown preview re-parses the whole note on every keystroke.** For the 1 MB note this costs seconds per keystroke on its own; cause 1 currently hides it.
 4. **Search scans every note's full text on each keystroke**, synchronously, then re-renders the matching cards (cause 2).
 5. **Each editor render serialises the whole draft** (`JSON.stringify` of the title, content, and tags) to detect changes, which is expensive for large notes.
@@ -73,10 +73,36 @@ In order of payoff:
 
 | Fix | Addresses | Size |
 |---|---|---|
-| Compute link labels once per library change, in a single pass (title counts in a `Map`), and memoize them; render the link picker as a searchable list rather than an option per note | Cause 1 | Small |
+| **Done:** compute link labels once per library change, in a single pass, and memoize them; memoize the picker's options and the note cards | Cause 1 | Small |
+| Render the link picker as a searchable list rather than an option per note | Cause 1 (remaining 10,000-option list) | Small |
 | Virtualize the note grid (TanStack Virtual), so only visible cards exist | Causes 2 and 4 | Medium |
 | Defer the preview with `useDeferredValue` and parse it in chunks or a worker for large notes | Cause 3 | Medium |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
 | Compare drafts field by field instead of serialising them | Cause 5 | Small |
 
-Cause 1 alone should turn "open a note" at 10,000 notes from about 24 seconds on CI (two minutes on the development PC) into well under a second, and it makes 100,000-note runs possible.
+Virtualizing the grid is now the largest remaining win: it addresses cold start, search, and opening a note at once, and makes 100,000-note runs practical.
+
+## Progress
+
+### Link picker fix (cause 1)
+
+`buildNoteLinkLabels` computes every label in one pass (grouping notes by title once), producing exactly the labels the old one-at-a-time function did; a test compares the two on randomized libraries. The editor and knowledge graph memoize the labels per library change, the link picker's options are a memoized component, and note cards are memoized with stable handlers.
+
+Development PC, 10,000 notes, same machine as the baseline:
+
+| Measure | Baseline | After | Change |
+|---|---|---|---|
+| Open a note | 124,909 ms | 7,501 ms | 17× faster |
+| Open the 1 MB note | 109,506 ms | 4,917 ms | 22× faster |
+| Typing p95, 1 MB note | 47,219 ms | 1,630 ms | 29× faster |
+| Full 10,000-note benchmark run | 20.2 min | 1.2 min | |
+
+GitHub Actions, 10,000 notes (baseline range from two runs of the same code):
+
+| Measure | Baseline | After | Change |
+|---|---|---|---|
+| Open a note | 24,092–47,031 ms | 2,750 ms | 9–17× faster |
+| Open the 1 MB note | 23,136–44,136 ms | 1,975 ms | 12–22× faster |
+| Typing p95, 1 MB note | 7,898–14,737 ms | 486 ms | 16–30× faster |
+
+Typing latency no longer depends on library size (on CI, 452 ms at 1,000 notes and 486 ms at 10,000); what remains is re-rendering the 1 MB note's preview on every keystroke (cause 3).

@@ -47,18 +47,47 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
 }
 
-export function getNoteLinkLabel(note: Note, records: Note[], notebooks: Notebook[]): string {
-  const title = note.title || 'Untitled note'
-  const duplicates = records.filter((item) =>
-    (item.title || 'Untitled note').toLocaleLowerCase() === title.toLocaleLowerCase(),
-  )
-  const notebook = notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'
-  const maxIdLength = Math.max(0, ...duplicates.map((item) => item.id.length))
-  let suffixLength = Math.min(8, maxIdLength)
-  while (suffixLength < maxIdLength && duplicates.some((item) =>
-    item.id !== note.id && item.id.slice(-suffixLength) === note.id.slice(-suffixLength),
-  )) {
-    suffixLength += 1
+/**
+ * Labels for choosing a note in a list: "Title — Notebook". Notes that share a title (ignoring
+ * case) also get the shortest ID suffix, at least 8 characters, that tells them apart.
+ *
+ * Builds every label in one pass. Computing one label at a time scanned the whole library per
+ * note, which made the editor's link picker quadratic in the number of notes.
+ */
+export function buildNoteLinkLabels(records: Note[], notebooks: Notebook[]): Map<string, string> {
+  const notebookNames = new Map(notebooks.map((notebook) => [notebook.id, notebook.name]))
+  const byTitle = new Map<string, Note[]>()
+  for (const note of records) {
+    const key = (note.title || 'Untitled note').toLocaleLowerCase()
+    const group = byTitle.get(key)
+    if (group) group.push(note)
+    else byTitle.set(key, [note])
   }
-  return `${title} — ${notebook}${duplicates.length > 1 ? ` · ${note.id.slice(-suffixLength)}` : ''}`
+
+  const labels = new Map<string, string>()
+  for (const group of byTitle.values()) {
+    const suffixes = new Map<string, string>()
+    if (group.length > 1) {
+      const maxIdLength = Math.max(...group.map((note) => note.id.length))
+      let unresolved = group
+      // Each note gets the shortest length at which no other duplicate shares its suffix.
+      for (let length = Math.min(8, maxIdLength); unresolved.length && length < maxIdLength; length += 1) {
+        const counts = new Map<string, number>()
+        for (const note of group) counts.set(note.id.slice(-length), (counts.get(note.id.slice(-length)) ?? 0) + 1)
+        unresolved = unresolved.filter((note) => {
+          if (counts.get(note.id.slice(-length)) !== 1) return true
+          suffixes.set(note.id, note.id.slice(-length))
+          return false
+        })
+      }
+      for (const note of unresolved) suffixes.set(note.id, note.id.slice(-maxIdLength))
+    }
+    for (const note of group) {
+      const title = note.title || 'Untitled note'
+      const notebook = notebookNames.get(note.notebookId ?? '') ?? 'Personal'
+      const suffix = suffixes.get(note.id)
+      labels.set(note.id, `${title} — ${notebook}${suffix === undefined ? '' : ` · ${suffix}`}`)
+    }
+  }
+  return labels
 }

@@ -5,8 +5,8 @@ import { seedLibrary } from './seedLibrary'
 // Targets from docs/ARCHITECTURE_VISION.md, section 3E. Results are reported against them,
 // not enforced: these runs establish baselines. Set BENCH_ENFORCE=1 to fail on a miss.
 const TARGETS = { coldStartMs: 1000, openNoteMs: 50, searchMs: 50, typingP95Ms: 16 }
-// 100,000 is left out by default until the editor's quadratic link labels are fixed: at that
-// size a single "open a note" would take hours (see docs/PERFORMANCE.md).
+// 100,000 is left out by default until the note grid is virtualized: it would render about
+// 1.9 million DOM nodes (see docs/PERFORMANCE.md).
 const sizes = (process.env.BENCH_SIZES ?? '1000,10000').split(',').map((value) => Number(value.trim())).filter(Boolean)
 const enforce = process.env.BENCH_ENFORCE === '1'
 
