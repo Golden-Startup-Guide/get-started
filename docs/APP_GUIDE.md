@@ -149,7 +149,10 @@ at export. Permanently deleting a note from Trash also removes its history.
 
 ### 2.6 Linked notes and knowledge graph
 
-Notes can be explicitly linked by their stable IDs. The relationship explorer
+Notes can be explicitly linked by their stable IDs. In the editor, type part of
+a note's title or notebook under **Linked notes**, choose a match with the
+mouse or the arrow keys and Enter, then select **Add link**. Up to 50 matches
+are listed at a time; keep typing to narrow larger results. The relationship explorer
 shows a bounded SVG neighborhood around the selected note, with incoming and
 outgoing relationships and a list of connected notes. Select a listed note to
 open it directly.
