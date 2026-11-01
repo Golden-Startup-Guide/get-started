@@ -76,3 +76,20 @@ test('exports a backup and restores it into an empty browser profile', async ({ 
     await freshContext.close()
   }
 })
+
+test('links notes by searching in the link picker with the keyboard', async ({ page }) => {
+  await openWorkspace(page)
+  await createNote(page, 'Seed catalogue')
+  await createNote(page, 'Planting calendar')
+
+  await page.getByRole('button', { name: 'Open note Planting calendar' }).click()
+  const picker = page.getByRole('combobox', { name: 'Choose a note to link' })
+  await picker.fill('seed')
+  await expect(page.getByRole('listbox', { name: 'Notes to link' }).getByRole('option')).toHaveCount(1)
+  await picker.press('ArrowDown')
+  await picker.press('Enter')
+  await expect(picker).toHaveValue(/^Seed catalogue — /)
+  await page.getByRole('button', { name: 'Add link' }).click()
+  await expect(page.getByRole('list', { name: 'Links from this note' })).toContainText('Seed catalogue')
+  await expect(picker).toHaveValue('')
+})

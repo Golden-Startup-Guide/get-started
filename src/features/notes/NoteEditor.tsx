@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -31,7 +31,8 @@ import type {
   NoteLink,
   Tag,
 } from '../../types'
-import { buildNoteLinkLabels, formatDate } from './noteDisplay'
+import { formatDate } from './noteDisplay'
+import { NoteLinkPicker } from './NoteLinkPicker'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
@@ -57,6 +58,7 @@ export function NoteEditor({
   changedElsewhere,
   onLoadLatest,
   onKeepMine,
+  linkLabels,
 }: {
   note: Note
   isCreating: boolean
@@ -73,6 +75,8 @@ export function NoteEditor({
   changedElsewhere: boolean
   onLoadLatest: () => void
   onKeepMine: () => void
+  /** Labels for every note (see buildNoteLinkLabels), built once per library change by App. */
+  linkLabels: Map<string, string>
 }) {
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
@@ -435,7 +439,6 @@ export function NoteEditor({
   // Everything below depends only on the library and this note's links, not on the draft, so
   // typing never recomputes it.
   const noteById = useMemo(() => new Map([...notes, ...trash].map((item) => [item.id, item])), [notes, trash])
-  const linkLabels = useMemo(() => buildNoteLinkLabels([...notes, ...trash], notebooks), [notes, trash, notebooks])
   const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || 'Untitled note')
   const outgoingNotes = links.outgoing
     .map((link) => noteById.get(link.targetNoteId))
@@ -516,16 +519,15 @@ export function NoteEditor({
               {canEditLinks && (
                 <div className="mb-3 flex flex-wrap gap-2">
                   <label className="sr-only" htmlFor="link-note-target">Choose a note to link</label>
-                  <select
+                  <NoteLinkPicker
+                    // Remounting after a link is added or removed clears the search.
+                    key={links.outgoing.length}
                     id="link-note-target"
-                    className="small-input min-w-0 flex-1"
-                    value={linkTargetId}
-                    onChange={(event) => setLinkTargetId(event.target.value)}
-                    disabled={!availableTargets.length}
-                  >
-                    <option value="">Choose a note…</option>
-                    <LinkTargetOptions targets={availableTargets} labels={linkLabels} />
-                  </select>
+                    targets={availableTargets}
+                    labels={linkLabels}
+                    selectedId={linkTargetId}
+                    onSelect={setLinkTargetId}
+                  />
                   <button className="secondary-button" onClick={() => void addLink()} disabled={!linkTargetId}>Add link</button>
                 </div>
               )}
@@ -648,11 +650,3 @@ export function NoteEditor({
     </div>
   )
 }
-
-// One <option> per note can mean thousands of elements; memoized so the editor re-rendering on
-// every keystroke never touches them.
-const LinkTargetOptions = memo(function LinkTargetOptions({ targets, labels }: { targets: Note[]; labels: Map<string, string> }) {
-  return targets.map((item) => (
-    <option key={item.id} value={item.id}>{labels.get(item.id) ?? (item.title || 'Untitled note')}</option>
-  ))
-})
