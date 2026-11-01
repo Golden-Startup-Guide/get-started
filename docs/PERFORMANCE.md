@@ -97,4 +97,12 @@ Development PC, 10,000 notes, same machine as the baseline:
 | Typing p95, 1 MB note | 47,219 ms | 1,630 ms | 29× faster |
 | Full 10,000-note benchmark run | 20.2 min | 1.2 min | |
 
-Typing latency no longer depends on library size (1,161 ms at 1,000 notes, 1,630 ms at 10,000); what remains is re-rendering the 1 MB note's preview on every keystroke (cause 3).
+GitHub Actions, 10,000 notes (baseline range from two runs of the same code):
+
+| Measure | Baseline | After | Change |
+|---|---|---|---|
+| Open a note | 24,092–47,031 ms | 2,750 ms | 9–17× faster |
+| Open the 1 MB note | 23,136–44,136 ms | 1,975 ms | 12–22× faster |
+| Typing p95, 1 MB note | 7,898–14,737 ms | 486 ms | 16–30× faster |
+
+Typing latency no longer depends on library size (on CI, 452 ms at 1,000 notes and 486 ms at 10,000); what remains is re-rendering the 1 MB note's preview on every keystroke (cause 3).
