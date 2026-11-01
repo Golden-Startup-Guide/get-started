@@ -1,4 +1,4 @@
-import { createNote, expect, expectSaved, openWorkspace, test, trackProblems } from './helpers'
+import { createNote, expect, expectSaved, markdownText, openWorkspace, test, trackProblems } from './helpers'
 
 test('stores notes in real IndexedDB so they survive a reload', async ({ page }) => {
   await openWorkspace(page)
@@ -14,7 +14,7 @@ test('stores notes in real IndexedDB so they survive a reload', async ({ page })
   await expectSaved(page)
   await page.reload()
   await page.getByRole('button', { name: 'Open note Garden plan' }).click()
-  await expect(page.getByRole('textbox', { name: 'Markdown' })).toHaveValue('- [x] Water the seedlings\n- [x] Buy compost')
+  await expect.poll(() => markdownText(page)).toBe('- [x] Water the seedlings\n- [x] Buy compost')
 })
 
 test('ships the Content Security Policy in the production build', async ({ page }) => {
@@ -36,13 +36,13 @@ test('keeps two tabs in sync through BroadcastChannel', async ({ context }) => {
   await expect(second.getByRole('heading', { name: 'Shared note' })).toBeVisible()
 
   await second.getByRole('button', { name: 'Open note Shared note' }).click()
-  await expect(second.getByRole('textbox', { name: 'Markdown' })).toHaveValue('Written in the first tab')
+  await expect.poll(() => markdownText(second)).toBe('Written in the first tab')
   await first.getByRole('button', { name: 'Open note Shared note' }).click()
   await first.getByRole('textbox', { name: 'Markdown' }).fill('Edited in the first tab')
   await expectSaved(first)
 
   // The second tab has no unsaved edits, so it shows the newer version on its own.
-  await expect(second.getByRole('textbox', { name: 'Markdown' })).toHaveValue('Edited in the first tab')
+  await expect.poll(() => markdownText(second)).toBe('Edited in the first tab')
   expect([...firstProblems, ...secondProblems]).toEqual([])
 })
 

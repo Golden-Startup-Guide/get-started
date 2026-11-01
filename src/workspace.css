@@ -588,6 +588,42 @@ html[data-theme='dark'] .workspace .primary-button {
   line-height: 1.65;
 }
 
+/* CodeMirror only renders the lines in view, so it must scroll inside a fixed height. */
+.markdown-editor .cm-editor {
+  height: clamp(360px, 60vh, 720px);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--canvas);
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.markdown-editor .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.markdown-editor .cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1.65;
+}
+
+.markdown-editor .cm-content {
+  padding: 0.85rem;
+  caret-color: var(--text);
+}
+
+.markdown-editor .cm-placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.markdown-editor .cm-selectionBackground,
+.markdown-editor .cm-focused .cm-selectionBackground,
+.markdown-editor .cm-content ::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 .markdown-preview-pane {
   min-width: 0;
   min-height: 360px;
