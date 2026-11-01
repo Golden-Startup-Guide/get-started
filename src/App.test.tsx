@@ -187,8 +187,10 @@ describe('My Notes workspace', () => {
     expect(sidebar).toHaveAttribute('data-collapsed', 'false')
   }, 15000)
 
-  it('asks once for persistent storage after the first save and lets Settings ask again', async () => {
-    const persist = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+  it('asks once for persistent storage after the first save without holding up saves, and lets Settings ask again', async () => {
+    // Firefox answers persist() only when the user responds to its permission prompt, so the
+    // first request may never settle; saving must not wait for it.
+    const persist = vi.fn().mockReturnValueOnce(new Promise<boolean>(() => undefined)).mockResolvedValueOnce(true)
     Object.defineProperty(navigator, 'storage', {
       configurable: true,
       value: { persisted: vi.fn().mockResolvedValue(false), persist },
@@ -206,6 +208,8 @@ describe('My Notes workspace', () => {
       fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'More text' } })
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
       expect(persist).toHaveBeenCalledOnce()
+      const storage = await import('./lib/notes')
+      expect((await storage.getNotes()).find((note) => note.title === 'Keep me')?.content).toBe('More text')
       await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
 
       await user.click(screen.getAllByRole('button', { name: 'Open settings' })[0])

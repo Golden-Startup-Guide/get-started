@@ -367,9 +367,11 @@ function App() {
     setError(null)
     setTags(await getTags())
     // Ask once per session, after the first save, so there is real data worth protecting.
+    // Never await it: Firefox answers only when the user responds to its permission prompt,
+    // and waiting would hold this save (and every queued autosave) until then.
     if (persistence === 'best-effort' && !persistenceRequested.current) {
       persistenceRequested.current = true
-      setPersistence(await requestStoragePersistence())
+      void requestStoragePersistence().then(setPersistence)
     }
   }
 
