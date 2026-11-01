@@ -368,6 +368,7 @@ npm run dev
 npm run lint
 npm test
 npm run test:e2e
+npm run bench
 npm run build
 npm run preview
 ```
@@ -379,6 +380,9 @@ npm run preview
 - `npm run test:e2e` builds the app, serves it with `vite preview`, and runs the
   Playwright tests in `e2e/` against it in Chromium, Firefox, and WebKit. Install
   the browsers once with `npx playwright install chromium firefox webkit`.
+- `npm run bench` measures start-up, search, opening notes, and typing latency
+  against generated libraries of 1,000 and 10,000 notes (see
+  [PERFORMANCE.md](PERFORMANCE.md)).
 - `npm run build` runs the TypeScript project build checks and creates the
   production PWA output in `dist/`.
 - `npm run preview` serves the production build locally after a build.

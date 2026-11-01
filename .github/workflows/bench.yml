@@ -1,0 +1,58 @@
+name: Benchmarks
+
+# Not a required check: benchmarks take minutes and report numbers rather than pass/fail.
+# Run by hand from the Actions tab, or automatically when the benchmarks themselves change.
+on:
+  workflow_dispatch:
+    inputs:
+      sizes:
+        description: Library sizes to measure, comma-separated
+        default: '1000,10000'
+  pull_request:
+    paths:
+      - 'bench/**'
+      - 'playwright.bench.config.ts'
+      - '.github/workflows/bench.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: Library benchmarks (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run benchmarks
+        run: npm run bench
+        env:
+          BENCH_SIZES: ${{ inputs.sizes || '1000,10000' }}
+
+      - name: Write summary
+        if: ${{ !cancelled() }}
+        run: node bench/report.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: bench/results/
+          retention-days: 90
