@@ -95,6 +95,7 @@ for storage, backup, migration, and feature details.
 ```bash
 npm run lint   # ESLint (TypeScript and React rules)
 npm test       # Vitest and React Testing Library
+npm run test:e2e  # Playwright in Chromium, Firefox, and WebKit (production build)
 npm run build  # TypeScript project checks and production PWA build
 ```
 

@@ -365,6 +365,7 @@ npm ci
 npm run dev
 npm run lint
 npm test
+npm run test:e2e
 npm run build
 npm run preview
 ```
@@ -374,6 +375,9 @@ npm run preview
   rules are warnings for now, and the script caps their count
   (`--max-warnings`) so new ones fail; lower the cap as they are fixed.
 - `npm test` runs the Vitest suite once.
+- `npm run test:e2e` builds the app, serves it with `vite preview`, and runs the
+  Playwright tests in `e2e/` against it in Chromium, Firefox, and WebKit. Install
+  the browsers once with `npx playwright install chromium firefox webkit`.
 - `npm run build` runs the TypeScript project build checks and creates the
   production PWA output in `dist/`.
 - `npm run preview` serves the production build locally after a build.
@@ -383,6 +387,8 @@ npm run preview
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`,
 using Node.js 24: `npm ci`, `npm run lint`, `npm test`, `npm run build`, and an
 audit of production dependencies that fails on high or critical advisories.
+A second job runs the Playwright tests in all three browsers and uploads the
+HTML report and failure traces as an artifact.
 A newer push cancels the older run for the same branch.
 
 The test setup uses Vitest, React Testing Library, `user-event`, and
@@ -391,6 +397,21 @@ validation and compatibility, autosave behavior, graph relationships, and
 major workspace interactions. Tests replace the browser's `BroadcastChannel`
 with an in-memory fake (`src/test/fakeBroadcastChannel.ts`), so separate test
 files never receive each other's change messages.
+
+### End-to-end tests
+
+The Playwright tests cover what jsdom cannot: real IndexedDB across reloads,
+interactive checklists, the production Content Security Policy, two tabs
+syncing through `BroadcastChannel`, a backup restored into an empty browser
+profile, and loading offline from the service worker. Every test also fails on
+console errors, uncaught exceptions, or CSP violations.
+
+- Service workers are blocked except in `e2e/offline.spec.ts`: Playwright's
+  patched Firefox can hang on a page's `load` event while the service worker
+  installs on a first visit. The offline test runs in Chromium only.
+- Tests run two at a time; on Windows, more parallel WebKit instances stall on
+  first load.
+- There are no retries: a test that passes only on retry is treated as a bug.
 
 ## 7. Current boundaries
 
