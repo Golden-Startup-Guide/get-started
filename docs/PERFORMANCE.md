@@ -153,4 +153,14 @@ Development PC, same machine as the earlier runs:
 | Open the 1 MB note | 12,214 ms | 3,226 ms | 3.8× faster | 3,197 ms |
 | Typing p95, 1 MB note | 989 ms | 967 ms | | 849 ms |
 
+GitHub Actions (the "before" column is the virtualized-grid run):
+
+| Measure | 100,000 before | 100,000 after | Change | 10,000 after |
+|---|---|---|---|---|
+| Open a note | 8,519 ms | 184 ms | 46× faster | 150 ms |
+| Search | 2,019 ms | 241 ms | 8× faster | 107 ms |
+| Cold start | 8,305 ms | 4,674 ms | 1.8× faster | 604 ms ✅ |
+| Open the 1 MB note | 7,554 ms | 1,766 ms | 4.3× faster | 1,606 ms |
+| Typing p95, 1 MB note | 471 ms | 451 ms | | 443 ms |
+
 Opening a note now costs about the same at 10,000 and 100,000 notes. What remains at 100,000 notes is cold start (loading and sorting every note, and keeping all their text in memory), search scanning every note's text, and the 1 MB note's preview re-rendering on each keystroke (cause 3).
