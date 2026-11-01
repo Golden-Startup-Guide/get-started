@@ -342,13 +342,14 @@ describe('My Notes workspace', () => {
     const targetLink = await within(dialog).findByRole('button', { name: 'Duplicate title — Personal · 7-target' })
     await user.click(targetLink)
 
-    const targetDialog = screen.getByRole('dialog')
-    expect(within(targetDialog).getByRole('heading', { name: 'Duplicate title' })).toBeInTheDocument()
-    const backlink = within(targetDialog).getByRole('button', { name: 'Source note — Personal' })
+    // Opening a linked note saves the current draft first, and each editor loads its links
+    // from IndexedDB after it opens, so these must wait rather than look once.
+    const targetDialog = await screen.findByRole('dialog', { name: 'Duplicate title' })
+    const backlink = await within(targetDialog).findByRole('button', { name: 'Source note — Personal' })
     await user.click(backlink)
 
-    const sourceDialog = screen.getByRole('dialog')
-    await user.click(within(sourceDialog).getByRole('button', {
+    const sourceDialog = await screen.findByRole('dialog', { name: 'Source note' })
+    await user.click(await within(sourceDialog).findByRole('button', {
       name: 'Remove link to Duplicate title — Personal · 7-target',
     }))
     expect(await within(sourceDialog).findByText('No linked notes yet.')).toBeInTheDocument()

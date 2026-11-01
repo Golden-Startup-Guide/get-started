@@ -19,6 +19,12 @@ describe('IndexedDB storage and backup', () => {
     return file
   }
 
+  /** Removes a test's note even if the test failed partway, so later tests see a clean library. */
+  async function discard(noteId: string) {
+    await storage.trashNote(noteId).catch(() => undefined)
+    await storage.permanentlyDeleteNote(noteId).catch(() => undefined)
+  }
+
   beforeAll(async () => {
     const oldDb = await openDB('my-notes', 1, {
       upgrade(db) {
@@ -170,72 +176,100 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteHistory(legacyNote.id)).toHaveLength(0)
   })
 
+  it('orders history newest first even when revisions are saved in the same millisecond', async () => {
+    // Fast machines can create two revisions within one millisecond. A tie must not fall back
+    // to the revisions' random IDs.
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_900_000_000_000)
+    vi.spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('00000000-0000-4000-8000-00000000000a')
+      .mockReturnValueOnce('00000000-0000-4000-8000-00000000000b')
+    const note: Note = { id: 'same-millisecond-note', title: 'Tie', content: 'first', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal' }
+    try {
+      await storage.saveNote(note)
+      await storage.saveNote({ ...note, content: 'second' })
+      const [older] = await storage.getNoteHistory(note.id)
+      await storage.restoreHistory(older.id)
+      const history = await storage.getNoteHistory(note.id)
+      expect(history.map((entry) => entry.snapshot.content)).toEqual(['second', 'first'])
+      expect(history[0].savedAt).toBeGreaterThan(history[1].savedAt)
+    } finally {
+      clock.mockRestore()
+      await discard(note.id)
+    }
+  })
+
   it('restores only title and text, keeping Trash state and organization', async () => {
     const note: Note = { id: 'restore-scope-note', title: 'Old title', content: 'Old text', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Before'] }
-    await storage.saveNote(note)
-    await storage.saveNote({ ...note, title: 'New title', content: 'New text', notebookId: 'starter-work', tags: ['After'], pinned: true, favorite: true, updatedAt: 2 })
-    await storage.trashNote(note.id)
-    const [revision] = await storage.getNoteHistory(note.id)
+    try {
+      await storage.saveNote(note)
+      await storage.saveNote({ ...note, title: 'New title', content: 'New text', notebookId: 'starter-work', tags: ['After'], pinned: true, favorite: true, updatedAt: 2 })
+      await storage.trashNote(note.id)
+      const [revision] = await storage.getNoteHistory(note.id)
 
-    const restored = await storage.restoreHistory(revision.id)
-    const stored = await (await storage.openNotesDatabase()).get('notes', note.id)
-    expect(stored).toEqual(restored)
-    expect(stored).toEqual(expect.objectContaining({
-      title: 'Old title',
-      content: 'Old text',
-      notebookId: 'starter-work',
-      tags: ['After'],
-      pinned: true,
-      favorite: true,
-    }))
-    expect(stored?.deletedAt).toBeDefined()
-    expect((await storage.getNoteHistory(note.id))[0].snapshot.content).toBe('New text')
-    await storage.permanentlyDeleteNote(note.id)
+      const restored = await storage.restoreHistory(revision.id)
+      const stored = await (await storage.openNotesDatabase()).get('notes', note.id)
+      expect(stored).toEqual(restored)
+      expect(stored).toEqual(expect.objectContaining({
+        title: 'Old title',
+        content: 'Old text',
+        notebookId: 'starter-work',
+        tags: ['After'],
+        pinned: true,
+        favorite: true,
+      }))
+      expect(stored?.deletedAt).toBeDefined()
+      expect((await storage.getNoteHistory(note.id))[0].snapshot.content).toBe('New text')
+    } finally {
+      await discard(note.id)
+    }
   })
 
   it('keeps tag counts correct when content-only saves skip the tag rebuild', async () => {
     const note: Note = { id: 'tag-count-note', title: 'Tags', content: 'a', createdAt: 1, updatedAt: 1, notebookId: 'starter-personal', tags: ['Countable'] }
     const count = async () => (await storage.getTags()).find((tag) => tag.id === 'countable')?.count ?? 0
     const before = await count()
-    await storage.saveNote(note)
-    expect(await count()).toBe(before + 1)
-    await storage.saveNote({ ...note, content: 'b', updatedAt: 2 })
-    expect(await count()).toBe(before + 1)
-    await storage.saveNote({ ...note, content: 'c', tags: ['Renamed'], updatedAt: 3 })
-    expect(await count()).toBe(before)
-    expect((await storage.getTags()).find((tag) => tag.id === 'renamed')?.count).toBe(1)
-    await storage.trashNote(note.id)
-    expect((await storage.getTags()).find((tag) => tag.id === 'renamed')).toBeUndefined()
-    await storage.permanentlyDeleteNote(note.id)
+    try {
+      await storage.saveNote(note)
+      expect(await count()).toBe(before + 1)
+      await storage.saveNote({ ...note, content: 'b', updatedAt: 2 })
+      expect(await count()).toBe(before + 1)
+      await storage.saveNote({ ...note, content: 'c', tags: ['Renamed'], updatedAt: 3 })
+      expect(await count()).toBe(before)
+      expect((await storage.getTags()).find((tag) => tag.id === 'renamed')?.count).toBe(1)
+      await storage.trashNote(note.id)
+      expect((await storage.getTags()).find((tag) => tag.id === 'renamed')).toBeUndefined()
+    } finally {
+      await discard(note.id)
+    }
   })
 
   it('keeps one revision per editing burst and caps revisions per note', async () => {
     let now = 1_800_000_000_000
     const clock = vi.spyOn(Date, 'now').mockImplementation(() => now)
     try {
-      const note: Note = { id: 'bursty-note', title: 'Draft', content: 'v0', createdAt: now, updatedAt: now, notebookId: 'starter-personal' }
-      await storage.saveNote(note)
-      for (let version = 1; version <= 5; version += 1) {
-        now += 1000
-        await storage.saveNote({ ...note, content: `v${version}`, updatedAt: now })
-      }
-      const burst = await storage.getNoteHistory(note.id)
-      expect(burst).toHaveLength(1)
-      expect(burst[0].snapshot.content).toBe('v0')
+        const note: Note = { id: 'bursty-note', title: 'Draft', content: 'v0', createdAt: now, updatedAt: now, notebookId: 'starter-personal' }
+        await storage.saveNote(note)
+        for (let version = 1; version <= 5; version += 1) {
+          now += 1000
+          await storage.saveNote({ ...note, content: `v${version}`, updatedAt: now })
+        }
+        const burst = await storage.getNoteHistory(note.id)
+        expect(burst).toHaveLength(1)
+        expect(burst[0].snapshot.content).toBe('v0')
 
-      now += storage.HISTORY_SNAPSHOT_INTERVAL_MS
-      await storage.saveNote({ ...note, content: 'after a break', updatedAt: now })
-      const afterBreak = await storage.getNoteHistory(note.id)
-      expect(afterBreak.map((entry) => entry.snapshot.content)).toEqual(['v5', 'v0'])
-
-      for (let version = 0; version < storage.MAX_HISTORY_PER_NOTE + 5; version += 1) {
         now += storage.HISTORY_SNAPSHOT_INTERVAL_MS
-        await storage.saveNote({ ...note, content: `long session ${version}`, updatedAt: now })
-      }
-      const capped = await storage.getNoteHistory(note.id)
-      expect(capped).toHaveLength(storage.MAX_HISTORY_PER_NOTE)
-      expect(capped.map((entry) => entry.snapshot.content)).not.toContain('v0')
-      expect(capped[0].snapshot.content).toBe(`long session ${storage.MAX_HISTORY_PER_NOTE + 3}`)
+        await storage.saveNote({ ...note, content: 'after a break', updatedAt: now })
+        const afterBreak = await storage.getNoteHistory(note.id)
+        expect(afterBreak.map((entry) => entry.snapshot.content)).toEqual(['v5', 'v0'])
+
+        for (let version = 0; version < storage.MAX_HISTORY_PER_NOTE + 5; version += 1) {
+          now += storage.HISTORY_SNAPSHOT_INTERVAL_MS
+          await storage.saveNote({ ...note, content: `long session ${version}`, updatedAt: now })
+        }
+        const capped = await storage.getNoteHistory(note.id)
+        expect(capped).toHaveLength(storage.MAX_HISTORY_PER_NOTE)
+        expect(capped.map((entry) => entry.snapshot.content)).not.toContain('v0')
+        expect(capped[0].snapshot.content).toBe(`long session ${storage.MAX_HISTORY_PER_NOTE + 3}`)
     } finally {
       clock.mockRestore()
     }
