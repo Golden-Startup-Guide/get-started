@@ -1,0 +1,243 @@
+// Operations that write to storage and then update one or more stores. Components call these
+// instead of talking to src/lib/notes.ts directly, so storage can change behind them.
+import {
+  createLibrary,
+  createNotebook,
+  createShelf,
+  deleteLibrary,
+  deleteNotebook,
+  deleteShelf,
+  exportBackupFile,
+  importBackupFile,
+  moveNotebook,
+  permanentlyDeleteNote,
+  renameLibrary,
+  renameNotebook,
+  renameShelf,
+  restoreNote,
+  saveNote,
+  saveTheme,
+  setNoteFlag,
+  subscribeToStorage,
+  trashNote,
+  type BackupOptions,
+} from '../lib/notes'
+import type { Library, Note, Notebook, Shelf, ThemePreference } from '../types'
+import { useEditorStore } from './editorStore'
+import { useLibraryStore } from './libraryStore'
+import { usePersistenceStore } from './persistenceStore'
+import { reportError, useWorkspaceStore, type View } from './workspaceStore'
+
+export type StructureItem =
+  | { kind: 'notebook'; item: Notebook }
+  | { kind: 'shelf'; item: Shelf }
+  | { kind: 'library'; item: Library }
+
+const workspace = () => useWorkspaceStore.getState()
+const library = () => useLibraryStore.getState()
+
+/**
+ * Runs a storage operation, then reloads the library. `beforeRefresh` runs as soon as the
+ * operation succeeds, so callers can navigate to a newly created item before the reload
+ * re-renders the page they are leaving.
+ */
+async function refreshAfter<T>(
+  operation: () => Promise<T>,
+  fallback: string,
+  beforeRefresh?: (result: T) => void,
+): Promise<T | undefined> {
+  try {
+    const result = await operation()
+    beforeRefresh?.(result)
+    await library().refresh()
+    workspace().showError(null)
+    return result
+  } catch (reason) {
+    reportError(reason, fallback)
+    return undefined
+  }
+}
+
+// --- Loading and other tabs -------------------------------------------------------------
+
+export async function loadLibrary() {
+  try {
+    await library().refresh()
+  } catch {
+    workspace().showError('Your notes could not be loaded. Please try refreshing.')
+  } finally {
+    library().finishLoading()
+  }
+}
+
+/** Keeps this tab in step with other tabs. Returns the function that stops listening. */
+export function startStorageSync(): () => void {
+  return subscribeToStorage((event) => {
+    if (event.type === 'changed') {
+      const activeId = useEditorStore.getState().activeNote?.id
+      // Writes that change notes always list them; unlisted changes are organization only.
+      if (activeId && event.noteIds.includes(activeId)) useEditorStore.getState().markChangedElsewhere()
+      library().refresh().catch(() => workspace().showError('Changes from another tab could not be loaded. Please refresh.'))
+    } else if (event.type === 'blocked') {
+      workspace().showError('Close other My Notes tabs or windows so this one can finish updating your notes.')
+    } else if (event.type === 'version-change') {
+      workspace().showError('My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved.')
+    } else {
+      workspace().showError('The browser closed the connection to your notes. Reload this page to keep working.')
+    }
+  })
+}
+
+// --- Notes ------------------------------------------------------------------------------
+
+/** Saves a note from the editor. Throws on failure so the editor can keep the draft. */
+export async function saveEditedNote(note: Note) {
+  await saveNote(note)
+  await library().noteSaved(note)
+  workspace().showError(null)
+  usePersistenceStore.getState().requestAfterSave()
+}
+
+/** Moves a note to Trash, or deletes it permanently if it is already there. */
+export async function deleteOpenNote(note: Note): Promise<boolean> {
+  try {
+    if (note.deletedAt === undefined) await trashNote(note.id)
+    else await permanentlyDeleteNote(note.id)
+    useEditorStore.getState().close()
+    await library().refresh()
+    return true
+  } catch {
+    workspace().showError('Your note could not be deleted. Please try again.')
+    return false
+  }
+}
+
+export async function toggleNoteFlag(note: Note, flag: 'pinned' | 'favorite') {
+  try {
+    await setNoteFlag(note.id, flag, !note[flag])
+    await library().refresh()
+  } catch (reason) {
+    reportError(reason, 'The note could not be updated.')
+  }
+}
+
+export async function restoreFromTrash(note: Note) {
+  try {
+    await restoreNote(note.id)
+    await library().refresh()
+    workspace().showNotice(`“${note.title || 'Untitled note'}” was restored.`)
+    workspace().showError(null)
+  } catch (reason) {
+    reportError(reason, 'The note could not be restored.')
+  }
+}
+
+export async function deleteForever(note: Note) {
+  try {
+    await permanentlyDeleteNote(note.id)
+    await library().refresh()
+    workspace().showNotice('The note was permanently deleted.')
+    workspace().showError(null)
+  } catch {
+    workspace().showError('The note could not be permanently deleted. Please try again.')
+  }
+}
+
+// --- Libraries, shelves, and notebooks --------------------------------------------------
+
+export const createNotebookOnShelf = (name: string, shelfId: string | undefined, onCreated?: (notebook: Notebook) => void) =>
+  refreshAfter(() => createNotebook(name, shelfId), 'The notebook could not be created.', onCreated)
+
+export const createNamedLibrary = (name: string, onCreated?: (library: Library) => void) =>
+  refreshAfter(() => createLibrary(name), 'The library could not be created.', onCreated)
+
+export const createShelfInLibrary = (libraryId: string, name: string, onCreated?: (shelf: Shelf) => void) =>
+  refreshAfter(() => createShelf(libraryId, name), 'The shelf could not be created.', onCreated)
+
+export const moveNotebookToShelf = (notebookId: string, shelfId: string) =>
+  refreshAfter(() => moveNotebook(notebookId, shelfId), 'The notebook could not be moved.')
+
+/** Prompts for a new name and renames the library, shelf, or notebook. */
+export async function promptRename(target: StructureItem) {
+  const name = window.prompt(`Rename ${target.kind}`, target.item.name)
+  if (name === null) return
+  const rename = target.kind === 'library' ? renameLibrary : target.kind === 'shelf' ? renameShelf : renameNotebook
+  await refreshAfter(() => rename(target.item.id, name), `The ${target.kind} could not be renamed.`)
+}
+
+/**
+ * Deletes a library, shelf, or notebook after moving its contents to `destinationId`, and
+ * leaves the current view if it was inside what was deleted. Throws on failure so the
+ * delete dialog can show the reason.
+ */
+export async function deleteStructure(target: StructureItem, destinationId: string) {
+  const { libraries, shelves, notebooks } = library()
+  if (target.kind === 'notebook') await deleteNotebook(target.item.id, destinationId)
+  else if (target.kind === 'shelf') await deleteShelf(target.item.id, destinationId)
+  else await deleteLibrary(target.item.id, destinationId)
+
+  const { view, setView } = workspace()
+  let nextView: View | undefined
+  if (target.kind === 'notebook' && view === `notebook:${target.item.id}`) nextView = 'all'
+  if (target.kind === 'shelf' && view === `shelf:${target.item.id}`) nextView = `library:${target.item.libraryId}`
+  if (target.kind === 'library') {
+    const sourceShelfIds = new Set(shelves.filter((shelf) => shelf.libraryId === target.item.id).map((shelf) => shelf.id))
+    const sourceNotebookIds = new Set(
+      notebooks.filter((notebook) => notebook.shelfId && sourceShelfIds.has(notebook.shelfId)).map((notebook) => notebook.id),
+    )
+    const insideRemovedLibrary = view === `library:${target.item.id}`
+      || (view.startsWith('shelf:') && sourceShelfIds.has(view.slice(6)))
+      || (view.startsWith('notebook:') && sourceNotebookIds.has(view.slice(9)))
+    if (insideRemovedLibrary) {
+      nextView = libraries.some((item) => item.id === destinationId) ? `library:${destinationId}` : 'all'
+    }
+  }
+  if (nextView) setView(nextView)
+  await library().refresh()
+}
+
+// --- Settings ---------------------------------------------------------------------------
+
+export async function changeTheme(theme: ThemePreference) {
+  try {
+    await saveTheme(theme)
+    library().setTheme(theme)
+  } catch {
+    workspace().showError('Your theme preference could not be saved.')
+  }
+}
+
+export async function downloadBackup(options: BackupOptions) {
+  try {
+    const blob = await exportBackupFile(options)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `my-notes-backup-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    workspace().showNotice('Your backup has been downloaded.')
+  } catch (reason) {
+    reportError(reason, 'The backup could not be created.')
+  }
+}
+
+export async function restoreBackup(file: File) {
+  try {
+    const result = await importBackupFile(file)
+    await library().refresh()
+    workspace().showNotice(
+      `Backup restored: ${result.librariesAdded} libraries, ${result.shelvesAdded} shelves, ${result.notebooksAdded} notebooks, ${result.notesAdded} notes, ${result.linksAdded} links, and ${result.attachmentsAdded} attachments added; ${result.notesSkipped} duplicate notes skipped.`,
+    )
+    workspace().showError(null)
+  } catch (reason) {
+    reportError(reason, 'The backup could not be restored.')
+  }
+}
+
+export async function requestPersistenceFromSettings() {
+  const status = await usePersistenceStore.getState().requestNow()
+  if (status !== 'persisted') {
+    workspace().showNotice('The browser did not grant persistent storage. Installing My Notes as an app, or bookmarking it, can help. Keep exporting backups.')
+  }
+}
