@@ -183,4 +183,13 @@ Development PC, same machine as the earlier runs:
 | Typing p50, 1 MB note, 100,000 notes | about 850 ms | 46 ms | |
 | Open the 1 MB note, 10,000 notes | 3,197 ms | 1,458 ms | 2.2× faster |
 
-A second profile shows what remains. The editor's own render is about 4 ms per keystroke; most of the rest is the browser laying out a plain text area that holds 1 MB of text, which only an editor that renders visible lines (CodeMirror 6, Phase 1) removes. The one full parse now happens after a pause, so a keystroke typed while it runs still waits for it: the benchmark's occasional maximum of about 0.8 s on the development PC. Parsing off the main thread would remove that wait.
+GitHub Actions (the "before" column is the link-picker run):
+
+| Measure | Before | After | Change |
+|---|---|---|---|
+| Typing p95, 1 MB note, 10,000 notes | 443 ms | 37 ms | 12× faster |
+| Typing p95, 1 MB note, 100,000 notes | 451 ms | 27 ms | 17× faster |
+| Typing p50, 1 MB note, 100,000 notes | about 430 ms | 25 ms | |
+| Open the 1 MB note, 100,000 notes | 1,766 ms | 881 ms | 2× faster |
+
+A second profile shows what remains. The editor's own render is about 4 ms per keystroke; most of the rest is the browser laying out a plain text area that holds 1 MB of text, which only an editor that renders visible lines (CodeMirror 6, Phase 1) removes. The one full parse now happens after a pause, so a keystroke typed while it runs still waits for it: the benchmark's occasional maximum of about 0.8 s on the development PC (about 0.4 s on CI). Parsing off the main thread would remove that wait.
