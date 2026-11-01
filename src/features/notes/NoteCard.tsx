@@ -22,6 +22,8 @@ export const NoteCard = memo(function NoteCard({
   isTrash,
   onRestore,
   onPermanentDelete,
+  position,
+  setSize,
 }: {
   note: Note
   notebook: string
@@ -31,9 +33,12 @@ export const NoteCard = memo(function NoteCard({
   onFlag: (note: Note, flag: 'pinned' | 'favorite') => void
   onRestore: (note: Note) => void
   onPermanentDelete: (note: Note) => void
+  /** 1-based position and total, for screen readers when the grid renders only part of the list. */
+  position?: number
+  setSize?: number
 }) {
   return (
-    <article className="note-card group relative">
+    <article className="note-card group relative" aria-posinset={position} aria-setsize={setSize}>
       <button onClick={() => onOpen(note)} className="absolute inset-0 z-0 rounded-2xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b45d4d]" aria-label={`Open note ${note.title || 'Untitled note'}`} />
       <div className="relative z-10 pointer-events-none">
         <div className="mb-3 flex items-start justify-between gap-2">

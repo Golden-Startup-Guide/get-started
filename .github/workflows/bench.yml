@@ -7,7 +7,7 @@ on:
     inputs:
       sizes:
         description: Library sizes to measure, comma-separated
-        default: '1000,10000'
+        default: '1000,10000,100000'
   pull_request:
     paths:
       - 'bench/**'
@@ -43,7 +43,7 @@ jobs:
       - name: Run benchmarks
         run: npm run bench
         env:
-          BENCH_SIZES: ${{ inputs.sizes || '1000,10000' }}
+          BENCH_SIZES: ${{ inputs.sizes || '1000,10000,100000' }}
 
       - name: Write summary
         if: ${{ !cancelled() }}

@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
-import { NoteCard } from './features/notes/NoteCard'
+import { NoteGrid } from './features/notes/NoteGrid'
 import { NoteEditor } from './features/notes/NoteEditor'
 import { SettingsDialog } from './features/settings/SettingsDialog'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
@@ -114,6 +114,8 @@ function App() {
     }
   }, [isCompactNavigation, navigationOpen])
 
+  const notebookNames = useMemo(() => new Map(notebooks.map((notebook) => [notebook.id, notebook.name])), [notebooks])
+  const notebookName = useCallback((note: Note) => notebookNames.get(note.notebookId ?? '') ?? 'Personal', [notebookNames])
   const graphNotes = useMemo(() => [...notes, ...trash], [notes, trash])
   const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
   const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || 'Untitled note'), [linkLabels])
@@ -383,21 +385,17 @@ function App() {
               onOpenNote={openNote}
             />
           ) : filteredNotes.length ? (
-            <section aria-label={`${viewLabel} notes`} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredNotes.map((note) => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  notebook={notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'}
-                  query={query}
-                  isTrash={view === 'trash'}
-                  onOpen={openNote}
-                  onFlag={flagNote}
-                  onRestore={restoreNoteFromTrash}
-                  onPermanentDelete={confirmPermanentDelete}
-                />
-              ))}
-            </section>
+            <NoteGrid
+              notes={filteredNotes}
+              label={`${viewLabel} notes`}
+              notebookName={notebookName}
+              query={query}
+              isTrash={view === 'trash'}
+              onOpen={openNote}
+              onFlag={flagNote}
+              onRestore={restoreNoteFromTrash}
+              onPermanentDelete={confirmPermanentDelete}
+            />
           ) : (
             <div className="empty-state">
               <span className="empty-icon"><FileText size={24} /></span>
