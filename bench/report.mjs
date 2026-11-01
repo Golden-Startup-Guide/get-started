@@ -35,4 +35,4 @@ for (const [label, key, check] of rows) {
 lines.push(`| JS heap | - | ${results.map((result) => `${result.heapMB} MB`).join(' | ')} |`)
 lines.push(`| DOM nodes | - | ${results.map((result) => result.domNodes.toLocaleString('en-US')).join(' | ')} |`)
 console.log(lines.join('\n'))
-console.log(`\n${results[0]?.userAgent ?? ''}`)
+console.log(`\nMeasured on: ${results[0]?.environment ?? 'unknown'}`)

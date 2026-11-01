@@ -27,7 +27,19 @@ The **Benchmarks** GitHub Actions workflow runs the same suite by hand (Actions 
 
 ## Baseline
 
-Measured on the development PC (Windows, headless Chromium 156), which was visibly under load during testing; compare runs on the same machine only.
+**Reference: GitHub Actions** (`ubuntu-latest`, headless Chromium 156), from the Benchmarks workflow on PR #21. Use these numbers to compare changes; CI machines are consistent between runs.
+
+| Measure | Target | 1,000 notes | 10,000 notes |
+|---|---|---|---|
+| Cold start | ≤ 1,000 ms | 417 ms ✅ | 3,450 ms ❌ |
+| Search | ≤ 50 ms | 91 ms ❌ | 506 ms ❌ |
+| Open a note | ≤ 50 ms | 486 ms ❌ | 24,092 ms ❌ |
+| Open the 1 MB note | - | 1,215 ms | 23,136 ms |
+| Typing p95, 1 MB note | ≤ 16 ms | 312 ms ❌ | 7,898 ms ❌ |
+| JS heap | - | 18.4 MB | 77.6 MB |
+| DOM nodes | - | 22,330 | 189,121 |
+
+**Development PC** (Windows, headless Chromium 156), which was visibly under load during testing. It is 3–5× slower than CI with the same pattern; compare runs on the same machine only.
 
 | Measure | Target | 1,000 notes | 10,000 notes |
 |---|---|---|---|
@@ -40,6 +52,8 @@ Measured on the development PC (Windows, headless Chromium 156), which was visib
 | JS heap | - | 16.3 MB | 77.6 MB |
 | DOM nodes | - | 22,330 | 189,121 |
 | Library content | - | 2.2 MB | 13.8 MB |
+
+Each result file records where it was measured (`environment`). Playwright's desktop Chrome profile reports a Windows user agent on every OS, so the user agent is not a reliable indicator.
 
 **100,000 notes is not measured yet.** "Open a note" grows with the square of the library size (cause 1 below). At 100,000 notes a single measurement would take hours, so the default sizes are 1,000 and 10,000 until cause 1 is fixed.
 
@@ -63,4 +77,4 @@ In order of payoff:
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
 | Compare drafts field by field instead of serialising them | Cause 5 | Small |
 
-Cause 1 alone should turn "open a note" at 10,000 notes from about two minutes into well under a second, and it makes 100,000-note runs possible.
+Cause 1 alone should turn "open a note" at 10,000 notes from about 24 seconds on CI (two minutes on the development PC) into well under a second, and it makes 100,000-note runs possible.

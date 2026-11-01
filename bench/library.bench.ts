@@ -28,7 +28,7 @@ async function waitForCount(page: Page, count: number) {
 }
 
 for (const size of sizes) {
-  test(`library with ${size.toLocaleString('en-US')} notes`, async ({ page }, testInfo) => {
+  test(`library with ${size.toLocaleString('en-US')} notes`, async ({ page, browser }, testInfo) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
     await waitForCount(page, 0)
@@ -97,7 +97,8 @@ for (const size of sizes) {
       typingMaxMs: round(Math.max(...typing)),
       heapMB: round(heapBytes / 1024 / 1024),
       domNodes,
-      userAgent: await page.evaluate(() => navigator.userAgent),
+      // Not navigator.userAgent: Playwright's device profile reports Windows on every OS.
+      environment: `${process.platform} ${process.arch}, ${process.env.CI ? 'CI' : 'local'}, Chromium ${browser.version()}`,
       measuredAt: new Date().toISOString(),
     }
     const checks = {
