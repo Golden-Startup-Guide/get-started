@@ -129,7 +129,7 @@ Images in Markdown load from the network, so a note can carry a tracking pixel. 
 
 ## Code health and tooling
 
-- **Large files:** `src/App.tsx` is 1,929 lines, and the `App` component has about 40 state variables. `src/lib/notes.ts` is 1,347 lines. Both should be split before more features are added. **Improved:** the editor, cards, settings dialog, and helpers moved out of `App.tsx` (now about 1,140 lines), and the backup format moved to `src/lib/backupFormat.ts` (`notes.ts` is about 1,190 lines). The `App` component still holds most workspace state; moving that into hooks is worthwhile follow-up work.
+- **Large files:** `src/App.tsx` is 1,929 lines, and the `App` component has about 40 state variables. `src/lib/notes.ts` is 1,347 lines. Both should be split before more features are added. **Improved:** the editor, cards, settings dialog, and helpers moved out of `App.tsx` (now about 1,140 lines), and the backup format moved to `src/lib/backupFormat.ts` (`notes.ts` is about 1,190 lines). Workspace state then moved into Zustand stores in `src/state/` (`App.tsx` is about 430 lines), which also cleared every React Compiler lint warning.
 - **Dev-only vulnerabilities:** `npm audit` reports 15 (2 critical in `tinypool` via vitest 2, 1 high via the PWA plugin's build tooling). None ship to users; `npm audit --omit=dev` reports 0. Vite, Vitest, React, and `vite-plugin-pwa` are one or more major versions behind. **Improved:** Vitest 4.1.12 and `vite-plugin-pwa` 2.0.0 remove every critical and high advisory. Ten moderate/low remain inside `workbox-build`'s build-time tooling with no upstream fix; they never ship to users. React 19, Vite 7+, and Tailwind 4 upgrades are left for separate, deliberate migrations.
 - **Tests:** the suite is slow (101 s total, 57 s in `src/App.test.tsx`), and no tests cover findings 1, 7, or 8. **Improved:** every fixed finding has tests (52 in total), and the suite runs in about 60 s.
 
@@ -151,4 +151,4 @@ Images in Markdown load from the network, so a note can carry a tracking pixel. 
 6. Finding 7 - fix checklist mapping.
 7. Finding 8 - preserve Trash state on revision restore.
 
-**Status:** all numbered findings and low-severity items are fixed, except global notebook names (a product decision), the remaining build-time advisories, and moving `App` state into hooks.
+**Status:** all numbered findings and low-severity items are fixed, except global notebook names (a product decision) and the remaining build-time advisories. `App` state has since moved into stores.

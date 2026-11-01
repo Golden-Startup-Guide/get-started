@@ -17,7 +17,7 @@ After the audit fixes, the foundation is solid: data is protected, the app works
 | Links between notes are added by hand, separately from the text | People expect to type `[[Note name]]` and get a link |
 | IndexedDB holds the notes, with attachment files stored inside the database | No full-text index; storage quotas and speed set the ceiling |
 | One browser on one device | No sync - the biggest gap against every serious competitor |
-| The main `App` component holds about 40 pieces of state | Every new feature makes it harder to change |
+| State now lives in Zustand stores (November 2026); storage is still per-record IndexedDB | The data layer, not the UI, now limits sync and scale |
 | Real-browser tests cover core flows only (CI, ESLint, and Playwright were added in November 2026) | jsdom cannot test IndexedDB, the service worker, or the CSP for real |
 
 ## 2. The goal
@@ -131,7 +131,7 @@ A plugin API is what made VS Code and Obsidian category leaders.
 
 | Phase | When | Deliverables |
 |---|---|---|
-| **0. Foundations** | Month 1 | CI, ESLint, and Playwright (**done**), state stores replacing App's ~40 state variables, a 100k-note benchmark library, decision records |
+| **0. Foundations** | Month 1 | CI, ESLint, Playwright, and state stores (**done**), a 100k-note benchmark library, decision records |
 | **1. Craft** | Months 1-3 | CodeMirror 6 editor, `[[wikilinks]]` derived from text, command palette, search worker with operators |
 | **2. Durability** | Months 3-6 | SQLite on OPFS behind the storage interface, attachments as files, automatic verified folder backups, Markdown vault export and importers |
 | **3. Everywhere** | Months 6-12 | CRDT data model, encrypted sync to the user's own storage, Tauri desktop app, mobile polish, web clipper |
