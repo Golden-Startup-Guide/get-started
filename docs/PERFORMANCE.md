@@ -123,4 +123,14 @@ Development PC, same machine as the earlier runs:
 | JS heap | 77.6 MB | 68.9 MB | | 391 MB |
 | DOM nodes | 189,121 | 4,100 | 46× fewer | 4,099 |
 
-The page now holds about 4,100 elements at any library size (4,092 at 1,000 notes). At 100,000 notes, opening a note is dominated by the link picker's 100,000 options, and cold start and memory by keeping every note's full text in memory.
+GitHub Actions (the 10,000-note "before" range comes from the earlier CI runs):
+
+| Measure | 10,000 notes before | 10,000 notes after | 100,000 notes |
+|---|---|---|---|
+| Cold start | 3,450–5,250 ms | 724 ms ✅ | 8,305 ms |
+| Search | 506–634 ms | 162 ms | 2,019 ms |
+| Open a note | 2,750 ms | 835 ms | 8,519 ms |
+| Typing p95, 1 MB note | 486 ms | 458 ms | 471 ms |
+| JS heap | 77.6 MB | 68.9 MB | 368 MB |
+
+Cold start at 10,000 notes now meets its target. The page now holds about 4,100 elements at any library size (4,092 at 1,000 notes). At 100,000 notes, opening a note is dominated by the link picker's 100,000 options, and cold start and memory by keeping every note's full text in memory.
