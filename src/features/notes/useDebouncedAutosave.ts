@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 
 export function useDebouncedAutosave(
   dirty: boolean,
@@ -13,8 +13,15 @@ export function useDebouncedAutosave(
   const latestDraftKey = useRef(draftKey)
   const inFlight = useRef<{ draftKey: string; promise: Promise<boolean> } | null>(null)
   const saveOnUnmount = useRef(true)
-  latestSave.current = save
-  latestDraftKey.current = draftKey
+  const latestDirty = useRef(dirty)
+
+  // Timers and page-exit handlers read the newest values through refs, updated once each
+  // render commits (never during render itself).
+  useLayoutEffect(() => {
+    latestSave.current = save
+    latestDraftKey.current = draftKey
+    latestDirty.current = dirty
+  })
 
   const clearTimer = useCallback(() => {
     if (timer.current) clearTimeout(timer.current)
@@ -81,9 +88,6 @@ export function useDebouncedAutosave(
     },
     [clearTimer, saveLatest],
   )
-
-  const latestDirty = useRef(dirty)
-  latestDirty.current = dirty
 
   // Unmount cleanup does not run when the tab closes or reloads, so save as soon as the
   // page is hidden and warn before leaving while a draft is unsaved or still saving.

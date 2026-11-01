@@ -6,51 +6,70 @@ import {
   Sun,
   X,
 } from 'lucide-react'
-import {
-  DATABASE_VERSION,
-  type BackupOptions,
-} from '../../lib/notes'
-import type {
-  AppSettings,
-  ThemePreference,
-} from '../../types'
+import { DATABASE_VERSION, getStorageSnapshot } from '../../lib/notes'
 import { formatBytes } from '../notes/noteDisplay'
 import { keepFocusInDialog } from '../../components/dialogFocus'
-import { type StoragePersistence } from '../notes/storagePersistence'
+import { changeTheme, downloadBackup, requestPersistenceFromSettings, restoreBackup } from '../../state/actions'
+import { useLibraryStore } from '../../state/libraryStore'
+import { usePersistenceStore } from '../../state/persistenceStore'
+import { useWorkspaceStore } from '../../state/workspaceStore'
 
-export function SettingsDialog({
-  settings,
-  storage,
-  persistence,
-  onRequestPersistence,
-  fileRef,
-  onClose,
-  onTheme,
-  onExport,
-  onImport,
-  error,
-  notice,
-  onDismissError,
-  onDismissNotice,
-}: {
-  settings: AppSettings
-  storage: { notes: number; trash: number; notebooks: number; tags: number; revisions: number; attachments: number; attachmentBytes: number; estimatedBytes: number }
-  persistence: StoragePersistence
-  onRequestPersistence: () => void
-  fileRef: React.RefObject<HTMLInputElement>
-  onClose: () => void
-  onTheme: (theme: ThemePreference) => void
-  onExport: (options: BackupOptions) => void
-  onImport: (event: FormEvent<HTMLFormElement>) => void
-  error: string | null
-  notice: string | null
-  onDismissError: () => void
-  onDismissNotice: () => void
-}) {
+type StorageSnapshot = Awaited<ReturnType<typeof getStorageSnapshot>>
+
+const EMPTY_SNAPSHOT: StorageSnapshot = { notes: 0, trash: 0, notebooks: 0, tags: 0, revisions: 0, attachments: 0, attachmentBytes: 0, estimatedBytes: 0 }
+
+export function SettingsDialog({ onClose }: { onClose: () => void }) {
+  const settings = useLibraryStore((state) => state.settings)
+  const notes = useLibraryStore((state) => state.notes)
+  const trash = useLibraryStore((state) => state.trash)
+  const notebooks = useLibraryStore((state) => state.notebooks)
+  const tags = useLibraryStore((state) => state.tags)
+  const links = useLibraryStore((state) => state.links)
+  const persistence = usePersistenceStore((state) => state.status)
+  const error = useWorkspaceStore((state) => state.error)
+  const notice = useWorkspaceStore((state) => state.notice)
+  const showError = useWorkspaceStore((state) => state.showError)
+  const showNotice = useWorkspaceStore((state) => state.showNotice)
+  const [storage, setStorage] = useState<StorageSnapshot>(EMPTY_SNAPSHOT)
+  const fileRef = useRef<HTMLInputElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const [includeAttachments, setIncludeAttachments] = useState(true)
   const [includeHistory, setIncludeHistory] = useState(true)
   useEffect(() => closeRef.current?.focus(), [])
+
+  // The snapshot reads every record, including attachment data, so it is computed only while
+  // Settings is open, and again whenever the data it summarizes changes.
+  useEffect(() => {
+    let active = true
+    getStorageSnapshot()
+      .then((snapshot) => {
+        if (active) setStorage(snapshot)
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [notes, trash, notebooks, tags, links])
+
+  const onTheme = (theme: typeof settings.theme) => void changeTheme(theme)
+  const onExport = (options: { attachments: boolean; history: boolean }) => void downloadBackup(options)
+  const onRequestPersistence = () => void requestPersistenceFromSettings()
+  const onDismissError = () => showError(null)
+  const onDismissNotice = () => showNotice(null)
+
+  async function onImport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const file = fileRef.current?.files?.[0]
+    if (!file) {
+      showError('Choose a JSON backup file to import.')
+      return
+    }
+    if (window.confirm('Merge this backup with the notes on this device? Existing notes will never be overwritten.')) {
+      await restoreBackup(file)
+    }
+    form.reset()
+  }
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
@@ -86,7 +105,7 @@ export function SettingsDialog({
           <h3 className="mb-3 text-sm font-semibold">Backup and restore</h3>
           <div className="flex flex-wrap gap-2">
             <button className="secondary-button" onClick={() => onExport({ attachments: includeAttachments, history: includeHistory })}><Download size={15} /> Export JSON backup</button>
-            <form className="flex items-center gap-2" onSubmit={onImport}>
+            <form className="flex items-center gap-2" onSubmit={(event) => void onImport(event)}>
               <label className="sr-only" htmlFor="backup-file">Choose a JSON backup</label>
               <input ref={fileRef} id="backup-file" type="file" accept="application/json,.json" className="max-w-48 text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-[var(--surface-alt)] file:px-3 file:py-2 file:text-[var(--text)]" />
               <button className="secondary-button" type="submit">Import</button>
