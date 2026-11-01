@@ -18,7 +18,7 @@ After the audit fixes, the foundation is solid: data is protected, the app works
 | IndexedDB holds the notes, with attachment files stored inside the database | No full-text index; storage quotas and speed set the ceiling |
 | One browser on one device | No sync - the biggest gap against every serious competitor |
 | The main `App` component holds about 40 pieces of state | Every new feature makes it harder to change |
-| No CI, no linter, no real-browser tests | jsdom cannot test IndexedDB, the service worker, or the CSP for real |
+| No real-browser tests (CI and ESLint were added in November 2026) | jsdom cannot test IndexedDB, the service worker, or the CSP for real |
 
 ## 2. The goal
 
@@ -122,7 +122,7 @@ A plugin API is what made VS Code and Obsidian category leaders.
 
 ## 4. Engineering foundations (start here)
 
-- **CI with GitHub Actions:** type check, ESLint (there is currently no linter), unit tests, Playwright on Chromium, Firefox, and WebKit, bundle-size limits, Lighthouse, and `npm audit`.
+- **CI with GitHub Actions:** type check, ESLint, and unit tests (**done**: `.github/workflows/ci.yml`); still to add: Playwright on Chromium, Firefox, and WebKit, bundle-size limits, and Lighthouse. A production `npm audit` already runs in CI.
 - **Testing:** property-based tests (fast-check) for merging, import, and migrations, plus visual regression tests.
 - **Repository layout:** `packages/core`, `packages/storage`, `packages/sync`, `apps/web`, and `apps/desktop`.
 - **Process:** decision records in `docs/adr/`, Renovate for dependency updates, semantic versioning with a changelog, and feature flags.
@@ -131,7 +131,7 @@ A plugin API is what made VS Code and Obsidian category leaders.
 
 | Phase | When | Deliverables |
 |---|---|---|
-| **0. Foundations** | Month 1 | CI, ESLint, Playwright, state stores replacing App's ~40 state variables, a 100k-note benchmark library, decision records |
+| **0. Foundations** | Month 1 | CI and ESLint (**done**), Playwright, state stores replacing App's ~40 state variables, a 100k-note benchmark library, decision records |
 | **1. Craft** | Months 1-3 | CodeMirror 6 editor, `[[wikilinks]]` derived from text, command palette, search worker with operators |
 | **2. Durability** | Months 3-6 | SQLite on OPFS behind the storage interface, attachments as files, automatic verified folder backups, Markdown vault export and importers |
 | **3. Everywhere** | Months 6-12 | CRDT data model, encrypted sync to the user's own storage, Tauri desktop app, mobile polish, web clipper |

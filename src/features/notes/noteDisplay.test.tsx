@@ -1,3 +1,4 @@
+import { isValidElement, type ReactElement, type ReactNode } from 'react'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { formatBytes, highlight } from './noteDisplay'
@@ -10,9 +11,11 @@ describe('note display helpers', () => {
   })
 
   it('handles many matches without recursing', () => {
-    const text = 'a '.repeat(20000)
-    const { container } = render(<p>{highlight(text, 'a')}</p>)
-    expect(container.querySelectorAll('mark')).toHaveLength(20000)
+    // The old recursive version overflowed the stack inside highlight() itself, so checking
+    // the returned parts catches it without the cost of rendering 20,000 elements.
+    const result = highlight('a '.repeat(20000), 'a') as ReactElement<{ children: ReactNode[] }>
+    const marks = result.props.children.filter((part) => isValidElement(part) && part.type === 'mark')
+    expect(marks).toHaveLength(20000)
   })
 
   it('returns the text unchanged without a query or match', () => {

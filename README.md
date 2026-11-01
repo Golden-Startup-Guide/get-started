@@ -93,6 +93,7 @@ for storage, backup, migration, and feature details.
 ## Development
 
 ```bash
+npm run lint   # ESLint (TypeScript and React rules)
 npm test       # Vitest and React Testing Library
 npm run build  # TypeScript project checks and production PWA build
 ```
