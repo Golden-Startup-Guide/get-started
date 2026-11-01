@@ -27,7 +27,9 @@ The **Benchmarks** GitHub Actions workflow runs the same suite by hand (Actions 
 
 ## Baseline
 
-**Reference: GitHub Actions** (`ubuntu-latest`, headless Chromium 156), from the Benchmarks workflow on PR #21. Use these numbers to compare changes; CI machines are consistent between runs.
+**Reference: GitHub Actions** (`ubuntu-latest`, headless Chromium 156), from the first Benchmarks workflow run on PR #21.
+
+Shared CI machines vary between runs: a second run of the same code measured up to about 2× slower (for example, opening a note at 10,000 notes took 24 s, then 47 s). Treat a single run as a rough measure. Compare a change by running the workflow two or three times and looking for consistent, large differences; the fixes recommended below should change results by orders of magnitude, well beyond that noise.
 
 | Measure | Target | 1,000 notes | 10,000 notes |
 |---|---|---|---|
