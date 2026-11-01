@@ -429,6 +429,7 @@ function App() {
           changedElsewhere={changedElsewhere}
           onLoadLatest={loadLatest}
           onKeepMine={keepMine}
+          linkLabels={linkLabels}
         />
       )}
       {showSettings && <SettingsDialog onClose={closeSettings} />}

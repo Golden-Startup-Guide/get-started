@@ -3,9 +3,10 @@ import { ArrowLeft, Layers3, Plus } from 'lucide-react'
 import { createNamedLibrary, createShelfInLibrary, promptRename } from '../../state/actions'
 import { useLibraryStore } from '../../state/libraryStore'
 import { useWorkspaceStore, type View } from '../../state/workspaceStore'
+import { useNoteCounts } from './noteCounts'
 
 export function LibraryHome({ libraryId, onNavigate }: { libraryId: string; onNavigate: (view: View) => void }) {
-  const notes = useLibraryStore((state) => state.notes)
+  const counts = useNoteCounts()
   const notebooks = useLibraryStore((state) => state.notebooks)
   const libraries = useLibraryStore((state) => state.libraries)
   const shelves = useLibraryStore((state) => state.shelves)
@@ -62,14 +63,13 @@ export function LibraryHome({ libraryId, onNavigate }: { libraryId: string; onNa
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {libraryShelves.map((shelf) => {
           const shelfNotebooks = notebooks.filter((notebook) => notebook.shelfId === shelf.id)
-          const shelfNotes = notes.filter((note) => shelfNotebooks.some((notebook) => notebook.id === note.notebookId))
           return (
             <article key={shelf.id} className="note-card !min-h-0">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="section-label">Shelf</p>
                   <h3 className="mt-2 text-lg font-semibold">{shelf.name}</h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">{shelfNotebooks.length} notebooks · {shelfNotes.length} notes</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">{shelfNotebooks.length} notebooks · {counts.byShelf.get(shelf.id) ?? 0} notes</p>
                 </div>
                 <Layers3 size={20} className="text-[var(--accent)]" aria-hidden="true" />
               </div>

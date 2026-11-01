@@ -26,6 +26,7 @@ import { useLibraryStore } from '../../state/libraryStore'
 import { useWorkspaceStore, type View } from '../../state/workspaceStore'
 import type { Library } from '../../types'
 import { FALLBACK_FOCUS_ID } from './DeleteStructureDialog'
+import { useNoteCounts } from './noteCounts'
 import { shelfForNewNotebook } from './placement'
 
 export function LibrarySidebar({
@@ -49,6 +50,7 @@ export function LibrarySidebar({
   const libraries = useLibraryStore((state) => state.libraries)
   const shelves = useLibraryStore((state) => state.shelves)
   const tags = useLibraryStore((state) => state.tags)
+  const counts = useNoteCounts()
   const view = useWorkspaceStore((state) => state.view)
   const sidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed)
   const navigationOpen = useWorkspaceStore((state) => state.navigationOpen)
@@ -120,7 +122,7 @@ export function LibrarySidebar({
       </button>
       <nav aria-label="Note views" className="space-y-1">
         <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => onNavigate('all')} icon={<FileText size={16} />} />
-        <NavButton active={view === 'favorites'} label="Favorites" count={notes.filter((note) => note.favorite).length} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
+        <NavButton active={view === 'favorites'} label="Favorites" count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
         <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />
         <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => onNavigate('graph')} icon={<Network size={16} />} />
       </nav>
@@ -132,9 +134,6 @@ export function LibrarySidebar({
         <nav aria-label="Libraries" className="min-w-0 space-y-3">
           {libraries.map((library) => {
             const libraryShelves = shelves.filter((shelf) => shelf.libraryId === library.id)
-            const libraryNotebookIds = notebooks
-              .filter((notebook) => libraryShelves.some((shelf) => shelf.id === notebook.shelfId))
-              .map((notebook) => notebook.id)
             const libraryExpanded = !collapsedLibraries.includes(library.id)
             return (
               <div key={library.id} className="min-w-0">
@@ -151,7 +150,7 @@ export function LibrarySidebar({
                   <NavButton
                     active={view === `library:${library.id}`}
                     label={library.name}
-                    count={notes.filter((note) => libraryNotebookIds.includes(note.notebookId ?? '')).length}
+                    count={counts.byLibrary.get(library.id) ?? 0}
                     onClick={() => onNavigate(`library:${library.id}`)}
                     icon={<LibraryBig size={16} />}
                     className="min-w-0 flex-1 !w-auto"
@@ -185,7 +184,7 @@ export function LibrarySidebar({
                           <NavButton
                             active={view === `shelf:${shelf.id}`}
                             label={shelf.name}
-                            count={notes.filter((note) => notebooks.some((notebook) => notebook.id === note.notebookId && notebook.shelfId === shelf.id)).length}
+                            count={counts.byShelf.get(shelf.id) ?? 0}
                             onClick={() => onNavigate(`shelf:${shelf.id}`)}
                             icon={<Layers3 size={15} />}
                             className="min-w-0 flex-1 !w-auto"
@@ -202,7 +201,7 @@ export function LibrarySidebar({
                                 <NavButton
                                   active={view === `notebook:${notebook.id}`}
                                   label={notebook.name}
-                                  count={notes.filter((note) => note.notebookId === notebook.id).length}
+                                  count={counts.byNotebook.get(notebook.id) ?? 0}
                                   onClick={() => onNavigate(`notebook:${notebook.id}`)}
                                   icon={<Archive size={15} />}
                                   className="min-w-0 flex-1 !w-auto"

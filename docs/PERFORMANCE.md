@@ -66,6 +66,7 @@ Each result file records where it was measured (`environment`). Playwright's des
 3. **The Markdown preview re-parses the whole note on every keystroke.** For the 1 MB note this costs seconds per keystroke on its own; cause 1 currently hides it.
 4. **Search scans every note's full text on each keystroke**, synchronously, then re-renders the matching cards (cause 2).
 5. **Each editor render serialises the whole draft** (`JSON.stringify` of the title, content, and tags) to detect changes, which is expensive for large notes.
+6. **Fixed: the sidebar counted notes per item on every render.** Found after cause 1 was fixed. Each shelf count filtered every note and checked every notebook per note, and each notebook and library count filtered every note: about 80 million operations at 100,000 notes. It ran whenever `App` re-rendered, which includes opening a note and every keystroke in search.
 
 ## Recommended fixes
 
@@ -74,7 +75,8 @@ In order of payoff:
 | Fix | Addresses | Size |
 |---|---|---|
 | **Done:** compute link labels once per library change, in a single pass, and memoize them; memoize the picker's options and the note cards | Cause 1 | Small |
-| Render the link picker as a searchable list rather than an option per note | Cause 1 (remaining 10,000-option list) | Small |
+| **Done:** render the link picker as a searchable list rather than an option per note | Cause 1 (remaining one option per note) | Small |
+| **Done:** count notes per notebook, shelf, and library in one memoized pass | Cause 6 | Small |
 | **Done:** virtualize the note grid (TanStack Virtual), so only visible cards exist | Causes 2 and 4 | Medium |
 | Defer the preview with `useDeferredValue` and parse it in chunks or a worker for large notes | Cause 3 | Medium |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
@@ -134,3 +136,31 @@ GitHub Actions (the 10,000-note "before" range comes from the earlier CI runs):
 | JS heap | 77.6 MB | 68.9 MB | 368 MB |
 
 Cold start at 10,000 notes now meets its target. The page now holds about 4,100 elements at any library size (4,092 at 1,000 notes). At 100,000 notes, opening a note is dominated by the link picker's 100,000 options, and cold start and memory by keeping every note's full text in memory.
+
+### Searchable link picker and single-pass counts (causes 1 and 6)
+
+The link picker (`src/features/notes/NoteLinkPicker.tsx`) is an ARIA 1.2 combobox. It renders nothing until used and at most 50 matches, instead of one `<option>` per note on every open. The editor reuses `App`'s memoized link labels instead of rebuilding them each time a note opens, and the picker prepares its search text only once it is in use.
+
+Measuring showed those changes alone did not move "open a note" at 100,000 notes (2,380 ms before, 2,386 ms after). The real cost was cause 6: the sidebar recounting notes for every library, shelf, and notebook on each render. `useNoteCounts` (`src/features/library/noteCounts.ts`) now computes every count in one memoized pass, shared by the sidebar and library home.
+
+Development PC, same machine as the earlier runs:
+
+| Measure | 100,000 before | 100,000 after | Change | 10,000 after |
+|---|---|---|---|---|
+| Open a note | 15,426 ms | 358 ms | 43× faster | 323 ms |
+| Search | 2,152 ms | 394 ms | 5.5× faster | 160 ms |
+| Cold start | 10,856 ms | 7,417 ms | 1.5× faster | 1,011 ms |
+| Open the 1 MB note | 12,214 ms | 3,226 ms | 3.8× faster | 3,197 ms |
+| Typing p95, 1 MB note | 989 ms | 967 ms | | 849 ms |
+
+GitHub Actions (the "before" column is the virtualized-grid run):
+
+| Measure | 100,000 before | 100,000 after | Change | 10,000 after |
+|---|---|---|---|---|
+| Open a note | 8,519 ms | 184 ms | 46× faster | 150 ms |
+| Search | 2,019 ms | 241 ms | 8× faster | 107 ms |
+| Cold start | 8,305 ms | 4,674 ms | 1.8× faster | 604 ms ✅ |
+| Open the 1 MB note | 7,554 ms | 1,766 ms | 4.3× faster | 1,606 ms |
+| Typing p95, 1 MB note | 471 ms | 451 ms | | 443 ms |
+
+Opening a note now costs about the same at 10,000 and 100,000 notes. What remains at 100,000 notes is cold start (loading and sorting every note, and keeping all their text in memory), search scanning every note's text, and the 1 MB note's preview re-rendering on each keystroke (cause 3).
