@@ -109,6 +109,11 @@ completion progress. Each checkbox is tied to its own source line, so task
 syntax shown inside a code block is never counted or toggled, and tasks inside
 blockquotes work like any other task.
 
+Very long notes (over 50,000 characters) update their preview once typing
+pauses for about 0.4 seconds instead of on every keystroke, so typing stays
+responsive. While the preview is catching up, a note beside **Live preview**
+says so and its checklist boxes are read-only.
+
 Edits are saved with a debounce rather than writing on every keystroke. The
 editor indicates whether changes are unsaved, saving, or saved. The save path
 serializes in-flight writes to prevent an older autosave from overwriting a
