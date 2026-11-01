@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -85,7 +85,7 @@ export function NoteEditor({
   const [pinned, setPinned] = useState(Boolean(note.pinned))
   const [favorite, setFavorite] = useState(Boolean(note.favorite))
   const [tagInput, setTagInput] = useState('')
-  const [saveState, setSaveState] = useState<SaveState>('saved')
+  const [isSaving, setIsSaving] = useState(false)
   const [previewOnly, setPreviewOnly] = useState(false)
   const [history, setHistory] = useState<NoteHistoryEntry[]>([])
   const [showHistory, setShowHistory] = useState(false)
@@ -107,42 +107,54 @@ export function NoteEditor({
     exceeded: boolean
   } | null>(null)
   const latest = useRef({ title, content, noteTags, notebookId, pinned, favorite })
-  const baseline = useRef({ title: note.title, content: note.content, tags: note.tags ?? [], notebookId: initialNotebookId, pinned: Boolean(note.pinned), favorite: Boolean(note.favorite) })
+  // The last saved version. State drives the "Unsaved changes" status during render; the ref
+  // lets a queued save compare against the newest value before React has re-rendered.
+  const [baseline, setBaselineState] = useState(() => ({ title: note.title, content: note.content, tags: note.tags ?? [], notebookId: initialNotebookId, pinned: Boolean(note.pinned), favorite: Boolean(note.favorite) }))
+  const baselineRef = useRef(baseline)
   const saveRef = useRef<() => Promise<boolean>>(async () => false)
 
-  latest.current = { title, content, noteTags, notebookId, pinned, favorite }
-  saveRef.current = async () => {
-    const draft = latest.current
-    if (isCreating && !draft.title.trim() && !draft.content.trim()) return true
-    const old = baseline.current
-    const changed = draft.title !== old.title || draft.content !== old.content ||
-      JSON.stringify(draft.noteTags) !== JSON.stringify(old.tags) ||
-      draft.notebookId !== old.notebookId || draft.pinned !== old.pinned || draft.favorite !== old.favorite
-    if (!changed) return true
-    setSaveState('saving')
-    setSaveError(null)
-    const next: Note = {
-      ...note,
-      title: draft.title.trim() || 'Untitled note',
-      content: draft.content,
-      tags: draft.noteTags,
-      notebookId: draft.notebookId,
-      pinned: draft.pinned,
-      favorite: draft.favorite,
-      updatedAt: Date.now(),
-    }
-    try {
-      await onSave(next)
-      setPersisted(true)
-      baseline.current = { title: draft.title, content: draft.content, tags: draft.noteTags, notebookId: draft.notebookId, pinned: draft.pinned, favorite: draft.favorite }
-      setSaveState('saved')
-      return true
-    } catch {
-      setSaveState('unsaved')
-      setSaveError('Could not save. Your changes are still here; try again.')
-      return false
-    }
+  function setBaseline(next: typeof baseline) {
+    baselineRef.current = next
+    setBaselineState(next)
   }
+
+  // Autosave and event handlers reach the newest draft and save function through refs, which
+  // are updated once each render commits (never during render itself).
+  useLayoutEffect(() => {
+    latest.current = { title, content, noteTags, notebookId, pinned, favorite }
+    saveRef.current = async () => {
+      const draft = latest.current
+      if (isCreating && !draft.title.trim() && !draft.content.trim()) return true
+      const old = baselineRef.current
+      const changed = draft.title !== old.title || draft.content !== old.content ||
+        JSON.stringify(draft.noteTags) !== JSON.stringify(old.tags) ||
+        draft.notebookId !== old.notebookId || draft.pinned !== old.pinned || draft.favorite !== old.favorite
+      if (!changed) return true
+      setIsSaving(true)
+      setSaveError(null)
+      const next: Note = {
+        ...note,
+        title: draft.title.trim() || 'Untitled note',
+        content: draft.content,
+        tags: draft.noteTags,
+        notebookId: draft.notebookId,
+        pinned: draft.pinned,
+        favorite: draft.favorite,
+        updatedAt: Date.now(),
+      }
+      try {
+        await onSave(next)
+        setPersisted(true)
+        setBaseline({ title: draft.title, content: draft.content, tags: draft.noteTags, notebookId: draft.notebookId, pinned: draft.pinned, favorite: draft.favorite })
+        return true
+      } catch {
+        setSaveError('Could not save. Your changes are still here; try again.')
+        return false
+      } finally {
+        setIsSaving(false)
+      }
+    }
+  })
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -182,9 +194,10 @@ export function NoteEditor({
     }
   }, [note.id])
 
-  const dirty = title !== baseline.current.title || content !== baseline.current.content ||
-    JSON.stringify(noteTags) !== JSON.stringify(baseline.current.tags) ||
-    notebookId !== baseline.current.notebookId || pinned !== baseline.current.pinned || favorite !== baseline.current.favorite
+  const dirty = title !== baseline.title || content !== baseline.content ||
+    JSON.stringify(noteTags) !== JSON.stringify(baseline.tags) ||
+    notebookId !== baseline.notebookId || pinned !== baseline.pinned || favorite !== baseline.favorite
+  const saveState: SaveState = isSaving ? 'saving' : dirty ? 'unsaved' : 'saved'
   const draftKey = JSON.stringify([title, content, noteTags, notebookId, pinned, favorite])
   const { flush, cancel, skipUnmountSave, resumeUnmountSave } = useDebouncedAutosave(
     dirty,
@@ -299,10 +312,6 @@ export function NoteEditor({
     }
   }
 
-  useEffect(() => {
-    if (dirty) setSaveState('unsaved')
-  }, [dirty])
-
   // Discards this tab's draft, so the stale copy is never saved over the newer one.
   const loadLatest = useCallback(() => {
     cancel()
@@ -407,12 +416,11 @@ export function NoteEditor({
     if (!(await flush())) return
     try {
       const restored = await restoreHistory(revision.id)
-      baseline.current = { ...baseline.current, title: restored.title, content: restored.content }
+      setBaseline({ ...baselineRef.current, title: restored.title, content: restored.content })
       setTitle(restored.title)
       setContent(restored.content)
       await onRefresh()
       setHistory(await getNoteHistory(note.id))
-      setSaveState('saved')
       setShowHistory(false)
     } catch (reason) {
       onError(reason instanceof Error ? reason.message : 'The revision could not be restored.')

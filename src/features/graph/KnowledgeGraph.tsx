@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, ExternalLink, Network } from 'lucide-react'
 import type { Note, NoteLink } from '../../types'
 import { getGraphNeighbors, MAX_VISIBLE_GRAPH_NEIGHBORS } from './graphModel'
@@ -31,13 +31,7 @@ function getEdgePath(from: GraphPosition, to: GraphPosition, offset: number): st
 export function KnowledgeGraph({ notes, links, noteLabel, onOpenNote }: KnowledgeGraphProps) {
   const activeNotes = useMemo(() => notes.filter((note) => note.deletedAt === undefined), [notes])
   const [focusNoteId, setFocusNoteId] = useState(() => activeNotes[0]?.id ?? '')
-
-  useEffect(() => {
-    if (!activeNotes.some((note) => note.id === focusNoteId)) {
-      setFocusNoteId(activeNotes[0]?.id ?? '')
-    }
-  }, [activeNotes, focusNoteId])
-
+  // If the chosen note leaves the graph (trashed or deleted), show the first note instead.
   const focusNote = activeNotes.find((note) => note.id === focusNoteId) ?? activeNotes[0]
   const activeFocusNoteId = focusNote?.id ?? ''
   const neighbors = useMemo(

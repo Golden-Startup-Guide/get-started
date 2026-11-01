@@ -27,6 +27,10 @@ export function AttachmentCard({
     // new tab could then read every note, so anything not previewed here is download-only.
     const blob = isRenderable ? attachment.blob : new Blob([attachment.blob], { type: 'application/octet-stream' })
     const objectUrl = URL.createObjectURL(blob)
+    // A blob URL is an external resource that must be created and revoked as a pair, which is
+    // what an effect is for. Creating it during render (useMemo or a state initializer) would
+    // leave a revoked URL after StrictMode's extra effect cleanup.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrl(objectUrl)
     return () => URL.revokeObjectURL(objectUrl)
   }, [attachment.blob, isRenderable])
