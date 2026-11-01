@@ -36,6 +36,14 @@ import { compactNavigationQuery, useWorkspaceStore, type View } from './state/wo
 import type { Note } from './types'
 import './workspace.css'
 
+// Module-level, so every note card receives the same functions on every render.
+const flagNote = (note: Note, flag: 'pinned' | 'favorite') => void toggleNoteFlag(note, flag)
+const restoreNoteFromTrash = (note: Note) => void restoreFromTrash(note)
+function confirmPermanentDelete(note: Note) {
+  if (!window.confirm(`Permanently delete “${note.title || 'Untitled note'}”? This cannot be undone.`)) return
+  void deleteForever(note)
+}
+
 function App() {
   const notes = useLibraryStore((state) => state.notes)
   const trash = useLibraryStore((state) => state.trash)
@@ -234,10 +242,11 @@ function App() {
     }, { creating: true })
   }
 
-  function openNote(note: Note) {
+  // Stable (uses only a ref and the store), so memoized note cards keep the same handler.
+  const openNote = useCallback((note: Note) => {
     focusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     useEditorStore.getState().open(note)
-  }
+  }, [])
 
   function closeEditor() {
     useEditorStore.getState().close()
@@ -263,11 +272,6 @@ function App() {
       setShelfNotebookName('')
       navigateToView(`notebook:${created.id}`)
     })
-  }
-
-  function handlePermanentDelete(note: Note) {
-    if (!window.confirm(`Permanently delete “${note.title || 'Untitled note'}”? This cannot be undone.`)) return
-    void deleteForever(note)
   }
 
   return (
@@ -387,10 +391,10 @@ function App() {
                   notebook={notebooks.find((item) => item.id === note.notebookId)?.name ?? 'Personal'}
                   query={query}
                   isTrash={view === 'trash'}
-                  onOpen={() => openNote(note)}
-                  onFlag={(flag) => void toggleNoteFlag(note, flag)}
-                  onRestore={() => void restoreFromTrash(note)}
-                  onPermanentDelete={() => handlePermanentDelete(note)}
+                  onOpen={openNote}
+                  onFlag={flagNote}
+                  onRestore={restoreNoteFromTrash}
+                  onPermanentDelete={confirmPermanentDelete}
                 />
               ))}
             </section>
