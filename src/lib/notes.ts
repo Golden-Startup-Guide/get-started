@@ -357,7 +357,10 @@ export async function saveNote(input: Note, options: { forceHistory?: boolean } 
     const now = Date.now()
     // Within a burst, the newest revision already holds the text from before the burst.
     if (options.forceHistory || !revisions.length || now - revisions[0].savedAt >= HISTORY_SNAPSHOT_INTERVAL_MS) {
-      await historyStore.put({ id: crypto.randomUUID(), noteId: existing.id, savedAt: now, snapshot: existing })
+      // Strictly later than the newest revision: two saves within one millisecond would
+      // otherwise tie, and history would fall back to ordering by random revision IDs.
+      const savedAt = revisions.length ? Math.max(now, revisions[0].savedAt + 1) : now
+      await historyStore.put({ id: crypto.randomUUID(), noteId: existing.id, savedAt, snapshot: existing })
       for (const revision of revisions.slice(MAX_HISTORY_PER_NOTE - 1)) await historyStore.delete(revision.id)
     }
   }
