@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   Archive,
   ArrowLeft,
@@ -417,21 +417,27 @@ function App() {
     })
   }
 
-  async function reloadActiveNote() {
+  // Stable (uses only refs and state setters), so the editor's effect that calls it does
+  // not re-run on every render.
+  const reloadActiveNote = useCallback(async () => {
     const id = activeNoteIdRef.current
     if (!id) return
     setActiveNoteChangedElsewhere(false)
-    const latest = await getNote(id)
-    if (!latest) {
-      setActiveNote(null)
+    try {
+      const latest = await getNote(id)
+      if (!latest) {
+        setActiveNote(null)
+        setIsCreating(false)
+        setNotice('The note you were editing was permanently deleted in another tab.')
+        return
+      }
       setIsCreating(false)
-      setNotice('The note you were editing was permanently deleted in another tab.')
-      return
+      setActiveNote(latest)
+      setEditorRevision((current) => current + 1)
+    } catch {
+      setError('The latest version of this note could not be loaded. Please refresh.')
     }
-    setIsCreating(false)
-    setActiveNote(latest)
-    setEditorRevision((current) => current + 1)
-  }
+  }, [])
 
   function openNote(note: Note) {
     setActiveNoteChangedElsewhere(false)
@@ -1076,7 +1082,7 @@ function App() {
           onDelete={() => handleDeleteNote(activeNote)}
           onError={setError}
           changedElsewhere={activeNoteChangedElsewhere}
-          onLoadLatest={() => void reloadActiveNote()}
+          onLoadLatest={reloadActiveNote}
           onKeepMine={() => setActiveNoteChangedElsewhere(false)}
         />
       )}

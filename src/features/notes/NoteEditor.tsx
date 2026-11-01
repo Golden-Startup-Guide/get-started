@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -304,16 +304,16 @@ export function NoteEditor({
   }, [dirty])
 
   // Discards this tab's draft, so the stale copy is never saved over the newer one.
-  function loadLatest() {
+  const loadLatest = useCallback(() => {
     cancel()
     skipUnmountSave()
     onLoadLatest()
-  }
+  }, [cancel, onLoadLatest, skipUnmountSave])
 
   // With nothing unsaved here, show the other tab's changes right away.
   useEffect(() => {
     if (changedElsewhere && !dirty && saveState === 'saved') loadLatest()
-  }, [changedElsewhere, dirty, saveState])
+  }, [changedElsewhere, dirty, loadLatest, saveState])
 
   async function closeSafely() {
     const saved = await flush()
