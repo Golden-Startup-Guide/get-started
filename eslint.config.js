@@ -35,7 +35,7 @@ export default defineConfig([
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
   },
   {
-    files: ['*.config.{js,ts}', 'eslint.config.js', 'e2e/**/*.ts'],
+    files: ['*.config.{js,ts}', 'eslint.config.js', 'e2e/**/*.ts', 'bench/**/*.ts'],
     languageOptions: { globals: globals.node },
   },
   {

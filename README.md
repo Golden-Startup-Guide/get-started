@@ -89,6 +89,8 @@ for storage, backup, migration, and feature details.
 - [Architecture vision](docs/ARCHITECTURE_VISION.md) — long-term technical
   direction for a world-class, AI-free platform; read before proposing
   architectural changes.
+- [Performance baseline](docs/PERFORMANCE.md) — benchmark method, current
+  numbers against targets, and the causes to fix first.
 
 ## Development
 
@@ -96,6 +98,7 @@ for storage, backup, migration, and feature details.
 npm run lint   # ESLint (TypeScript and React rules)
 npm test       # Vitest and React Testing Library
 npm run test:e2e  # Playwright in Chromium, Firefox, and WebKit (production build)
+npm run bench     # Performance benchmarks with generated libraries (see docs/PERFORMANCE.md)
 npm run build  # TypeScript project checks and production PWA build
 ```
 
