@@ -79,7 +79,9 @@ In order of payoff:
 | **Done:** count notes per notebook, shelf, and library in one memoized pass | Cause 6 | Small |
 | **Done:** virtualize the note grid (TanStack Virtual), so only visible cards exist | Causes 2 and 4 | Medium |
 | **Done:** memoize the preview, defer it, and preview long notes after a pause in typing | Cause 3 | Small |
-| Parse long notes' preview off the main thread, or replace the text area with an editor that renders only visible lines (CodeMirror 6, Phase 1) | Cause 3 (remaining) | Medium |
+| **Done:** replace the text area with CodeMirror 6, which renders only visible lines | Cause 3 (remaining) | Medium |
+| Parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
+| Load CodeMirror only when a note is first opened (it adds about 100 KB gzipped to the bundle) | Start-up | Small |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
 | Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
@@ -193,3 +195,17 @@ GitHub Actions (the "before" column is the link-picker run):
 | Open the 1 MB note, 100,000 notes | 1,766 ms | 881 ms | 2× faster |
 
 A second profile shows what remains. The editor's own render is about 4 ms per keystroke; most of the rest is the browser laying out a plain text area that holds 1 MB of text, which only an editor that renders visible lines (CodeMirror 6, Phase 1) removes. The one full parse now happens after a pause, so a keystroke typed while it runs still waits for it: the benchmark's occasional maximum of about 0.8 s on the development PC (about 0.4 s on CI). Parsing off the main thread would remove that wait.
+
+### CodeMirror editor (cause 3, remaining)
+
+Before replacing the text area, a probe measured typing in a bare `<textarea>` holding the same 1 MB of text, with no React or app code, the same way the benchmark does: p50 84 ms and p95 109 ms on the development PC. No change to the app could reach the 16 ms target with a text area, because the browser lays out all of its text on every keystroke.
+
+The Markdown source editor (`src/features/notes/MarkdownEditor.tsx`) is now CodeMirror 6 with line wrapping, undo history, and the default keymap. It scrolls inside a fixed height, which is what lets it render only the lines in view. Changes made outside the editor (ticking a checklist item, restoring a revision) are applied as the smallest single edit, so the cursor stays where it was. Markdown syntax highlighting was left out: it pulls in HTML, CSS, and JavaScript parsers and more than doubled the bundle.
+
+| Measure | Text area | CodeMirror | Change |
+|---|---|---|---|
+| Typing p95, 1 MB note, development PC | 53 ms | 16.1 ms | 3.3× faster |
+| Typing p50, 1 MB note, development PC | 34 ms | 13.3 ms | |
+| Production bundle | 435 KB (130 KB gzipped) | 741 KB (231 KB gzipped) | +101 KB gzipped |
+
+The development PC runs 2–3× slower than GitHub Actions; see the CI numbers below.
