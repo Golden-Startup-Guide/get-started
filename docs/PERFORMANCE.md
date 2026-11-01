@@ -63,9 +63,9 @@ Each result file records where it was measured (`environment`). Playwright's des
 
 1. **Fixed: the editor's link list was quadratic (dominant).** The "Choose a note to link" dropdown in `NoteEditor` renders an option for every other note. Each label comes from `getNoteLinkLabel`, which scans every note (lower-casing each title) to detect duplicate titles. That is n² work: about 100 million comparisons at 10,000 notes. It runs on **every editor render**, both when a note opens and on **every keystroke**, which is why typing and opening a note scale the same way. The knowledge graph's note picker uses the same function.
 2. **Fixed: every note card was rendered at once.** The note grid renders all matching notes: 189,121 DOM nodes at 10,000 notes. That drives cold start and search. It also makes opening a note slow: with the cards memoized, React no longer re-renders them, yet showing the editor over a page that large still costs seconds in browser style and layout work. Opening a note took 10.4 s with 10,000 cards in the grid and 1.5 s with search narrowing it to 100 (development PC).
-3. **The Markdown preview re-parses the whole note on every keystroke.** For the 1 MB note this costs seconds per keystroke on its own; cause 1 currently hides it.
+3. **Mostly fixed: the Markdown preview re-parsed the whole note on every keystroke.** For the 1 MB note this costs seconds per keystroke on its own; cause 1 currently hides it.
 4. **Search scans every note's full text on each keystroke**, synchronously, then re-renders the matching cards (cause 2).
-5. **Each editor render serialises the whole draft** (`JSON.stringify` of the title, content, and tags) to detect changes, which is expensive for large notes.
+5. **Measured as minor: each editor render serialises the whole draft** (`JSON.stringify` of the title, content, and tags) to detect changes, which is expensive for large notes.
 6. **Fixed: the sidebar counted notes per item on every render.** Found after cause 1 was fixed. Each shelf count filtered every note and checked every notebook per note, and each notebook and library count filtered every note: about 80 million operations at 100,000 notes. It ran whenever `App` re-rendered, which includes opening a note and every keystroke in search.
 
 ## Recommended fixes
@@ -78,9 +78,10 @@ In order of payoff:
 | **Done:** render the link picker as a searchable list rather than an option per note | Cause 1 (remaining one option per note) | Small |
 | **Done:** count notes per notebook, shelf, and library in one memoized pass | Cause 6 | Small |
 | **Done:** virtualize the note grid (TanStack Virtual), so only visible cards exist | Causes 2 and 4 | Medium |
-| Defer the preview with `useDeferredValue` and parse it in chunks or a worker for large notes | Cause 3 | Medium |
+| **Done:** memoize the preview, defer it, and preview long notes after a pause in typing | Cause 3 | Small |
+| Parse long notes' preview off the main thread, or replace the text area with an editor that renders only visible lines (CodeMirror 6, Phase 1) | Cause 3 (remaining) | Medium |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
-| Compare drafts field by field instead of serialising them | Cause 5 | Small |
+| Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
 With the grid virtualized, the largest remaining wins at 100,000 notes are the link picker's one option per note (opening a note), a search index (search), and keeping fewer full notes in memory (cold start and the 391 MB heap), which the storage migration in the architecture vision addresses.
 
@@ -164,3 +165,31 @@ GitHub Actions (the "before" column is the virtualized-grid run):
 | Typing p95, 1 MB note | 471 ms | 451 ms | | 443 ms |
 
 Opening a note now costs about the same at 10,000 and 100,000 notes. What remains at 100,000 notes is cold start (loading and sorting every note, and keeping all their text in memory), search scanning every note's text, and the 1 MB note's preview re-rendering on each keystroke (cause 3).
+
+### Typing in long notes (cause 3)
+
+A CPU profile of typing 10 characters in the 1 MB note (unminified production build, Chromium) attributed 8,663 ms of 11,248 ms sampled, 77%, to Markdown parsing (`fromMarkdown`); the editor component itself took 48 ms and checklist progress 16 ms. Every keystroke re-parsed the whole note, and so did edits to the title or tags.
+
+- `MarkdownPreview` is memoized, so it re-renders only when its Markdown changes.
+- `usePreviewSource` defers the preview, and for notes over 50,000 characters (about 25 ms of parsing) updates it only after typing pauses for 400 ms. The editor shows that the preview is catching up and makes its checkboxes read-only meanwhile, since line numbers may have shifted.
+- Checklist progress is computed from the same previewed text, once per change.
+
+Development PC, same machine as the earlier runs:
+
+| Measure | Before | After | Change |
+|---|---|---|---|
+| Typing p95, 1 MB note, 10,000 notes | 849 ms | 53 ms | 16× faster |
+| Typing p95, 1 MB note, 100,000 notes | 967 ms | 64 ms | 15× faster |
+| Typing p50, 1 MB note, 100,000 notes | about 850 ms | 46 ms | |
+| Open the 1 MB note, 10,000 notes | 3,197 ms | 1,458 ms | 2.2× faster |
+
+GitHub Actions (the "before" column is the link-picker run):
+
+| Measure | Before | After | Change |
+|---|---|---|---|
+| Typing p95, 1 MB note, 10,000 notes | 443 ms | 37 ms | 12× faster |
+| Typing p95, 1 MB note, 100,000 notes | 451 ms | 27 ms | 17× faster |
+| Typing p50, 1 MB note, 100,000 notes | about 430 ms | 25 ms | |
+| Open the 1 MB note, 100,000 notes | 1,766 ms | 881 ms | 2× faster |
+
+A second profile shows what remains. The editor's own render is about 4 ms per keystroke; most of the rest is the browser laying out a plain text area that holds 1 MB of text, which only an editor that renders visible lines (CodeMirror 6, Phase 1) removes. The one full parse now happens after a pause, so a keystroke typed while it runs still waits for it: the benchmark's occasional maximum of about 0.8 s on the development PC (about 0.4 s on CI). Parsing off the main thread would remove that wait.

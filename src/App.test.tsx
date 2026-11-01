@@ -161,6 +161,26 @@ describe('My Notes workspace', () => {
     expect(await storage.getNotes()).toContainEqual(expect.objectContaining(note))
   }, 15000)
 
+  it('previews long notes once typing pauses, with checklists read-only meanwhile', async () => {
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+    await user.click(screen.getByRole('button', { name: 'Create a new note' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Long note' } })
+    const filler = 'Plain paragraph text that makes this a long note.\n\n'.repeat(1100)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: `${filler}- [ ] Final task` } })
+
+    expect(screen.getByText('Long note: the preview updates when you pause typing')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /Final task/ })).not.toBeInTheDocument()
+
+    const task = await screen.findByRole('checkbox', { name: 'Mark task Final task complete' }, { timeout: 3000 })
+    expect(screen.queryByText('Long note: the preview updates when you pause typing')).not.toBeInTheDocument()
+    expect(task).toBeEnabled()
+    await user.click(task)
+    expect((screen.getByRole('textbox', { name: 'Markdown' }) as HTMLTextAreaElement).value.endsWith('- [x] Final task')).toBe(true)
+  }, 15000)
+
   it('collapses the desktop sidebar and expands library tree sections accessibly', async () => {
     const { default: App } = await import('./App')
     const user = userEvent.setup()
