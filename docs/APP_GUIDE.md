@@ -40,6 +40,12 @@ Pinned notes are prioritized at the top of the note list. Favorites have a
 dedicated view. Notes can be moved between notebooks, and notebooks can be
 organized into shelves and libraries.
 
+The note grid only renders the cards near the visible part of the page and
+adds more as you scroll, so large libraries stay fast. Screen readers still
+hear each card's position, such as "5 of 10,000". The browser's own find
+(Ctrl+F) only sees the cards currently on the page; use the app's search to
+find any note.
+
 #### Navigation on desktop, tablet, and phone
 
 The application header includes a sidebar toggle. On wide screens, the sidebar
@@ -381,7 +387,7 @@ npm run preview
   Playwright tests in `e2e/` against it in Chromium, Firefox, and WebKit. Install
   the browsers once with `npx playwright install chromium firefox webkit`.
 - `npm run bench` measures start-up, search, opening notes, and typing latency
-  against generated libraries of 1,000 and 10,000 notes (see
+  against generated libraries of 1,000, 10,000, and 100,000 notes (see
   [PERFORMANCE.md](PERFORMANCE.md)).
 - `npm run build` runs the TypeScript project build checks and creates the
   production PWA output in `dist/`.
