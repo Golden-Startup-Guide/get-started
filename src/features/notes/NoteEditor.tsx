@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -31,7 +31,7 @@ import type {
   NoteLink,
   Tag,
 } from '../../types'
-import { formatDate, getNoteLinkLabel } from './noteDisplay'
+import { buildNoteLinkLabels, formatDate } from './noteDisplay'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
@@ -432,15 +432,21 @@ export function NoteEditor({
     !noteTags.some((item) => item.toLocaleLowerCase() === tag.id),
   )
   const checklistProgress = getChecklistProgress(content)
-  const allNotes = [...notes, ...trash]
+  // Everything below depends only on the library and this note's links, not on the draft, so
+  // typing never recomputes it.
+  const noteById = useMemo(() => new Map([...notes, ...trash].map((item) => [item.id, item])), [notes, trash])
+  const linkLabels = useMemo(() => buildNoteLinkLabels([...notes, ...trash], notebooks), [notes, trash, notebooks])
+  const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || 'Untitled note')
   const outgoingNotes = links.outgoing
-    .map((link) => allNotes.find((item) => item.id === link.targetNoteId))
+    .map((link) => noteById.get(link.targetNoteId))
     .filter((item): item is Note => Boolean(item))
   const backlinkNotes = links.backlinks
-    .map((link) => allNotes.find((item) => item.id === link.sourceNoteId))
+    .map((link) => noteById.get(link.sourceNoteId))
     .filter((item): item is Note => Boolean(item))
-  const linkedIds = new Set(links.outgoing.map((link) => link.targetNoteId))
-  const availableTargets = notes.filter((item) => item.id !== note.id && !linkedIds.has(item.id))
+  const availableTargets = useMemo(() => {
+    const linkedIds = new Set(links.outgoing.map((link) => link.targetNoteId))
+    return notes.filter((item) => item.id !== note.id && !linkedIds.has(item.id))
+  }, [links.outgoing, note.id, notes])
   const canEditLinks = persisted && note.deletedAt === undefined
   const audioRecordingSupported =
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
@@ -518,9 +524,7 @@ export function NoteEditor({
                     disabled={!availableTargets.length}
                   >
                     <option value="">Choose a note…</option>
-                    {availableTargets.map((item) => (
-                      <option key={item.id} value={item.id}>{getNoteLinkLabel(item, allNotes, notebooks)}</option>
-                    ))}
+                    <LinkTargetOptions targets={availableTargets} labels={linkLabels} />
                   </select>
                   <button className="secondary-button" onClick={() => void addLink()} disabled={!linkTargetId}>Add link</button>
                 </div>
@@ -535,10 +539,10 @@ export function NoteEditor({
                         <li key={related.id}>
                           {related.deletedAt === undefined ? (
                             <>
-                              <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{getNoteLinkLabel(related, allNotes, notebooks)}</button>
-                              {canEditLinks && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${getNoteLinkLabel(related, allNotes, notebooks)}`}>Remove</button>}
+                              <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{labelOf(related)}</button>
+                              {canEditLinks && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${labelOf(related)}`}>Remove</button>}
                             </>
-                          ) : <span>{getNoteLinkLabel(related, allNotes, notebooks)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                          ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
                         </li>
                       ))}
                     </ul>
@@ -551,8 +555,8 @@ export function NoteEditor({
                       {backlinkNotes.map((related) => (
                         <li key={related.id}>
                           {related.deletedAt === undefined ? (
-                            <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{getNoteLinkLabel(related, allNotes, notebooks)}</button>
-                          ) : <span>{getNoteLinkLabel(related, allNotes, notebooks)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                            <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{labelOf(related)}</button>
+                          ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
                         </li>
                       ))}
                     </ul>
@@ -644,3 +648,11 @@ export function NoteEditor({
     </div>
   )
 }
+
+// One <option> per note can mean thousands of elements; memoized so the editor re-rendering on
+// every keystroke never touches them.
+const LinkTargetOptions = memo(function LinkTargetOptions({ targets, labels }: { targets: Note[]; labels: Map<string, string> }) {
+  return targets.map((item) => (
+    <option key={item.id} value={item.id}>{labels.get(item.id) ?? (item.title || 'Untitled note')}</option>
+  ))
+})

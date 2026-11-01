@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   FileText,
   Menu,
@@ -9,7 +9,7 @@ import {
   Settings,
   X,
 } from 'lucide-react'
-import { getNoteLinkLabel, sortNotes } from './features/notes/noteDisplay'
+import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteCard } from './features/notes/NoteCard'
 import { NoteEditor } from './features/notes/NoteEditor'
 import { SettingsDialog } from './features/settings/SettingsDialog'
@@ -105,6 +105,10 @@ function App() {
       document.body.style.overflow = previousOverflow
     }
   }, [isCompactNavigation, navigationOpen])
+
+  const graphNotes = useMemo(() => [...notes, ...trash], [notes, trash])
+  const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
+  const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || 'Untitled note'), [linkLabels])
 
   const theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
 
@@ -369,9 +373,9 @@ function App() {
             <LibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
           ) : view === 'graph' ? (
             <KnowledgeGraph
-              notes={[...notes, ...trash]}
+              notes={graphNotes}
               links={links}
-              noteLabel={(note) => getNoteLinkLabel(note, [...notes, ...trash], notebooks)}
+              noteLabel={noteLabel}
               onOpenNote={openNote}
             />
           ) : filteredNotes.length ? (
