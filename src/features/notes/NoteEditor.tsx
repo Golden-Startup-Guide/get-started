@@ -38,6 +38,7 @@ import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownPreview } from './MarkdownPreview'
+import { usePreviewSource } from './usePreviewSource'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './attachments'
 
 type SaveState = 'saved' | 'unsaved' | 'saving'
@@ -435,7 +436,8 @@ export function NoteEditor({
     tag.label.toLocaleLowerCase().includes(tagInput.trim().toLocaleLowerCase()) &&
     !noteTags.some((item) => item.toLocaleLowerCase() === tag.id),
   )
-  const checklistProgress = getChecklistProgress(content)
+  const preview = usePreviewSource(content)
+  const checklistProgress = useMemo(() => getChecklistProgress(preview.source), [preview.source])
   // Everything below depends only on the library and this note's links, not on the draft, so
   // typing never recomputes it.
   const noteById = useMemo(() => new Map([...notes, ...trash].map((item) => [item.id, item])), [notes, trash])
@@ -454,9 +456,9 @@ export function NoteEditor({
   const audioRecordingSupported =
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
 
-  function toggleTask(lineNumber: number) {
+  const toggleTask = useCallback((lineNumber: number) => {
     setContent((current) => toggleChecklistItem(current, lineNumber))
-  }
+  }, [])
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
@@ -576,12 +578,13 @@ export function NoteEditor({
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="section-label">Live preview</p>
+                  {preview.stale && preview.delayed && <span className="text-xs text-[var(--muted)]">Long note: the preview updates when you pause typing</span>}
                   {checklistProgress.total > 0 && <span className="checklist-progress" role="progressbar" aria-label="Checklist progress" aria-valuemin={0} aria-valuemax={checklistProgress.total} aria-valuenow={checklistProgress.completed}>
                     {checklistProgress.completed} of {checklistProgress.total} complete
                   </span>}
                 </div>
                 <div className="prose-notes">
-                  <MarkdownPreview markdown={content} onToggleTask={toggleTask} />
+                  <MarkdownPreview markdown={preview.source} onToggleTask={preview.stale ? undefined : toggleTask} />
                 </div>
               </article>
             </div>

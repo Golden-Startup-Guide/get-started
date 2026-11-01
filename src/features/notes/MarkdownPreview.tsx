@@ -1,14 +1,15 @@
-import { createContext, useContext, useState, type ComponentProps } from 'react'
+import { createContext, memo, useContext, useState, type ComponentProps } from 'react'
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getChecklistTaskText } from './checklists'
 
 interface ChecklistContextValue {
   markdown: string
-  onToggleTask: (lineNumber: number) => void
+  /** Absent while the preview is behind the draft: line numbers may no longer match. */
+  onToggleTask?: (lineNumber: number) => void
 }
 
-const ChecklistContext = createContext<ChecklistContextValue>({ markdown: '', onToggleTask: () => undefined })
+const ChecklistContext = createContext<ChecklistContextValue>({ markdown: '' })
 // Each list item exposes its source line, so its checkbox toggles exactly that line.
 // Counting rendered checkboxes instead breaks when task syntax appears in code blocks.
 const ListItemLineContext = createContext<number | undefined>(undefined)
@@ -31,9 +32,9 @@ function TaskCheckbox({ node: _node, checked, ...props }: ComponentProps<'input'
       {...props}
       type="checkbox"
       checked={Boolean(checked)}
-      disabled={!lineNumber}
+      disabled={!lineNumber || !onToggleTask}
       aria-label={taskText ? `Mark task ${taskText} ${checked ? 'incomplete' : 'complete'}` : 'Toggle checklist task'}
-      onChange={() => lineNumber && onToggleTask(lineNumber)}
+      onChange={() => lineNumber && onToggleTask?.(lineNumber)}
     />
   )
 }
@@ -74,18 +75,23 @@ const markdownComponents: Components = {
   li: MarkdownListItem,
 }
 
-export function MarkdownPreview({
+const remarkPlugins = [remarkGfm]
+
+// Memoized: parsing is the expensive part of rendering a note, so the preview re-renders only
+// when its Markdown (or interactivity) changes, not when the title or tags are edited.
+export const MarkdownPreview = memo(function MarkdownPreview({
   markdown,
   onToggleTask,
 }: {
   markdown: string
-  onToggleTask: (lineNumber: number) => void
+  /** Omit to make checklist boxes read-only. */
+  onToggleTask?: (lineNumber: number) => void
 }) {
   return (
     <ChecklistContext.Provider value={{ markdown, onToggleTask }}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
         {markdown || '_Nothing to preview yet._'}
       </ReactMarkdown>
     </ChecklistContext.Provider>
   )
-}
+})
