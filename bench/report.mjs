@@ -20,10 +20,14 @@ const rows = [
   ['Search', 'searchMs', 'search'],
   ['Open a note', 'openNoteMs', 'openNote'],
   ['Open the 1 MB note', 'openLargeNoteMs', null],
-  ['Typing p95, 1 MB note', 'typingP95Ms', 'typing'],
+  ['Typing work p95, 1 MB note', 'typingWorkP95Ms', 'typing'],
+  ['Typing work p50, 1 MB note', 'typingWorkP50Ms', null],
+  ['Typing to next frame p95', 'typingToFrameP95Ms', null],
+  ['Bare input: typing work p95', 'floorWorkP95Ms', null],
+  ['Bare input: to next frame p95', 'floorToFrameP95Ms', null],
 ]
 const targets = results[0]?.targets ?? {}
-const targetFor = { coldStartMs: targets.coldStartMs, searchMs: targets.searchMs, openNoteMs: targets.openNoteMs, typingP95Ms: targets.typingP95Ms }
+const targetFor = { coldStartMs: targets.coldStartMs, searchMs: targets.searchMs, openNoteMs: targets.openNoteMs, typingWorkP95Ms: targets.typingWorkP95Ms }
 
 const header = ['Measure', 'Target', ...results.map((result) => `${result.size.toLocaleString('en-US')} notes`)]
 const lines = [`| ${header.join(' | ')} |`, `|${header.map(() => '---').join('|')}|`]
