@@ -93,14 +93,97 @@ html[data-theme='dark'] .workspace {
 }
 
 .library-tree-notebook {
-  padding-bottom: 0.35rem;
+  padding-bottom: 0.15rem;
 }
 
-.library-notebook-move {
-  display: block;
-  width: calc(100% - 2rem);
-  min-width: 0;
-  margin: 0.2rem 0 0 2rem;
+/* The "⋯" button appears on hover or focus; touch screens without hover always show it. */
+.tree-actions > .icon-button {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.group:hover > .tree-actions > .icon-button,
+.tree-actions > .icon-button:focus,
+.tree-actions[data-open='true'] > .icon-button {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tree-actions > .icon-button {
+    opacity: 1;
+  }
+}
+
+.tree-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 30;
+  width: 14rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 0.3rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+}
+
+.tree-menu[data-upward='true'] {
+  top: auto;
+  bottom: calc(100% + 0.25rem);
+}
+
+.tree-menu-item {
+  display: flex;
+  width: 100%;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  color: var(--text);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.tree-menu-item:hover,
+.tree-menu-item:focus-visible,
+.tree-menu-item:focus {
+  background: var(--surface-alt);
+  outline: none;
+}
+
+.tree-menu-item[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tree-menu-danger:not([aria-disabled='true']) {
+  color: var(--accent);
+}
+
+.tree-menu-group {
+  margin: 0.25rem 0;
+  border-block: 1px solid var(--border);
+  padding: 0.25rem 0;
+}
+
+.tree-menu-label {
+  padding: 0.35rem 0.6rem 0.2rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tree-menu-check {
+  display: inline-grid;
+  width: 14px;
+  flex: 0 0 14px;
+  place-items: center;
+  color: var(--accent);
 }
 
 .nav-button {

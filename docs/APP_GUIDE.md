@@ -85,7 +85,10 @@ library; upgrading an existing library never adds them. **All Notes** remains a 
 workspace.
 
 Create, rename, and navigate libraries, shelves, and notebooks from the
-workspace. Notes belong to notebooks; notebooks belong to shelves; shelves
+workspace. In the sidebar, each library, shelf, and notebook has a **⋯**
+actions menu (shown on hover or keyboard focus, and always on touch screens)
+with **Rename** and **Delete**; a notebook's menu also lists every shelf under
+**Move to shelf**, with its current shelf ticked. Notes belong to notebooks; notebooks belong to shelves; shelves
 belong to libraries. When deleting a shelf or library, choose a destination
 for its contents so notes and notebooks are not orphaned. Deleting a notebook
 also requires reassignment of its notes.
