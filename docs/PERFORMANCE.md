@@ -83,7 +83,7 @@ In order of payoff:
 | **Done:** memoize the preview, defer it, and preview long notes after a pause in typing | Cause 3 | Small |
 | **Done:** replace the text area with CodeMirror 6, which renders only visible lines | Cause 3 (remaining) | Medium |
 | Parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
-| Load CodeMirror only when a note is first opened (it adds about 100 KB gzipped to the bundle) | Start-up | Small |
+| **Done:** load the editor (CodeMirror and the Markdown preview) in its own chunk after start-up | Start-up | Small |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
 | Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
@@ -242,3 +242,18 @@ GitHub Actions, 10,000 notes, three runs of the same code:
 | Bare input: to next frame p95 | 16.2 ms | 16.9 ms | 16.5 ms |
 
 On the development PC, the same build measured 20.9 ms work p95 (bare input 3.4 ms); that machine runs 2–3× slower than CI. A trace breakdown there put most of each keystroke in event handling and scripts (CodeMirror and React), with style and layout under 1 ms and paint and compositing about 2–4 ms.
+
+### The editor loads after start-up (November 2, 2026)
+
+The note editor (`NoteEditor`, with CodeMirror and the Markdown preview) is now its own chunk. `App` starts fetching it right after the first render (`src/features/notes/noteEditorChunk.ts`), so by the time a note is opened its code is usually in memory. `LazyNoteEditor` renders the editor in the same pass once the code has loaded; until then it renders nothing, and if loading fails (for example offline before the service worker has cached the chunk) it shows an error and tries again on the next open.
+
+`React.lazy` was tried first and made opening the first note about 100 ms slower on the development PC (about 415 ms instead of about 300 ms, at 1,000 notes), even with the chunk already loaded. `lazy()` suspends on its first render regardless, and React then holds back the revealed content for its Suspense throttle.
+
+| Measure | One bundle | Editor split out |
+|---|---|---|
+| JavaScript before the note list can render | 746 KB (233 KB gzipped) | 284 KB (86 KB gzipped) |
+| Editor chunk, fetched after start-up | — | 463 KB (148 KB gzipped) |
+| Open note, 1,000 notes, development PC | 266–341 ms | 261–288 ms |
+| Cold start, 1,000 notes, development PC | 317–362 ms | 290–312 ms |
+
+The service worker precaches both chunks, so the app still works fully offline after the first visit.

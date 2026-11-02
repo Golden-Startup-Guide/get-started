@@ -10,7 +10,8 @@ import {
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteGrid } from './features/notes/NoteGrid'
-import { NoteEditor } from './features/notes/NoteEditor'
+import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
+import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
@@ -84,7 +85,14 @@ function App() {
   useEffect(() => {
     void loadLibrary()
     void usePersistenceStore.getState().load()
-    return startStorageSync()
+    // Fetch the editor's code straight after the first render, so the first note opens without
+    // waiting for it. A failure here is reported if a note is actually opened.
+    const preloadTimer = window.setTimeout(() => void preloadNoteEditor().catch(() => undefined), 0)
+    const stopSync = startStorageSync()
+    return () => {
+      window.clearTimeout(preloadTimer)
+      stopSync()
+    }
   }, [])
 
   useEffect(() => {
@@ -428,7 +436,7 @@ function App() {
       </div>
 
       {activeNote && (
-        <NoteEditor
+        <LazyNoteEditor
           key={`${activeNote.id}:${editorRevision}`}
           note={activeNote}
           isCreating={isCreating}

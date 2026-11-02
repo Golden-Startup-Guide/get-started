@@ -1,12 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteDB } from 'idb'
 import type { Note } from './types'
 import { FakeBroadcastChannel } from './test/fakeBroadcastChannel'
 import { getMarkdown, setMarkdown } from './test/markdownEditor'
 
 describe('My Notes workspace', () => {
+  // The editor is lazy-loaded. Compiling it the first time takes longer than a query waits, so
+  // compile it once here; each test still loads it fresh after vi.resetModules().
+  beforeAll(async () => {
+    await import('./features/notes/NoteEditor')
+  })
+
   beforeEach(async () => {
     await deleteDB('my-notes')
     vi.resetModules()
@@ -41,7 +47,7 @@ describe('My Notes workspace', () => {
     await screen.findByRole('heading', { name: 'All Notes' })
 
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
-    const title = screen.getByRole('textbox', { name: 'Note title' })
+    const title = await screen.findByRole('textbox', { name: 'Note title' })
     const content = screen.getByRole('textbox', { name: 'Markdown' })
     fireEvent.change(title, { target: { value: 'Garden notes' } })
     setMarkdown('**Water** the seedlings', content)
@@ -171,7 +177,7 @@ describe('My Notes workspace', () => {
     render(<App />)
     await screen.findByRole('heading', { name: 'All Notes' })
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Long note' } })
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Note title' }), { target: { value: 'Long note' } })
     // Long enough for the paused preview, as one paragraph: 1,100 paragraphs made jsdom take
     // 2–5 s to render the catch-up, which is about jsdom, not the behaviour under test.
     const filler = `${'Plain words that make this a long note. '.repeat(1300)}\n\n`
@@ -235,7 +241,7 @@ describe('My Notes workspace', () => {
       expect(persist).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: 'Create a new note' }))
-      fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Keep me' } })
+      fireEvent.change(await screen.findByRole('textbox', { name: 'Note title' }), { target: { value: 'Keep me' } })
       await waitFor(() => expect(persist).toHaveBeenCalledOnce(), { timeout: 3000 })
       setMarkdown('More text')
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
@@ -265,7 +271,7 @@ describe('My Notes workspace', () => {
       render(<App />)
       await screen.findByRole('heading', { name: 'All Notes' })
       await user.click(screen.getByRole('button', { name: 'Create a new note' }))
-      fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Shared note' } })
+      fireEvent.change(await screen.findByRole('textbox', { name: 'Note title' }), { target: { value: 'Shared note' } })
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
       const id = (await storage.getNotes()).find((note) => note.title === 'Shared note')!.id
 
@@ -383,7 +389,7 @@ describe('My Notes workspace', () => {
     // The starter notes are newer, so find this note by searching, as a user would.
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, libraries, shelves, notebooks, and tags' }), { target: { value: 'Source note' } })
     await user.click(await screen.findByRole('button', { name: 'Open note Source note' }))
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     const linkPicker = within(dialog).getByRole('combobox', { name: 'Choose a note to link' })
     await user.type(linkPicker, 'duplicate')
     const matches = within(dialog).getByRole('listbox', { name: 'Notes to link' })
@@ -449,7 +455,7 @@ describe('My Notes workspace', () => {
     await user.keyboard('{Enter}')
     expect(screen.getByRole('combobox', { name: 'Explore note' })).toHaveValue('graph-target')
     await user.click(screen.getByRole('button', { name: 'Open in editor' }))
-    expect(screen.getByRole('dialog')).toHaveAccessibleName('Graph target')
+    expect(await screen.findByRole('dialog')).toHaveAccessibleName('Graph target')
   })
 
   it('attaches and previews local image files from a saved note', async () => {
@@ -471,7 +477,7 @@ describe('My Notes workspace', () => {
     try {
       await screen.findByRole('heading', { name: 'All Notes' })
       await user.click(screen.getByRole('button', { name: 'Create a new note' }))
-      fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Photo note' } })
+      fireEvent.change(await screen.findByRole('textbox', { name: 'Note title' }), { target: { value: 'Photo note' } })
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
       const image = new File([new Uint8Array([137, 80, 78, 71])], 'seedlings.png', { type: 'image/png' })
       await user.upload(screen.getByLabelText('Choose files to attach'), image)
@@ -519,7 +525,7 @@ describe('My Notes workspace', () => {
     await screen.findByRole('heading', { name: 'All Notes' })
 
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Delete race' } })
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Note title' }), { target: { value: 'Delete race' } })
     setMarkdown('saved version')
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])

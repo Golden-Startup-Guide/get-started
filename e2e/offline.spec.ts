@@ -13,6 +13,10 @@ test('opens offline after the first visit', async ({ page, context, browserName 
   try {
     await page.reload()
     await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
+    // The editor is a separate chunk; it must come from the service worker's cache as well.
+    await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
+    await page.getByRole('textbox', { name: 'Note title' }).fill('Written offline')
+    await expect(page.getByRole('textbox', { name: 'Markdown' })).toBeVisible()
   } finally {
     await context.setOffline(false)
   }
