@@ -203,11 +203,17 @@ describe('My Notes workspace', () => {
     await user.click(within(sidebar).getByRole('button', { name: 'Expand Personal Library' }))
     expect(await within(sidebar).findByRole('button', { name: 'General 0' })).toBeInTheDocument()
 
+    // The sidebar collapses itself; the header then offers the way back, and focus follows.
+    expect(screen.queryByRole('button', { name: 'Expand sidebar' })).not.toBeInTheDocument()
     await user.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(sidebar).toHaveAttribute('data-collapsed', 'true')
-    await user.click(screen.getByRole('button', { name: 'Expand sidebar' }))
+    const expand = await screen.findByRole('button', { name: 'Expand sidebar' })
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => expect(expand).toHaveFocus())
+    await user.click(expand)
     expect(sidebar).toHaveAttribute('data-collapsed', 'false')
+    expect(screen.queryByRole('button', { name: 'Expand sidebar' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toHaveFocus())
   }, 15000)
 
   it('asks once for persistent storage after the first save without holding up saves, and lets Settings ask again', async () => {
@@ -305,18 +311,34 @@ describe('My Notes workspace', () => {
     render(<App />)
     await screen.findByRole('heading', { name: 'All Notes' })
 
-    const toggle = screen.getByRole('button', { name: 'Open navigation' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await user.click(toggle)
+    const openButton = () => screen.getByRole('button', { name: 'Open navigation' })
+    expect(openButton()).toHaveAttribute('aria-expanded', 'false')
+    await user.click(openButton())
     const drawer = await screen.findByRole('dialog', { name: 'Primary navigation' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    // While the drawer is open its own button closes it; the header button steps aside.
+    expect(screen.queryByRole('button', { name: 'Open navigation' })).not.toBeInTheDocument()
     await waitFor(() => expect(within(drawer).getByRole('button', { name: 'Close navigation' })).toHaveFocus())
 
-    fireEvent.keyDown(drawer, { key: 'Escape' })
-    await waitFor(() => expect(toggle).toHaveFocus())
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    // Escape from inside the drawer closes it and returns focus to the header button.
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+    await waitFor(() => expect(openButton()).toHaveFocus())
 
-    await user.click(toggle)
+    // Escape also works when focus has left the drawer.
+    await user.click(openButton())
+    await screen.findByRole('dialog', { name: 'Primary navigation' })
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+
+    // The drawer's own button closes it too.
+    await user.click(openButton())
+    const drawerAgain = await screen.findByRole('dialog', { name: 'Primary navigation' })
+    await user.click(within(drawerAgain).getByRole('button', { name: 'Close navigation' }))
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+    await waitFor(() => expect(openButton()).toHaveFocus())
+
+    await user.click(openButton())
     const reopenedDrawer = await screen.findByRole('dialog', { name: 'Primary navigation' })
     await user.click(within(reopenedDrawer).getByRole('button', { name: 'Favorites 0' }))
     expect(await screen.findByRole('heading', { name: 'Favorites' })).toBeInTheDocument()

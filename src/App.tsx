@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import {
   FileText,
   Menu,
-  PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Search,
@@ -109,10 +108,19 @@ function App() {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     requestAnimationFrame(() => navigationCloseRef.current?.focus())
+    // Escape closes the drawer wherever focus is, not only from inside it.
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      event.preventDefault()
+      setNavigationOpen(false)
+      requestAnimationFrame(() => navigationToggleRef.current?.focus())
+    }
+    document.addEventListener('keydown', closeOnEscape)
     return () => {
       document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', closeOnEscape)
     }
-  }, [isCompactNavigation, navigationOpen])
+  }, [isCompactNavigation, navigationOpen, setNavigationOpen])
 
   const notebookNames = useMemo(() => new Map(notebooks.map((notebook) => [notebook.id, notebook.name])), [notebooks])
   const notebookName = useCallback((note: Note) => notebookNames.get(note.notebookId ?? '') ?? 'Personal', [notebookNames])
@@ -214,9 +222,24 @@ function App() {
     }
   }
 
-  function toggleNavigation() {
-    if (isCompactNavigation) setNavigationOpen(!navigationOpen)
-    else toggleSidebar()
+  /** The header button: opens the drawer on compact screens, expands the collapsed sidebar on desktop. */
+  function openNavigation() {
+    if (isCompactNavigation) {
+      setNavigationOpen(true)
+      return
+    }
+    toggleSidebar()
+    requestAnimationFrame(() => navigationCloseRef.current?.focus())
+  }
+
+  /** The sidebar's own button: closes the drawer, or collapses the desktop sidebar. */
+  function closeSidebarPanel() {
+    if (isCompactNavigation) {
+      closeNavigation()
+      return
+    }
+    toggleSidebar()
+    requestAnimationFrame(() => navigationToggleRef.current?.focus())
   }
 
   /** Remembers what to focus when a dialog closes; the drawer's toggle if the drawer was open. */
@@ -286,7 +309,7 @@ function App() {
           onNavigate={navigateToView}
           onNewNote={openNewNote}
           onOpenSettings={openSettings}
-          onCloseNavigation={closeNavigation}
+          onCloseNavigation={closeSidebarPanel}
           newNoteRef={newNoteRef}
           closeButtonRef={navigationCloseRef}
         />
@@ -294,26 +317,19 @@ function App() {
         <main id="main-content" className="min-w-0 flex-1 p-4 sm:p-8 lg:p-10">
           <header className="mb-8 flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              <button
-                ref={navigationToggleRef}
-                className="icon-button navigation-toggle shrink-0"
-                onClick={toggleNavigation}
-                aria-label={
-                  isCompactNavigation
-                    ? navigationOpen ? 'Close navigation' : 'Open navigation'
-                    : sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
-                }
-                aria-expanded={isCompactNavigation ? navigationOpen : !sidebarCollapsed}
-                aria-controls="workspace-navigation"
-              >
-                {isCompactNavigation
-                  ? navigationOpen
-                    ? <X size={18} aria-hidden="true" />
-                    : <Menu size={18} aria-hidden="true" />
-                  : sidebarCollapsed
-                    ? <PanelLeftOpen size={18} aria-hidden="true" />
-                    : <PanelLeftClose size={18} aria-hidden="true" />}
-              </button>
+              {/* Shown only while the navigation is hidden; the sidebar has its own close button. */}
+              {(isCompactNavigation ? !navigationOpen : sidebarCollapsed) && (
+                <button
+                  ref={navigationToggleRef}
+                  className="icon-button navigation-toggle shrink-0"
+                  onClick={openNavigation}
+                  aria-label={isCompactNavigation ? 'Open navigation' : 'Expand sidebar'}
+                  aria-expanded={false}
+                  aria-controls="workspace-navigation"
+                >
+                  {isCompactNavigation ? <Menu size={18} aria-hidden="true" /> : <PanelLeftOpen size={18} aria-hidden="true" />}
+                </button>
+              )}
               <div className="min-w-0">
                 <p className="section-label mb-1">Personal Knowledge Library</p>
                 {breadcrumbItems.length > 0 && (

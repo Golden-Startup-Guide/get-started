@@ -52,10 +52,6 @@ html[data-theme='dark'] .workspace {
   display: none;
 }
 
-.navigation-close {
-  display: none;
-}
-
 .navigation-backdrop {
   display: none;
 }
@@ -852,18 +848,16 @@ html[data-theme='dark'] .workspace .primary-button {
     pointer-events: none;
     box-shadow: 12px 0 36px rgb(0 0 0 / 18%);
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
-    transition: transform 180ms ease, visibility 180ms ease;
+    /* Closing: slide out, then hide once the slide has finished. */
+    transition: transform 180ms ease, visibility 0s linear 180ms;
   }
 
   .workspace-sidebar[data-open='true'] {
     transform: translateX(0);
     visibility: visible;
     pointer-events: auto;
-  }
-
-  .navigation-close {
-    display: inline-grid;
-    flex: 0 0 auto;
+    /* Opening: visible at once, so focus can move into the drawer straight away. */
+    transition: transform 180ms ease, visibility 0s;
   }
 
   .navigation-backdrop {

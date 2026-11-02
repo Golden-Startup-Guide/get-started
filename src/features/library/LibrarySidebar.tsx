@@ -7,11 +7,11 @@ import {
   Layers3,
   LibraryBig,
   Network,
+  PanelLeftClose,
   Plus,
   Settings,
   Tag as TagIcon,
   Trash2,
-  X,
 } from 'lucide-react'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { NavButton } from '../../components/NavButton'
@@ -112,9 +112,10 @@ export function LibrarySidebar({
           ref={closeButtonRef}
           className="icon-button navigation-close"
           onClick={onCloseNavigation}
-          aria-label="Close navigation"
+          aria-label={isCompactNavigation ? 'Close navigation' : 'Collapse sidebar'}
+          title={isCompactNavigation ? 'Close navigation' : 'Collapse sidebar'}
         >
-          <X size={18} aria-hidden="true" />
+          <PanelLeftClose size={18} aria-hidden="true" />
         </button>
       </div>
       <button id={FALLBACK_FOCUS_ID} ref={newNoteRef} onClick={onNewNote} className="primary-button mb-5 flex items-center justify-center gap-2" aria-label="Create a new note from navigation">
