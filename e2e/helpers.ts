@@ -31,6 +31,11 @@ export async function openWorkspace(page: Page) {
   await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
 }
 
+/** The Markdown editor's text. It is a CodeMirror editor, not a form field, so toHaveValue does not apply. */
+export function markdownText(page: Page): Promise<string> {
+  return page.getByRole('textbox', { name: 'Markdown' }).innerText()
+}
+
 export async function expectSaved(page: Page) {
   await expect(page.locator('.save-status')).toHaveText(/Saved/)
 }

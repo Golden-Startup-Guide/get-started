@@ -99,7 +99,12 @@ There is no remote index, model download, or semantic-search service.
 
 ### 2.4 Markdown, checklists, and autosave
 
-The editor provides Markdown source editing alongside a live preview. Supported
+The editor provides Markdown source editing alongside a live preview. The
+source editor is CodeMirror 6: it renders only the lines in view, so even very
+long notes stay responsive while typing. It supports undo and redo (Ctrl+Z,
+Ctrl+Shift+Z or Ctrl+Y) and the usual text-editing keys; Tab moves focus out of
+the editor rather than inserting a tab, so keyboard users can always leave it.
+Supported
 content includes headings, paragraphs, emphasis, links, lists, task lists,
 blockquotes, code, and GitHub-Flavored Markdown features.
 

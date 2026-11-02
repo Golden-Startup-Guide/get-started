@@ -1,10 +1,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 import { seedLibrary } from './seedLibrary'
+import { measureTyping, measureTypingFloor } from './typingLatency'
 
 // Targets from docs/ARCHITECTURE_VISION.md, section 3E. Results are reported against them,
 // not enforced: these runs establish baselines. Set BENCH_ENFORCE=1 to fail on a miss.
-const TARGETS = { coldStartMs: 1000, openNoteMs: 50, searchMs: 50, typingP95Ms: 16 }
+// The typing target applies to main-thread work per keystroke (see bench/typingLatency.ts).
+const TARGETS = { coldStartMs: 1000, openNoteMs: 50, searchMs: 50, typingWorkP95Ms: 16 }
 const sizes = (process.env.BENCH_SIZES ?? '1000,10000,100000').split(',').map((value) => Number(value.trim())).filter(Boolean)
 const enforce = process.env.BENCH_ENFORCE === '1'
 
@@ -60,7 +62,8 @@ for (const size of sizes) {
     await page.getByRole('button', { name: 'Close editor' }).first().click()
     await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveCount(0)
 
-    // Typing: in the 1 MB note, time from each keydown until the frame after it renders.
+    // Typing in the 1 MB note: main-thread work per keystroke (the target), plus the time until
+    // the next frame and the same measurements on a bare <input> for comparison.
     await search.fill(library.largeNoteTitle)
     await waitForCount(page, 1)
     started = await now(page)
@@ -70,17 +73,10 @@ for (const size of sizes) {
     const openLargeNoteMs = (await now(page)) - started
     await editor.click()
     await editor.press('End')
-    await page.evaluate(() => {
-      const samples: number[] = []
-      ;(window as Window & { __typingSamples?: number[] }).__typingSamples = samples
-      document.addEventListener('keydown', (event) => {
-        const start = event.timeStamp
-        requestAnimationFrame(() => setTimeout(() => samples.push(performance.now() - start), 0))
-      }, true)
-    })
-    await page.keyboard.type(' benchmark typing sample', { delay: 40 })
-    await page.waitForFunction(() => ((window as Window & { __typingSamples?: number[] }).__typingSamples?.length ?? 0) >= 24)
-    const typing = await page.evaluate(() => (window as Window & { __typingSamples?: number[] }).__typingSamples ?? [])
+    // Let opening finish (layout, the first preview) so it is not counted as typing.
+    await page.waitForTimeout(1500)
+    const typing = await measureTyping(page, browser)
+    const floor = await measureTypingFloor(browser)
 
     const result = {
       size,
@@ -90,9 +86,13 @@ for (const size of sizes) {
       searchMs: round(searchMs),
       openNoteMs: round(openNoteMs),
       openLargeNoteMs: round(openLargeNoteMs),
-      typingP50Ms: round(percentile(typing, 0.5)),
-      typingP95Ms: round(percentile(typing, 0.95)),
-      typingMaxMs: round(Math.max(...typing)),
+      typingWorkP50Ms: round(percentile(typing.work, 0.5)),
+      typingWorkP95Ms: round(percentile(typing.work, 0.95)),
+      typingWorkMaxMs: round(Math.max(...typing.work)),
+      typingToFrameP50Ms: round(percentile(typing.toFrame, 0.5)),
+      typingToFrameP95Ms: round(percentile(typing.toFrame, 0.95)),
+      floorWorkP95Ms: round(percentile(floor.work, 0.95)),
+      floorToFrameP95Ms: round(percentile(floor.toFrame, 0.95)),
       heapMB: round(heapBytes / 1024 / 1024),
       domNodes,
       // Not navigator.userAgent: Playwright's device profile reports Windows on every OS.
@@ -103,7 +103,7 @@ for (const size of sizes) {
       coldStart: result.coldStartMs <= TARGETS.coldStartMs,
       openNote: result.openNoteMs <= TARGETS.openNoteMs,
       search: result.searchMs <= TARGETS.searchMs,
-      typing: result.typingP95Ms <= TARGETS.typingP95Ms,
+      typing: result.typingWorkP95Ms <= TARGETS.typingWorkP95Ms,
     }
 
     mkdirSync('bench/results', { recursive: true })
@@ -115,7 +115,9 @@ for (const size of sizes) {
       'Search (ms)': { value: result.searchMs, target: TARGETS.searchMs, met: checks.search },
       'Open note (ms)': { value: result.openNoteMs, target: TARGETS.openNoteMs, met: checks.openNote },
       'Open 1 MB note (ms)': { value: result.openLargeNoteMs, target: '-', met: '-' },
-      'Typing p95, 1 MB note (ms)': { value: result.typingP95Ms, target: TARGETS.typingP95Ms, met: checks.typing },
+      'Typing work p95, 1 MB note (ms)': { value: result.typingWorkP95Ms, target: TARGETS.typingWorkP95Ms, met: checks.typing },
+      'Typing to next frame p95 (ms)': { value: result.typingToFrameP95Ms, target: '-', met: '-' },
+      'Bare input: work / to frame p95 (ms)': { value: `${result.floorWorkP95Ms} / ${result.floorToFrameP95Ms}`, target: '-', met: '-' },
       'JS heap (MB)': { value: result.heapMB, target: '-', met: '-' },
       'DOM nodes': { value: result.domNodes, target: '-', met: '-' },
     })

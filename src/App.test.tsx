@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteDB } from 'idb'
 import type { Note } from './types'
 import { FakeBroadcastChannel } from './test/fakeBroadcastChannel'
+import { getMarkdown, setMarkdown } from './test/markdownEditor'
 
 describe('My Notes workspace', () => {
   beforeEach(async () => {
@@ -43,7 +44,7 @@ describe('My Notes workspace', () => {
     const title = screen.getByRole('textbox', { name: 'Note title' })
     const content = screen.getByRole('textbox', { name: 'Markdown' })
     fireEvent.change(title, { target: { value: 'Garden notes' } })
-    fireEvent.change(content, { target: { value: '**Water** the seedlings' } })
+    setMarkdown('**Water** the seedlings', content)
     expect(screen.getByText('Live preview')).toBeInTheDocument()
     expect(screen.getByText('Water', { selector: 'strong' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
@@ -61,8 +62,8 @@ describe('My Notes workspace', () => {
 
     await user.click(screen.getByRole('button', { name: 'Open note Garden notes' }))
     const markdownInput = screen.getByRole('textbox', { name: 'Markdown' })
-    fireEvent.change(markdownInput, { target: { value: '**Water** the seedlings\n\n[unsafe](javascript:alert(1))\n\n<script>bad()</script>' } })
-    fireEvent.change(markdownInput, { target: { value: '**Water** the seedlings and vegetables\n\n- [ ] Water plants\n- [x] Remove weeds\n\n[unsafe](javascript:alert(1))\n\n[Guide](https://example.com/garden) with a note[^1]\n\n[^1]: Footnote\n\n<script>bad()</script>' } })
+    setMarkdown('**Water** the seedlings\n\n[unsafe](javascript:alert(1))\n\n<script>bad()</script>', markdownInput)
+    setMarkdown('**Water** the seedlings and vegetables\n\n- [ ] Water plants\n- [x] Remove weeds\n\n[unsafe](javascript:alert(1))\n\n[Guide](https://example.com/garden) with a note[^1]\n\n[^1]: Footnote\n\n<script>bad()</script>', markdownInput)
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     expect(document.querySelector('script')).toBeNull()
     expect(document.querySelector('a[href^="javascript:"]')).toBeNull()
@@ -72,7 +73,7 @@ describe('My Notes workspace', () => {
     expect(screen.getByRole('progressbar', { name: 'Checklist progress' })).toHaveTextContent('1 of 2 complete')
     await user.click(screen.getByRole('checkbox', { name: 'Mark task Water plants complete' }))
     expect(screen.getByRole('progressbar', { name: 'Checklist progress' })).toHaveTextContent('2 of 2 complete')
-    expect((markdownInput as HTMLTextAreaElement).value).toContain('- [x] Water plants')
+    expect(getMarkdown(markdownInput)).toContain('- [x] Water plants')
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     const tagInput = screen.getByRole('textbox', { name: 'Add tags' })
     fireEvent.change(tagInput, { target: { value: 'Seeds' } })
@@ -168,8 +169,10 @@ describe('My Notes workspace', () => {
     await screen.findByRole('heading', { name: 'All Notes' })
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Long note' } })
-    const filler = 'Plain paragraph text that makes this a long note.\n\n'.repeat(1100)
-    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: `${filler}- [ ] Final task` } })
+    // Long enough for the paused preview, as one paragraph: 1,100 paragraphs made jsdom take
+    // 2–5 s to render the catch-up, which is about jsdom, not the behaviour under test.
+    const filler = `${'Plain words that make this a long note. '.repeat(1300)}\n\n`
+    setMarkdown(`${filler}- [ ] Final task`)
 
     expect(screen.getByText('Long note: the preview updates when you pause typing')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /Final task/ })).not.toBeInTheDocument()
@@ -178,7 +181,7 @@ describe('My Notes workspace', () => {
     expect(screen.queryByText('Long note: the preview updates when you pause typing')).not.toBeInTheDocument()
     expect(task).toBeEnabled()
     await user.click(task)
-    expect((screen.getByRole('textbox', { name: 'Markdown' }) as HTMLTextAreaElement).value.endsWith('- [x] Final task')).toBe(true)
+    expect(getMarkdown().endsWith('- [x] Final task')).toBe(true)
   }, 15000)
 
   it('collapses the desktop sidebar and expands library tree sections accessibly', async () => {
@@ -225,7 +228,7 @@ describe('My Notes workspace', () => {
       await user.click(screen.getByRole('button', { name: 'Create a new note' }))
       fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Keep me' } })
       await waitFor(() => expect(persist).toHaveBeenCalledOnce(), { timeout: 3000 })
-      fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'More text' } })
+      setMarkdown('More text')
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
       expect(persist).toHaveBeenCalledOnce()
       const storage = await import('./lib/notes')
@@ -264,9 +267,9 @@ describe('My Notes workspace', () => {
       }
 
       await editInOtherTab('Written in the other tab')
-      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Markdown' })).toHaveValue('Written in the other tab'))
+      await waitFor(() => expect(getMarkdown()).toBe('Written in the other tab'))
 
-      fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'My local draft' } })
+      setMarkdown('My local draft')
       await editInOtherTab('Second edit elsewhere')
       expect(await screen.findByText(/changed in another tab/)).toBeInTheDocument()
       await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -275,10 +278,10 @@ describe('My Notes workspace', () => {
       await user.click(screen.getByRole('button', { name: 'Keep my version' }))
       await waitFor(async () => expect((await storage.getNote(id))?.content).toBe('My local draft'), { timeout: 3000 })
 
-      fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'Another local draft' } })
+      setMarkdown('Another local draft')
       await editInOtherTab('Third edit elsewhere')
       await user.click(await screen.findByRole('button', { name: 'Load the other version' }))
-      await waitFor(() => expect(screen.getByRole('textbox', { name: 'Markdown' })).toHaveValue('Third edit elsewhere'))
+      await waitFor(() => expect(getMarkdown()).toBe('Third edit elsewhere'))
       await new Promise((resolve) => setTimeout(resolve, 1000))
       expect((await storage.getNote(id))?.content).toBe('Third edit elsewhere')
     } finally {
@@ -488,11 +491,11 @@ describe('My Notes workspace', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Delete race' } })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'saved version' } })
+    setMarkdown('saved version')
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
     await user.click(await screen.findByRole('button', { name: 'Open note Delete race' }))
-    fireEvent.change(screen.getByRole('textbox', { name: 'Markdown' }), { target: { value: 'unsaved draft' } })
+    setMarkdown('unsaved draft')
     await user.click(screen.getByRole('button', { name: 'Move to Trash' }))
     expect(confirmation).toHaveBeenCalledOnce()
     const { getNotes, getTrash } = await import('./lib/notes')

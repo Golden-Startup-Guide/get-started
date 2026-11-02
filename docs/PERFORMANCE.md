@@ -18,7 +18,9 @@
    - **Search:** typing the rare word until the result count updates.
    - **Open a note:** clicking a typical note until the editor is shown.
    - **Open the 1 MB note:** the same, for the large note.
-   - **Typing p95:** the 95th-percentile time from a keydown until the frame after it renders, while typing in the 1 MB note.
+   - **Typing work (the target):** the main-thread time each keystroke causes (scripts, style, layout, paint), from a Chromium performance trace, typing 60 characters in the 1 MB note; p50, p95, and max are reported. Idle time waiting for the next display frame is not counted (`bench/typingLatency.ts`).
+   - **Typing to next frame:** the time from each keydown until the frame after it renders. It includes waiting for the display's next frame, so it cannot read much below 16 ms wherever frames follow the display's refresh; it is reported for comparison only. Results before November 2, 2026 used this measure with 24 characters (the "Typing p95" rows below).
+   - **Bare input:** both measures on a page holding only an `<input>`, in the same run, showing what the browser costs by itself.
    - **JS heap and DOM nodes** after the cold start.
 
 Results are written to `bench/results/` (ignored by git) and summarised with `node bench/report.mjs`. They report against the targets but do not fail; set `BENCH_ENFORCE=1` to fail on a miss. Choose sizes with `BENCH_SIZES`, for example `BENCH_SIZES=1000,10000 npm run bench`.
@@ -79,7 +81,9 @@ In order of payoff:
 | **Done:** count notes per notebook, shelf, and library in one memoized pass | Cause 6 | Small |
 | **Done:** virtualize the note grid (TanStack Virtual), so only visible cards exist | Causes 2 and 4 | Medium |
 | **Done:** memoize the preview, defer it, and preview long notes after a pause in typing | Cause 3 | Small |
-| Parse long notes' preview off the main thread, or replace the text area with an editor that renders only visible lines (CodeMirror 6, Phase 1) | Cause 3 (remaining) | Medium |
+| **Done:** replace the text area with CodeMirror 6, which renders only visible lines | Cause 3 (remaining) | Medium |
+| Parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
+| Load CodeMirror only when a note is first opened (it adds about 100 KB gzipped to the bundle) | Start-up | Small |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
 | Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
@@ -193,3 +197,48 @@ GitHub Actions (the "before" column is the link-picker run):
 | Open the 1 MB note, 100,000 notes | 1,766 ms | 881 ms | 2× faster |
 
 A second profile shows what remains. The editor's own render is about 4 ms per keystroke; most of the rest is the browser laying out a plain text area that holds 1 MB of text, which only an editor that renders visible lines (CodeMirror 6, Phase 1) removes. The one full parse now happens after a pause, so a keystroke typed while it runs still waits for it: the benchmark's occasional maximum of about 0.8 s on the development PC (about 0.4 s on CI). Parsing off the main thread would remove that wait.
+
+### CodeMirror editor (cause 3, remaining)
+
+Before replacing the text area, a probe measured typing in a bare `<textarea>` holding the same 1 MB of text, with no React or app code, the same way the benchmark does: p50 84 ms and p95 109 ms on the development PC. No change to the app could reach the 16 ms target with a text area, because the browser lays out all of its text on every keystroke.
+
+The Markdown source editor (`src/features/notes/MarkdownEditor.tsx`) is now CodeMirror 6 with line wrapping, undo history, and the default keymap. It scrolls inside a fixed height, which is what lets it render only the lines in view. Changes made outside the editor (ticking a checklist item, restoring a revision) are applied as the smallest single edit, so the cursor stays where it was. Markdown syntax highlighting was left out: it pulls in HTML, CSS, and JavaScript parsers and more than doubled the bundle.
+
+| Measure | Text area | CodeMirror | Change |
+|---|---|---|---|
+| Typing p95, 1 MB note, development PC | 53 ms | 16.1 ms | 3.3× faster |
+| Typing p50, 1 MB note, development PC | 34 ms | 13.3 ms | |
+| Production bundle | 435 KB (130 KB gzipped) | 741 KB (231 KB gzipped) | +101 KB gzipped |
+
+The development PC runs 2–3× slower than GitHub Actions; see the CI numbers below.
+
+### Typing reaches the 16 ms target (November 2, 2026)
+
+Profiling typing on the CodeMirror editor showed two more fixes:
+
+- **The whole draft was serialised on every render.** `NoteEditor` passed autosave `JSON.stringify` of the title, the 1 MB content, and the tags, only to detect changes: about 6.5 ms per keystroke on the development PC. It now passes a memoized draft object compared by identity; `NoteEditor` dropped to about 1 ms per keystroke.
+- **The first keystroke after a pause re-parsed the whole note.** Making checkboxes read-only while the preview catches up changed a prop on the memoized preview, so the 1 MB note was re-parsed (0.4–0.7 s, the maximum in every earlier run). The parsed tree now depends on the Markdown text alone; interactivity travels through context.
+
+**Why the typing measure changed.** On GitHub Actions, with 80 keystrokes per page:
+
+| Page | To next frame p50 | To next frame p95 |
+|---|---|---|
+| A bare `<input>`, nothing else | 0.9 ms | 16.6 ms |
+| A bare `contenteditable` div | 0.8 ms | 15.4 ms |
+| The app, small note | 6.2 ms | 20.7 ms |
+| The app, 1 MB note | 9.1 ms | 19.0 ms |
+
+A page with no app code read 16.6 ms p95, because the measure waits for the display's next frame. No page could meet a 16 ms target that way, so the target now applies to main-thread work per keystroke, with the old measure still reported. The same runs showed that typing no longer depends on note size.
+
+GitHub Actions, 10,000 notes, three runs of the same code:
+
+| Measure | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|
+| Typing work p95, 1 MB note | 10.2 ms ✅ | 9.9 ms ✅ | 12.1 ms ✅ |
+| Typing work p50, 1 MB note | 6.5 ms | 7.6 ms | 7.8 ms |
+| Typing work max, 1 MB note | 16.2 ms | 16.1 ms | 16.6 ms |
+| Typing to next frame p95 | 20.3 ms | 20.5 ms | 20.2 ms |
+| Bare input: work p95 | 1.6 ms | 2.5 ms | 3.0 ms |
+| Bare input: to next frame p95 | 16.2 ms | 16.9 ms | 16.5 ms |
+
+On the development PC, the same build measured 20.9 ms work p95 (bare input 3.4 ms); that machine runs 2–3× slower than CI. A trace breakdown there put most of each keystroke in event handling and scripts (CodeMirror and React), with style and layout under 1 ms and paint and compositing about 2–4 ms.

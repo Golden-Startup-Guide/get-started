@@ -37,6 +37,7 @@ import { keepFocusInDialog } from '../../components/dialogFocus'
 import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
+import { MarkdownEditor } from './MarkdownEditor'
 import { MarkdownPreview } from './MarkdownPreview'
 import { usePreviewSource } from './usePreviewSource'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './attachments'
@@ -203,7 +204,9 @@ export function NoteEditor({
     JSON.stringify(noteTags) !== JSON.stringify(baseline.tags) ||
     notebookId !== baseline.notebookId || pinned !== baseline.pinned || favorite !== baseline.favorite
   const saveState: SaveState = isSaving ? 'saving' : dirty ? 'unsaved' : 'saved'
-  const draftKey = JSON.stringify([title, content, noteTags, notebookId, pinned, favorite])
+  // A new object whenever any draft field changes. Autosave compares it by identity, which is
+  // free; serialising the draft for that cost several milliseconds per keystroke in a 1 MB note.
+  const draftKey = useMemo(() => ({ title, content, noteTags, notebookId, pinned, favorite }), [title, content, noteTags, notebookId, pinned, favorite])
   const { flush, cancel, skipUnmountSave, resumeUnmountSave } = useDebouncedAutosave(
     dirty,
     draftKey,
@@ -572,8 +575,8 @@ export function NoteEditor({
             </section>
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
-                <label htmlFor="note-content" className="section-label mb-2 block">Markdown</label>
-                <textarea id="note-content" className="content-input" value={content} onChange={(event) => setContent(event.target.value)} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
+                <p id="note-content-label" className="section-label mb-2 block">Markdown</p>
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
               </div>}
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">
