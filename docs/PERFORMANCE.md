@@ -256,4 +256,16 @@ The note editor (`NoteEditor`, with CodeMirror and the Markdown preview) is now 
 | Open note, 1,000 notes, development PC | 266–341 ms | 261–288 ms |
 | Cold start, 1,000 notes, development PC | 317–362 ms | 290–312 ms |
 
+GitHub Actions, earlier runs on the single bundle (two runs) against one run with the editor split out:
+
+| Measure | One bundle | Editor split out |
+|---|---|---|
+| Cold start, 1,000 notes | 185–188 ms | 106 ms |
+| Cold start, 10,000 notes | 607–656 ms | 403 ms |
+| Open note, 1,000 notes | 148–151 ms | 92 ms |
+| Open note, 10,000 notes | 160–161 ms | 110 ms |
+| Typing work p95, 1 MB note | 8.8–10.9 ms | 6.3–6.4 ms |
+
+CI runners vary from run to run, so treat single-run differences with care. Start-up gained the most, as expected, because less JavaScript is parsed before the note list renders.
+
 The service worker precaches both chunks, so the app still works fully offline after the first visit.
