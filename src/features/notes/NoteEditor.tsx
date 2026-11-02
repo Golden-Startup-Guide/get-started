@@ -204,7 +204,9 @@ export function NoteEditor({
     JSON.stringify(noteTags) !== JSON.stringify(baseline.tags) ||
     notebookId !== baseline.notebookId || pinned !== baseline.pinned || favorite !== baseline.favorite
   const saveState: SaveState = isSaving ? 'saving' : dirty ? 'unsaved' : 'saved'
-  const draftKey = JSON.stringify([title, content, noteTags, notebookId, pinned, favorite])
+  // A new object whenever any draft field changes. Autosave compares it by identity, which is
+  // free; serialising the draft for that cost several milliseconds per keystroke in a 1 MB note.
+  const draftKey = useMemo(() => ({ title, content, noteTags, notebookId, pinned, favorite }), [title, content, noteTags, notebookId, pinned, favorite])
   const { flush, cancel, skipUnmountSave, resumeUnmountSave } = useDebouncedAutosave(
     dirty,
     draftKey,

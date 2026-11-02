@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 
 export function useDebouncedAutosave(
   dirty: boolean,
-  draftKey: string,
+  /** Any value whose identity changes when the draft changes (compared with ===). */
+  draftKey: unknown,
   save: () => Promise<boolean>,
   delay = 650,
   /** Stops the debounce timer only; explicit flushes and page-exit saves still run. */
@@ -11,7 +12,7 @@ export function useDebouncedAutosave(
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestSave = useRef(save)
   const latestDraftKey = useRef(draftKey)
-  const inFlight = useRef<{ draftKey: string; promise: Promise<boolean> } | null>(null)
+  const inFlight = useRef<{ draftKey: unknown; promise: Promise<boolean> } | null>(null)
   const saveOnUnmount = useRef(true)
   const latestDirty = useRef(dirty)
 
