@@ -132,7 +132,7 @@ A plugin API is what made VS Code and Obsidian category leaders.
 | Phase | When | Deliverables |
 |---|---|---|
 | **0. Foundations** | Month 1 | CI, ESLint, Playwright, state stores, and a benchmark library (**done**; baseline in [PERFORMANCE.md](PERFORMANCE.md)); still to do: decision records |
-| **1. Craft** | Months 1-3 | CodeMirror 6 editor (**started**: plain-text CodeMirror replaces the text area; live-preview mode still to do), `[[wikilinks]]` derived from text (**done**: autocomplete, preview links, backlinks, and graph; manual link records kept alongside; block links, embeds, and rename-updates still to do), command palette, search worker with operators |
+| **1. Craft** | Months 1-3 | CodeMirror 6 editor (**started**: plain-text CodeMirror replaces the text area; live-preview mode still to do), `[[wikilinks]]` derived from text (**done**: autocomplete, preview links, backlinks, and graph; manual link records kept alongside; block links, embeds, and rename-updates still to do), command palette (**done**: notes, places, and actions; not yet from inside the editor), search worker with operators |
 | **2. Durability** | Months 3-6 | SQLite on OPFS behind the storage interface, attachments as files, automatic verified folder backups, Markdown vault export and importers |
 | **3. Everywhere** | Months 6-12 | CRDT data model, encrypted sync to the user's own storage, Tauri desktop app, mobile polish, web clipper |
 | **4. Ecosystem** | Month 12+ | Plugin API, publishing, encrypted shared notebooks and collaboration |
