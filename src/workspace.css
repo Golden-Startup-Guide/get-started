@@ -1158,3 +1158,69 @@ html[data-theme='dark'] .workspace .primary-button {
   font-size: 0.9rem;
   text-align: center;
 }
+
+/* Search tips: a "?" beside the search box listing operators. */
+.search-field {
+  position: relative;
+}
+
+.search-tips-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  width: min(26rem, calc(100vw - 2rem));
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  padding: 0.6rem;
+  color: var(--text);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.18);
+}
+
+@media (max-width: 639px) {
+  .search-tips-panel {
+    left: 0;
+    width: auto;
+  }
+
+  .search-tips-example code {
+    flex-basis: 7.5rem;
+  }
+}
+
+.search-tips-intro {
+  padding: 0.2rem 0.45rem 0.5rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.search-tips-example {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  gap: 0.75rem;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.search-tips-example:hover,
+.search-tips-example:focus-visible {
+  background: var(--surface-alt);
+  outline: none;
+}
+
+.search-tips-example code {
+  flex: 0 0 8.5rem;
+  border-radius: 0.3rem;
+  background: var(--surface-alt);
+  padding: 0.05rem 0.35rem;
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
+.search-tips-example span {
+  color: var(--muted);
+}

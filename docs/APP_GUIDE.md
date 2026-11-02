@@ -113,9 +113,28 @@ active notes rather than notes in Trash.
 ### 2.3 Search
 
 Use the workspace search field to find notes by title, note content, tags,
-notebook, shelf, or library name. Matching results are counted and matching
-text is highlighted where applicable. Search runs locally against the browser's
-stored data.
+notebook, shelf, or library name. Every word you type must appear somewhere in
+the note or its location, in any order, ignoring capitals. Matching results are
+counted and the words are highlighted on the cards. Search works within the
+current view (a notebook, Favorites, a tag, and so on).
+
+Search operators narrow the results and can be combined:
+
+| Type | To find |
+|---|---|
+| `garden plan` | Notes containing both words |
+| `"seed tray"` | The exact phrase |
+| `-tomato` | Notes that do not contain the word |
+| `tag:health` or `#health` | Notes with that tag (the whole tag, ignoring capitals) |
+| `notebook:work` | Notes in a notebook whose name starts with "work"; also `shelf:` and `library:` |
+| `notebook:"health hand"` | Quotes for names with spaces |
+| `is:pinned`, `is:favorite` | Pinned or favorite notes |
+| `-tag:draft`, `-is:pinned` | Any filter with `-` in front excludes instead |
+
+A word with an unknown operator, such as a time like `10:30` or a web address,
+is searched as plain text. The **?** button in the search field lists these and
+adds an example to the search when selected; Escape closes it without clearing
+the search. Search runs locally against the browser's stored data.
 
 There is no remote index, model download, or semantic-search service.
 

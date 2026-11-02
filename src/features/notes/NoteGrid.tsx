@@ -50,7 +50,7 @@ export function NoteGrid({
   notes,
   label,
   notebookName,
-  query,
+  highlights,
   isTrash,
   onOpen,
   onFlag,
@@ -60,7 +60,7 @@ export function NoteGrid({
   notes: Note[]
   label: string
   notebookName: (note: Note) => string
-  query: string
+  highlights: readonly string[]
   isTrash: boolean
   onOpen: (note: Note) => void
   onFlag: (note: Note, flag: 'pinned' | 'favorite') => void
@@ -107,7 +107,7 @@ export function NoteGrid({
               key={note.id}
               note={note}
               notebook={notebookName(note)}
-              query={query}
+              highlights={highlights}
               isTrash={isTrash}
               position={row.index * columns + column + 1}
               setSize={notes.length}

@@ -84,7 +84,8 @@ In order of payoff:
 | **Done:** replace the text area with CodeMirror 6, which renders only visible lines | Cause 3 (remaining) | Medium |
 | Parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
 | **Done:** load the editor (CodeMirror and the Markdown preview) in its own chunk after start-up | Start-up | Small |
-| Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 | Medium, overlaps Phase 2 |
+| **Done:** search lower-cases each note once (cached until it is saved), stops re-sorting the library on every keystroke, and looks up locations in a map | Cause 4 (part) | Small |
+| Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 (remaining) | Medium, overlaps Phase 2 |
 | Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
 With the grid virtualized, the largest remaining wins at 100,000 notes are the link picker's one option per note (opening a note), a search index (search), and keeping fewer full notes in memory (cold start and the 391 MB heap), which the storage migration in the architecture vision addresses.
@@ -269,3 +270,23 @@ GitHub Actions, earlier runs on the single bundle (two runs) against one run wit
 CI runners vary from run to run, so treat single-run differences with care. Start-up gained the most, as expected, because less JavaScript is parsed before the note list renders.
 
 The service worker precaches both chunks, so the app still works fully offline after the first visit.
+
+### Search operators and cheaper matching (November 2, 2026)
+
+Search now parses operators (`src/lib/search.ts`) and matches every word rather than the whole query as one string. Three costs came out of each keystroke:
+
+- **Lower-casing every note's full text.** Each note's searchable text is lower-cased once, the first time it is searched, and cached until the note is saved (its `updatedAt` changes). Notes deleted for good are dropped from the cache. The cache holds a lower-cased copy of each searched note, so memory grows by roughly the size of the library's text once search has been used.
+- **Sorting the whole library.** Sorting now depends only on the notes, not the query.
+- **Finding each note's notebook, shelf, and library** with array scans per note. They are now looked up in a map built once per library change.
+
+A Node micro-benchmark over 10,000 notes plus a 1 MB note put matching at 11.9 ms when lower-casing on every search, 2.9 ms from the cache, and 33.5 ms with case-insensitive regular expressions (rejected). Building the cache costs about 30 ms, paid on the first search.
+
+The benchmark's "Search" row cannot show the difference: it times Playwright filling the field and then polling, about 100 ms of round trips even at 1,000 notes. A one-off in-page probe measured main-thread time per keystroke typing a 9-letter search at 10,000 notes on the development PC:
+
+| Per keystroke | Before | After |
+|---|---|---|
+| First search (builds the cache) | 72 ms | 64 ms |
+| Later searches, median | 30 ms | 16 ms |
+| Later searches, slowest key | 40 ms | 26 ms |
+
+`useDeferredValue` on the query was tried and removed: it made the benchmark's search about 100 ms slower, because React renders deferred work at low priority in small slices.
