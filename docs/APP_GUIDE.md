@@ -168,7 +168,19 @@ at export. Permanently deleting a note from Trash also removes its history.
 
 ### 2.6 Linked notes and knowledge graph
 
-Notes can be explicitly linked by their stable IDs. In the editor, type part of
+The quickest way to link notes is to write a wikilink in the Markdown:
+`[[Note title]]`, or `[[Note title|shown text]]` to show different words. Type
+`[[` and the editor suggests note titles (titles starting with what you typed
+come first); choose one with the arrow keys and Enter, or keep typing. Titles
+match ignoring case and extra spaces; if two notes share a title, the most
+recently updated one is used. In the preview, a wikilink opens its note, and a
+title that matches no note is shown dimmed with a dotted underline. Wikilinks
+are read from the text: deleting `[[...]]` removes the link, and `[[...]]`
+inside code is ignored. They appear under **Links from this note** (marked
+"in text"), in the other note's **Backlinks**, and in the knowledge graph.
+
+Notes can also be linked explicitly by their stable IDs, without changing the
+text. In the editor, type part of
 a note's title or notebook under **Linked notes**, choose a match with the
 mouse or the arrow keys and Enter, then select **Add link**. Up to 50 matches
 are listed at a time; keep typing to narrow larger results. The relationship explorer
@@ -179,7 +191,8 @@ open it directly.
 The visual graph limits the number of displayed direct neighbors to keep the
 view legible and responsive; the relationship lists retain the complete set of
 connections. Trashed notes are excluded from normal relationship discovery.
-Links are stored separately from note text and are included in backups.
+Links added under **Linked notes** are stored separately from note text and are
+included in backups; wikilinks travel with the text itself.
 
 ### 2.7 Attachments and audio
 

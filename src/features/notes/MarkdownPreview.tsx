@@ -1,7 +1,8 @@
-import { createContext, memo, useContext, useMemo, useState, type ComponentProps } from 'react'
+import { createContext, memo, useContext, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getChecklistTaskText } from './checklists'
+import { remarkWikilinks } from './remarkWikilinks'
 
 interface ChecklistContextValue {
   markdown: string
@@ -39,8 +40,44 @@ function TaskCheckbox({ node: _node, checked, ...props }: ComponentProps<'input'
   )
 }
 
+export interface WikilinkTarget {
+  id: string
+  title: string
+}
+
+interface WikilinkContextValue {
+  /** The note a `[[title]]` points to, if one exists. */
+  resolve?: (title: string) => WikilinkTarget | undefined
+  open?: (target: WikilinkTarget) => void
+}
+
+const WikilinkContext = createContext<WikilinkContextValue>({})
+
+function Wikilink({ title, children }: { title: string; children: ReactNode }) {
+  const { resolve, open } = useContext(WikilinkContext)
+  const target = resolve?.(title)
+  if (!target || !open) {
+    return <span className="wikilink wikilink-missing" title={`No note titled “${title}” yet`}>{children}</span>
+  }
+  return (
+    <a
+      href="#"
+      className="wikilink"
+      title={`Open note ${target.title || 'Untitled note'}`}
+      onClick={(event) => {
+        event.preventDefault()
+        open(target)
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+
 // Following a link in this tab would leave the app mid-edit; footnote links stay in-page.
 function MarkdownLink({ node: _node, ...props }: ComponentProps<'a'> & ExtraProps) {
+  const wikilink = (props as Record<string, unknown>)['data-wikilink']
+  if (typeof wikilink === 'string') return <Wikilink title={wikilink}>{props.children}</Wikilink>
   return props.href?.startsWith('#')
     ? <a {...props} />
     : <a {...props} target="_blank" rel="noopener noreferrer" />
@@ -75,7 +112,7 @@ const markdownComponents: Components = {
   li: MarkdownListItem,
 }
 
-const remarkPlugins = [remarkGfm]
+const remarkPlugins = [remarkGfm, remarkWikilinks]
 
 // Parsing is the expensive part of rendering a note, so the parsed tree depends on the Markdown
 // text alone. Whether checkboxes are interactive travels through context, which re-renders
@@ -92,15 +129,23 @@ const ParsedMarkdown = memo(function ParsedMarkdown({ markdown }: { markdown: st
 export function MarkdownPreview({
   markdown,
   onToggleTask,
+  resolveWikilink,
+  onOpenWikilink,
 }: {
   markdown: string
   /** Omit to make checklist boxes read-only. */
   onToggleTask?: (lineNumber: number) => void
+  /** Omit both to show `[[links]]` as plain text that cannot be followed. */
+  resolveWikilink?: (title: string) => WikilinkTarget | undefined
+  onOpenWikilink?: (target: WikilinkTarget) => void
 }) {
   const checklist = useMemo(() => ({ markdown, onToggleTask }), [markdown, onToggleTask])
+  const wikilinks = useMemo(() => ({ resolve: resolveWikilink, open: onOpenWikilink }), [resolveWikilink, onOpenWikilink])
   return (
     <ChecklistContext.Provider value={checklist}>
-      <ParsedMarkdown markdown={markdown} />
+      <WikilinkContext.Provider value={wikilinks}>
+        <ParsedMarkdown markdown={markdown} />
+      </WikilinkContext.Provider>
     </ChecklistContext.Provider>
   )
 }

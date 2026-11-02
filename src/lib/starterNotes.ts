@@ -33,7 +33,7 @@ Notes use Markdown: \`**bold**\`, \`*italic*\`, \`# headings\`, and lists. The p
 
 - [ ] Tick this box in the preview to try a checklist
 - [ ] Add a tag to this note
-- [ ] Link this note to another one under **Linked notes**
+- [ ] Link to another note: type \`[[\` and pick a title, like [[Weekly plan]]
 
 ## Keeping your notes safe
 Export a backup from **Settings** now and then, and keep it somewhere other than this browser.

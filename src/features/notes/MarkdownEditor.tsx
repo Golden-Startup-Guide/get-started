@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { EditorState, type ChangeSpec } from '@codemirror/state'
 import { EditorView, keymap, placeholder as placeholderExtension } from '@codemirror/view'
+import { autocompletion } from '@codemirror/autocomplete'
+import { wikilinkCompletions, type LinkTitle } from './wikilinkCompletion'
+
+const noTitles = (): readonly LinkTitle[] => []
 
 /** The smallest single change that turns `from` into `to`, so the cursor elsewhere stays put. */
 function diff(from: string, to: string): ChangeSpec {
@@ -29,12 +33,15 @@ export function MarkdownEditor({
   onChange,
   labelledBy,
   placeholder,
+  getLinkTitles = noTitles,
 }: {
   value: string
   onChange: (value: string) => void
   /** ID of the visible label; it gives the editor its accessible name. */
   labelledBy: string
   placeholder: string
+  /** Note titles suggested after typing "[["; called only then. */
+  getLinkTitles?: () => readonly LinkTitle[]
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -42,10 +49,12 @@ export function MarkdownEditor({
   // document into a string on every render.
   const syncedRef = useRef(value)
   const onChangeRef = useRef(onChange)
+  const getLinkTitlesRef = useRef(getLinkTitles)
   const initialRef = useRef({ value, labelledBy, placeholder })
 
   useLayoutEffect(() => {
     onChangeRef.current = onChange
+    getLinkTitlesRef.current = getLinkTitles
   })
 
   useEffect(() => {
@@ -58,6 +67,8 @@ export function MarkdownEditor({
         doc: initial.value,
         extensions: [
           history(),
+          // While suggestions are open, its own keymap (arrows, Enter, Escape) takes precedence.
+          autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current())], icons: false }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           placeholderExtension(initial.placeholder),
