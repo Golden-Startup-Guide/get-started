@@ -38,7 +38,9 @@ import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownEditor } from './MarkdownEditor'
-import { MarkdownPreview } from './MarkdownPreview'
+import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
+import { buildTitleIndex, findWikilinkTargets, normalizeTitle } from '../../lib/wikilinks'
+import { toLinkTitles } from './wikilinkCompletion'
 import { usePreviewSource } from './usePreviewSource'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './attachments'
 
@@ -61,6 +63,7 @@ export function NoteEditor({
   onLoadLatest,
   onKeepMine,
   linkLabels,
+  textLinks,
 }: {
   note: Note
   isCreating: boolean
@@ -79,6 +82,8 @@ export function NoteEditor({
   onKeepMine: () => void
   /** Labels for every note (see buildNoteLinkLabels), built once per library change by App. */
   linkLabels: Map<string, string>
+  /** Links made by [[wikilinks]] in saved notes, across the library (see deriveWikilinks). */
+  textLinks: NoteLink[]
 }) {
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
@@ -368,6 +373,10 @@ export function NoteEditor({
     if (related.deletedAt !== undefined || !(await flush())) return
     onOpenNote(related)
   }
+  const openRelatedNoteRef = useRef(openRelatedNote)
+  useLayoutEffect(() => {
+    openRelatedNoteRef.current = openRelatedNote
+  })
 
   async function deleteSafely() {
     const message = note.deletedAt === undefined
@@ -445,16 +454,42 @@ export function NoteEditor({
   // typing never recomputes it.
   const noteById = useMemo(() => new Map([...notes, ...trash].map((item) => [item.id, item])), [notes, trash])
   const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || 'Untitled note')
-  const outgoingNotes = links.outgoing
-    .map((link) => noteById.get(link.targetNoteId))
+  const titleIndex = useMemo(() => buildTitleIndex(notes), [notes])
+  const resolveWikilink = useCallback((title: string) => titleIndex.get(normalizeTitle(title)), [titleIndex])
+  // One suggestion per title (the note a [[link]] would reach), in the library's order.
+  const linkTitles = useMemo(
+    () => toLinkTitles(notes.filter((item) => item.id !== note.id && titleIndex.get(normalizeTitle(item.title)) === item).map((item) => item.title)),
+    [notes, note.id, titleIndex],
+  )
+  // Stable, so the preview's links do not re-render on every keystroke.
+  const openWikilink = useCallback((target: WikilinkTarget) => {
+    const related = noteById.get(target.id)
+    if (related && related.id !== note.id) void openRelatedNoteRef.current(related)
+  }, [noteById, note.id])
+  // [[Links]] in this note follow the preview, which trails typing in long notes, so finding them
+  // never adds work to a keystroke.
+  const textTargetIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const target of findWikilinkTargets(preview.source)) {
+      const id = titleIndex.get(normalizeTitle(target))?.id
+      if (id && id !== note.id) ids.add(id)
+    }
+    return ids
+  }, [preview.source, titleIndex, note.id])
+  const storedTargetIds = useMemo(() => new Set(links.outgoing.map((link) => link.targetNoteId)), [links.outgoing])
+  const outgoingNotes = [...new Set([...storedTargetIds, ...textTargetIds])]
+    .map((id) => noteById.get(id))
     .filter((item): item is Note => Boolean(item))
-  const backlinkNotes = links.backlinks
-    .map((link) => noteById.get(link.sourceNoteId))
+  const backlinkNotes = [...new Set([
+    ...links.backlinks.map((link) => link.sourceNoteId),
+    ...textLinks.filter((link) => link.targetNoteId === note.id).map((link) => link.sourceNoteId),
+  ])]
+    .map((id) => noteById.get(id))
     .filter((item): item is Note => Boolean(item))
-  const availableTargets = useMemo(() => {
-    const linkedIds = new Set(links.outgoing.map((link) => link.targetNoteId))
-    return notes.filter((item) => item.id !== note.id && !linkedIds.has(item.id))
-  }, [links.outgoing, note.id, notes])
+  const availableTargets = useMemo(
+    () => notes.filter((item) => item.id !== note.id && !storedTargetIds.has(item.id) && !textTargetIds.has(item.id)),
+    [storedTargetIds, textTargetIds, note.id, notes],
+  )
   const canEditLinks = persisted && note.deletedAt === undefined
   const audioRecordingSupported =
     typeof MediaRecorder !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
@@ -547,7 +582,8 @@ export function NoteEditor({
                           {related.deletedAt === undefined ? (
                             <>
                               <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{labelOf(related)}</button>
-                              {canEditLinks && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${labelOf(related)}`}>Remove</button>}
+                              {canEditLinks && storedTargetIds.has(related.id) && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${labelOf(related)}`}>Remove</button>}
+                              {textTargetIds.has(related.id) && !storedTargetIds.has(related.id) && <span className="note-link-source" title="Linked with [[…]] in the text; remove it there">in text</span>}
                             </>
                           ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
                         </li>
@@ -576,7 +612,7 @@ export function NoteEditor({
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
                 <p id="note-content-label" className="section-label mb-2 block">Markdown</p>
-                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" linkTitles={linkTitles} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
               </div>}
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">
@@ -587,7 +623,12 @@ export function NoteEditor({
                   </span>}
                 </div>
                 <div className="prose-notes">
-                  <MarkdownPreview markdown={preview.source} onToggleTask={preview.stale ? undefined : toggleTask} />
+                  <MarkdownPreview
+                    markdown={preview.source}
+                    onToggleTask={preview.stale ? undefined : toggleTask}
+                    resolveWikilink={resolveWikilink}
+                    onOpenWikilink={openWikilink}
+                  />
                 </div>
               </article>
             </div>

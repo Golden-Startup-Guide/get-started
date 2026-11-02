@@ -33,8 +33,11 @@ import { useEditorStore } from './state/editorStore'
 import { useLibraryStore } from './state/libraryStore'
 import { usePersistenceStore } from './state/persistenceStore'
 import { compactNavigationQuery, useWorkspaceStore, type View } from './state/workspaceStore'
-import type { Note } from './types'
+import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
+import type { Note, NoteLink } from './types'
 import './workspace.css'
+
+const NO_LINKS: NoteLink[] = []
 
 // Module-level, so every note card receives the same functions on every render.
 const flagNote = (note: Note, flag: 'pinned' | 'favorite') => void toggleNoteFlag(note, flag)
@@ -135,6 +138,11 @@ function App() {
   const graphNotes = useMemo(() => [...notes, ...trash], [notes, trash])
   const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
   const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || 'Untitled note'), [linkLabels])
+  // [[Wikilinks]] are read from every note's text, so they are only worked out while the editor or
+  // the graph is showing; start-up and the note list never pay for it.
+  const needsTextLinks = Boolean(activeNote) || view === 'graph'
+  const textLinks = useMemo(() => (needsTextLinks ? deriveWikilinks(notes) : NO_LINKS), [needsTextLinks, notes])
+  const graphLinks = useMemo(() => mergeLinks(links, textLinks), [links, textLinks])
 
   const theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
 
@@ -404,7 +412,7 @@ function App() {
           ) : view === 'graph' ? (
             <KnowledgeGraph
               notes={graphNotes}
-              links={links}
+              links={graphLinks}
               noteLabel={noteLabel}
               onOpenNote={openNote}
             />
@@ -454,6 +462,7 @@ function App() {
           onLoadLatest={loadLatest}
           onKeepMine={keepMine}
           linkLabels={linkLabels}
+          textLinks={textLinks}
         />
       )}
       {showSettings && <SettingsDialog onClose={closeSettings} />}

@@ -1,6 +1,8 @@
 import { type KeyboardEvent } from 'react'
 
 export function keepFocusInDialog(event: KeyboardEvent<HTMLElement>, onEscape?: () => void) {
+  // Something inside already used this Escape, such as closing the editor's suggestions.
+  if (event.key === 'Escape' && event.defaultPrevented) return
   if (event.key === 'Escape' && onEscape) {
     event.preventDefault()
     onEscape()
