@@ -12,23 +12,35 @@ export function sortNotes(notes: Note[]): Note[] {
 // Cards clamp to a few lines, so rendering a note's full text would only cost time.
 export const CARD_PREVIEW_LENGTH = 600
 
-// Iterative so a long note with many matches cannot overflow the call stack.
-export function highlight(text: string, query: string): React.ReactNode {
-  const term = query.trim().toLocaleLowerCase()
-  if (!term) return text
+/**
+ * Marks every case-insensitive match of any of the terms (the search's words and phrases). Where
+ * terms overlap, the earliest and then the longest wins. Iterative so a long note with many
+ * matches cannot overflow the call stack.
+ */
+export function highlight(text: string, terms: readonly string[]): React.ReactNode {
+  const needles = terms.map((term) => term.trim().toLocaleLowerCase()).filter(Boolean)
+  if (!needles.length) return text
   const lower = text.toLocaleLowerCase()
   const parts: React.ReactNode[] = []
   let start = 0
-  let index = lower.indexOf(term)
-  while (index >= 0) {
+  for (;;) {
+    let index = -1
+    let length = 0
+    for (const needle of needles) {
+      const found = lower.indexOf(needle, start)
+      if (found >= 0 && (index < 0 || found < index || (found === index && needle.length > length))) {
+        index = found
+        length = needle.length
+      }
+    }
+    if (index < 0) break
     if (index > start) parts.push(text.slice(start, index))
     parts.push(
       <mark key={index} className="rounded bg-amber-200 px-0.5 text-stone-950">
-        {text.slice(index, index + term.length)}
+        {text.slice(index, index + length)}
       </mark>,
     )
-    start = index + term.length
-    index = lower.indexOf(term, start)
+    start = index + length
   }
   if (!parts.length) return text
   if (start < text.length) parts.push(text.slice(start))

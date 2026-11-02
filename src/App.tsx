@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteGrid } from './features/notes/NoteGrid'
+import { SearchTips } from './features/notes/SearchTips'
 import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
@@ -37,6 +38,7 @@ import { useEditorStore } from './state/editorStore'
 import { useLibraryStore } from './state/libraryStore'
 import { usePersistenceStore } from './state/persistenceStore'
 import { compactNavigationQuery, useWorkspaceStore, type View } from './state/workspaceStore'
+import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery, pruneSearchCache } from './lib/search'
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
 import type { Note, NoteLink } from './types'
 import './workspace.css'
@@ -90,6 +92,7 @@ function App() {
   const navigationToggleRef = useRef<HTMLButtonElement>(null)
   const navigationCloseRef = useRef<HTMLButtonElement>(null)
   const pageHeadingRef = useRef<HTMLHeadingElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const focusReturnRef = useRef<HTMLElement | null>(null)
   const settingsFocusReturnRef = useRef<HTMLElement | null>(null)
 
@@ -155,32 +158,33 @@ function App() {
 
   const theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
 
+  // Sorting depends only on the notes, not the search, so typing never re-sorts the library.
+  const sortedNotes = useMemo(() => sortNotes(notes), [notes])
+  const locations = useMemo(() => buildLocations(notebooks, shelves, libraries), [notebooks, shelves, libraries])
+  const searchQuery = useMemo(() => parseSearchQuery(query), [query])
+
   const filteredNotes = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase()
-    const currentNotebook = view.startsWith('notebook:')
-      ? notebooks.find((notebook) => notebook.id === view.slice('notebook:'.length))
-      : undefined
+    const currentNotebookId = view.startsWith('notebook:') ? view.slice('notebook:'.length) : undefined
     const currentShelfId = view.startsWith('shelf:') ? view.slice('shelf:'.length) : undefined
     const selectedTag = view.startsWith('tag:') ? view.slice('tag:'.length) : undefined
-    const source = view === 'trash' ? trash : notes
-    const ordered = view === 'trash' ? source : sortNotes(source)
+    const shelfOfNotebook = new Map(notebooks.map((notebook) => [notebook.id, notebook.shelfId]))
+    const searching = !isEmptyQuery(searchQuery)
+    const ordered = view === 'trash' ? trash : sortedNotes
     return ordered.filter((note) => {
-      const noteTags = note.tags ?? []
       if (view === 'trash' && note.deletedAt === undefined) return false
       if (view !== 'trash' && note.deletedAt !== undefined) return false
       if (view === 'favorites' && !note.favorite) return false
-      if (currentNotebook && note.notebookId !== currentNotebook.id) return false
-      if (currentShelfId && notebooks.find((notebook) => notebook.id === note.notebookId)?.shelfId !== currentShelfId) return false
-      if (selectedTag && !noteTags.some((tag) => tag.toLocaleLowerCase() === selectedTag)) return false
-      if (!term) return true
-      const notebook = notebooks.find((item) => item.id === note.notebookId)
-      const shelf = shelves.find((item) => item.id === notebook?.shelfId)
-      const libraryName = libraries.find((item) => item.id === shelf?.libraryId)?.name ?? ''
-      return [note.title, note.content, notebook?.name ?? '', shelf?.name ?? '', libraryName, ...noteTags].some((value) =>
-        value.toLocaleLowerCase().includes(term),
-      )
+      if (currentNotebookId && note.notebookId !== currentNotebookId) return false
+      if (currentShelfId && shelfOfNotebook.get(note.notebookId ?? '') !== currentShelfId) return false
+      if (selectedTag && !(note.tags ?? []).some((tag) => tag.toLocaleLowerCase() === selectedTag)) return false
+      return !searching || matchesQuery(note, searchQuery, locations)
     })
-  }, [libraries, notes, notebooks, query, shelves, trash, view])
+  }, [locations, notebooks, searchQuery, sortedNotes, trash, view])
+
+  // Forget the cached search text of notes deleted for good.
+  useEffect(() => {
+    pruneSearchCache([...notes, ...trash].map((note) => note.id))
+  }, [notes, trash])
 
   const viewLabel = view === 'all'
     ? 'All Notes'
@@ -449,8 +453,12 @@ function App() {
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
                   <label htmlFor="note-search" className="sr-only">Search notes, libraries, shelves, notebooks, and tags</label>
-                  <input id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, content, libraries, shelves, notebooks, or tags..." />
+                  <input ref={searchInputRef} id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={'Search notes — try tag:health, notebook:work, "a phrase", -word'} />
                   {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
+                  <SearchTips onAdd={(example) => {
+                    setQuery(query.trim() ? `${query.trimEnd()} ${example}` : example)
+                    searchInputRef.current?.focus()
+                  }} />
                 </div>
                 <p id="note-count" className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
                   {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
@@ -474,7 +482,7 @@ function App() {
               notes={filteredNotes}
               label={`${viewLabel} notes`}
               notebookName={notebookName}
-              query={query}
+              highlights={searchQuery.highlights}
               isTrash={view === 'trash'}
               onOpen={openNote}
               onFlag={flagNote}
