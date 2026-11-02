@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   FileText,
   Menu,
@@ -6,6 +6,7 @@ import {
   Plus,
   Search,
   Settings,
+  TextSearch,
   X,
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
@@ -14,11 +15,14 @@ import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
+import { CommandPalette } from './features/palette/CommandPalette'
+import type { PaletteItem } from './features/palette/paletteSearch'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
 import { LibraryHome } from './features/library/LibraryHome'
 import { LibrarySidebar } from './features/library/LibrarySidebar'
 import { notebookForNewNote, shelfForNewNotebook } from './features/library/placement'
 import {
+  changeTheme,
   createNotebookOnShelf,
   deleteForever,
   deleteOpenNote,
@@ -38,6 +42,8 @@ import type { Note, NoteLink } from './types'
 import './workspace.css'
 
 const NO_LINKS: NoteLink[] = []
+// Both Ctrl+K and ⌘K work everywhere; the hint shows the one this platform uses.
+const PALETTE_SHORTCUT = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
 
 // Module-level, so every note card receives the same functions on every render.
 const flagNote = (note: Note, flag: 'pinned' | 'favorite') => void toggleNoteFlag(note, flag)
@@ -74,6 +80,8 @@ function App() {
   const loadLatest = useEditorStore((state) => state.loadLatest)
   const keepMine = useEditorStore((state) => state.keepMine)
   const [showSettings, setShowSettings] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const paletteReturnRef = useRef<HTMLElement | null>(null)
   const [shelfNotebookName, setShelfNotebookName] = useState('')
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false,
@@ -308,6 +316,46 @@ function App() {
     requestAnimationFrame(() => settingsFocusReturnRef.current?.focus())
   }
 
+  function openPalette() {
+    paletteReturnRef.current = focusToRestore()
+    setPaletteOpen(true)
+  }
+
+  function closePalette() {
+    setPaletteOpen(false)
+    // Synchronously, so an item run next (opening a note) remembers this as where to return.
+    const target = paletteReturnRef.current
+    ;(target?.isConnected ? target : newNoteRef.current)?.focus()
+  }
+
+  function runPaletteItem(item: PaletteItem) {
+    closePalette()
+    item.run()
+  }
+
+  // The latest versions, so the shortcut listener is not re-added on every render.
+  const openPaletteRef = useRef(openPalette)
+  const closePaletteRef = useRef(closePalette)
+  useLayoutEffect(() => {
+    openPaletteRef.current = openPalette
+    closePaletteRef.current = closePalette
+  })
+
+  // Ctrl+K / ⌘K, when no other dialog is open. Inside the note editor it is left to the browser.
+  const otherDialogOpen = Boolean(activeNote) || showSettings || Boolean(structureToDelete)
+  useEffect(() => {
+    if (otherDialogOpen) return
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'k' || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+      event.preventDefault()
+      if (paletteOpen) closePaletteRef.current()
+      else openPaletteRef.current()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [otherDialogOpen, paletteOpen])
+
+
   async function addNotebookOnShelfPage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     await createNotebookOnShelf(shelfNotebookName, shelfForNewNotebook(view, notebooks, shelves), (created) => {
@@ -365,6 +413,10 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button className="palette-trigger" onClick={openPalette} aria-label="Open command palette" aria-keyshortcuts="Control+K Meta+K" title={`Command palette (${PALETTE_SHORTCUT})`}>
+                <TextSearch size={16} aria-hidden="true" />
+                <kbd className="palette-kbd">{PALETTE_SHORTCUT}</kbd>
+              </button>
               <button className="icon-button" onClick={openSettings} aria-label="Open settings"><Settings size={18} /></button>
               <button className="primary-button flex items-center gap-2" onClick={openNewNote} aria-label="Create a new note"><Plus size={17} /><span className="new-note-label">New note</span></button>
             </div>
@@ -467,6 +519,24 @@ function App() {
         />
       )}
       {showSettings && <SettingsDialog onClose={closeSettings} />}
+      {paletteOpen && (
+        <CommandPalette
+          sources={{ notes, libraries, shelves, notebooks, tags, theme: settings.theme, sidebarCollapsed: isCompactNavigation ? undefined : sidebarCollapsed }}
+          handlers={{
+            newNote: openNewNote,
+            openSettings,
+            setTheme: (theme) => void changeTheme(theme),
+            toggleSidebar,
+            goTo: (nextView) => {
+              navigateToView(nextView)
+              requestAnimationFrame(() => pageHeadingRef.current?.focus())
+            },
+            openNote,
+          }}
+          onClose={closePalette}
+          onRun={runPaletteItem}
+        />
+      )}
       {structureToDelete && <DeleteStructureDialog target={structureToDelete} />}
     </div>
   )

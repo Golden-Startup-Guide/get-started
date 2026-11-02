@@ -57,6 +57,19 @@ when the backdrop is tapped, or when a destination is selected, and returns
 focus to the menu button when dismissed.
 Its contents scroll independently of the page.
 
+#### Command palette
+
+Press **Ctrl+K** (**⌘K** on a Mac), or select the search-list button in the
+header, to open the command palette. Type part of a note's title, a library,
+shelf, notebook, or tag name (tags start with `#`), or an action, then use the
+arrow keys and Enter, or click a result. Every word you type must appear, in
+any order; titles that start with your text come first. With nothing typed, it
+lists the actions (new note, settings, theme, collapsing the sidebar) and your
+eight most recently updated notes. Escape or a click outside closes it and
+returns focus to where you were; choosing a place moves focus to that page's
+heading. The shortcut works whenever no other dialog is open; inside the note
+editor it is left to the browser.
+
 The sidebar groups All Notes, Favorites, Trash, and Knowledge Graph above the
 library hierarchy. Use the disclosure buttons to expand or collapse libraries
 and shelves. Tags and Settings are available below the hierarchy. When viewing
