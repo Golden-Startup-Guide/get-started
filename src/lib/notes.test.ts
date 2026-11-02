@@ -46,6 +46,8 @@ describe('IndexedDB storage and backup', () => {
 
   it('migrates V1 notes without changing their identity or content', async () => {
     const notes = await storage.getNotes()
+    // Starter notes are only for brand-new libraries, never added to existing data.
+    expect(notes.filter((note) => note.id.startsWith('starter-note-'))).toEqual([])
     expect(notes).toContainEqual(expect.objectContaining({
       ...legacyNote,
       notebookId: 'starter-personal',
