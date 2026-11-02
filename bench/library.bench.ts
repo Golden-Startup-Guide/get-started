@@ -31,7 +31,8 @@ for (const size of sizes) {
   test(`library with ${size.toLocaleString('en-US')} notes`, async ({ page, browser }, testInfo) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
-    await waitForCount(page, 0)
+    // Wait for the first load (a new library has starter notes); seeding replaces every note.
+    await expect(page.locator('#note-count')).toHaveText(/^\d+ notes?$/)
 
     const seedStarted = Date.now()
     const library = await page.evaluate(seedLibrary, { notes: size, largeNoteBytes: 1_000_000 })

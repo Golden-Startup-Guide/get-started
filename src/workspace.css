@@ -52,10 +52,6 @@ html[data-theme='dark'] .workspace {
   display: none;
 }
 
-.navigation-close {
-  display: none;
-}
-
 .navigation-backdrop {
   display: none;
 }
@@ -667,6 +663,11 @@ html[data-theme='dark'] .workspace .primary-button {
 .prose-notes pre { overflow-x: auto; border-radius: 0.6rem; background: var(--surface-alt); padding: 0.8rem; }
 .prose-notes code { border-radius: 0.25rem; background: var(--surface-alt); padding: 0.08rem 0.25rem; font-size: 0.85em; }
 .prose-notes pre code { background: transparent; padding: 0; }
+.prose-notes table { display: block; max-width: 100%; overflow-x: auto; margin: 0.75em 0; border-collapse: collapse; font-size: 0.9em; }
+.prose-notes th,
+.prose-notes td { border: 1px solid var(--border); padding: 0.4rem 0.65rem; text-align: left; vertical-align: top; }
+.prose-notes th { background: var(--surface-alt); font-weight: 600; }
+.prose-notes td:empty::after { content: '\00a0'; }
 .prose-notes input[type='checkbox'] { margin-right: 0.4rem; accent-color: var(--accent); }
 
 .checklist-progress {
@@ -852,18 +853,16 @@ html[data-theme='dark'] .workspace .primary-button {
     pointer-events: none;
     box-shadow: 12px 0 36px rgb(0 0 0 / 18%);
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
-    transition: transform 180ms ease, visibility 180ms ease;
+    /* Closing: slide out, then hide once the slide has finished. */
+    transition: transform 180ms ease, visibility 0s linear 180ms;
   }
 
   .workspace-sidebar[data-open='true'] {
     transform: translateX(0);
     visibility: visible;
     pointer-events: auto;
-  }
-
-  .navigation-close {
-    display: inline-grid;
-    flex: 0 0 auto;
+    /* Opening: visible at once, so focus can move into the drawer straight away. */
+    transition: transform 180ms ease, visibility 0s;
   }
 
   .navigation-backdrop {

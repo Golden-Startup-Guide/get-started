@@ -110,12 +110,12 @@ describe('My Notes workspace', () => {
 
     const libraryNavigation = screen.getByRole('navigation', { name: 'Libraries' })
     await within(libraryNavigation).findByText('Personal Library')
-    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 0' }))
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 5' }))
     expect(await screen.findByRole('heading', { name: 'Library home' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Open General shelf' }))
     expect(await screen.findByRole('heading', { name: 'General' })).toBeInTheDocument()
 
-    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 0' }))
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 5' }))
     await screen.findByRole('heading', { name: 'Library home' })
     const main = screen.getByRole('main')
     await user.type(within(main).getByRole('textbox', { name: 'New library name' }), 'Garden Library')
@@ -147,7 +147,8 @@ describe('My Notes workspace', () => {
     }
     await storage.saveNote(note)
 
-    await user.click(within(libraryNavigation).getByRole('button', { name: 'Garden Library 0' }))
+    // The Personal notebook moved here earlier, bringing its starter welcome note.
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'Garden Library 1' }))
     await screen.findByRole('heading', { name: 'Library home' })
     await user.click(within(main).getByRole('button', { name: 'Delete Garden Shelf' }))
     const dialog = screen.getByRole('dialog')
@@ -192,22 +193,28 @@ describe('My Notes workspace', () => {
 
     const sidebar = screen.getByRole('complementary', { name: 'Primary navigation' })
     const libraryNavigation = within(sidebar).getByRole('navigation', { name: 'Libraries' })
-    await within(libraryNavigation).findByRole('button', { name: 'Personal Library 0' })
+    await within(libraryNavigation).findByRole('button', { name: 'Personal Library 5' })
     const toggle = screen.getByRole('button', { name: 'Collapse sidebar' })
     const collapseLibrary = within(sidebar).getByRole('button', { name: 'Collapse Personal Library' })
     const libraryContentsId = collapseLibrary.getAttribute('aria-controls')!
     await user.click(collapseLibrary)
     expect(within(sidebar).getByRole('button', { name: 'Expand Personal Library' })).toHaveAttribute('aria-expanded', 'false')
     expect(document.getElementById(libraryContentsId)).toHaveAttribute('hidden')
-    expect(within(sidebar).queryByRole('button', { name: 'General 0' })).not.toBeInTheDocument()
+    expect(within(sidebar).queryByRole('button', { name: 'General 5' })).not.toBeInTheDocument()
     await user.click(within(sidebar).getByRole('button', { name: 'Expand Personal Library' }))
-    expect(await within(sidebar).findByRole('button', { name: 'General 0' })).toBeInTheDocument()
+    expect(await within(sidebar).findByRole('button', { name: 'General 5' })).toBeInTheDocument()
 
+    // The sidebar collapses itself; the header then offers the way back, and focus follows.
+    expect(screen.queryByRole('button', { name: 'Expand sidebar' })).not.toBeInTheDocument()
     await user.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(sidebar).toHaveAttribute('data-collapsed', 'true')
-    await user.click(screen.getByRole('button', { name: 'Expand sidebar' }))
+    const expand = await screen.findByRole('button', { name: 'Expand sidebar' })
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => expect(expand).toHaveFocus())
+    await user.click(expand)
     expect(sidebar).toHaveAttribute('data-collapsed', 'false')
+    expect(screen.queryByRole('button', { name: 'Expand sidebar' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toHaveFocus())
   }, 15000)
 
   it('asks once for persistent storage after the first save without holding up saves, and lets Settings ask again', async () => {
@@ -305,18 +312,34 @@ describe('My Notes workspace', () => {
     render(<App />)
     await screen.findByRole('heading', { name: 'All Notes' })
 
-    const toggle = screen.getByRole('button', { name: 'Open navigation' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    await user.click(toggle)
+    const openButton = () => screen.getByRole('button', { name: 'Open navigation' })
+    expect(openButton()).toHaveAttribute('aria-expanded', 'false')
+    await user.click(openButton())
     const drawer = await screen.findByRole('dialog', { name: 'Primary navigation' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    // While the drawer is open its own button closes it; the header button steps aside.
+    expect(screen.queryByRole('button', { name: 'Open navigation' })).not.toBeInTheDocument()
     await waitFor(() => expect(within(drawer).getByRole('button', { name: 'Close navigation' })).toHaveFocus())
 
-    fireEvent.keyDown(drawer, { key: 'Escape' })
-    await waitFor(() => expect(toggle).toHaveFocus())
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    // Escape from inside the drawer closes it and returns focus to the header button.
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+    await waitFor(() => expect(openButton()).toHaveFocus())
 
-    await user.click(toggle)
+    // Escape also works when focus has left the drawer.
+    await user.click(openButton())
+    await screen.findByRole('dialog', { name: 'Primary navigation' })
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+
+    // The drawer's own button closes it too.
+    await user.click(openButton())
+    const drawerAgain = await screen.findByRole('dialog', { name: 'Primary navigation' })
+    await user.click(within(drawerAgain).getByRole('button', { name: 'Close navigation' }))
+    expect(screen.queryByRole('dialog', { name: 'Primary navigation' })).not.toBeInTheDocument()
+    await waitFor(() => expect(openButton()).toHaveFocus())
+
+    await user.click(openButton())
     const reopenedDrawer = await screen.findByRole('dialog', { name: 'Primary navigation' })
     await user.click(within(reopenedDrawer).getByRole('button', { name: 'Favorites 0' }))
     expect(await screen.findByRole('heading', { name: 'Favorites' })).toBeInTheDocument()
@@ -355,7 +378,9 @@ describe('My Notes workspace', () => {
     render(<App />)
     await screen.findByRole('heading', { name: 'All Notes' })
 
-    await user.click(screen.getByRole('button', { name: 'Open note Source note' }))
+    // The starter notes are newer, so find this note by searching, as a user would.
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, libraries, shelves, notebooks, and tags' }), { target: { value: 'Source note' } })
+    await user.click(await screen.findByRole('button', { name: 'Open note Source note' }))
     const dialog = screen.getByRole('dialog')
     const linkPicker = within(dialog).getByRole('combobox', { name: 'Choose a note to link' })
     await user.type(linkPicker, 'duplicate')
@@ -409,6 +434,8 @@ describe('My Notes workspace', () => {
     await user.click(screen.getByRole('button', { name: /Knowledge Graph/ }))
 
     expect(await screen.findByRole('heading', { name: 'Knowledge Graph' })).toBeInTheDocument()
+    // The graph opens on the newest note, which is now a starter note.
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Explore note' }), 'graph-source')
     expect(screen.getByRole('group', { name: 'Connected note graph' })).toBeInTheDocument()
     const graph = screen.getByRole('group', { name: 'Connected note graph' })
     expect(within(graph).getByRole('button', { name: 'Explore Graph target — Personal' })).toBeInTheDocument()
@@ -499,7 +526,7 @@ describe('My Notes workspace', () => {
     await user.click(screen.getByRole('button', { name: 'Move to Trash' }))
     expect(confirmation).toHaveBeenCalledOnce()
     const { getNotes, getTrash } = await import('./lib/notes')
-    await waitFor(async () => expect(await getNotes()).toEqual([]), { timeout: 5000 })
+    await waitFor(async () => expect((await getNotes()).map((note) => note.title)).not.toContain('Delete race'), { timeout: 5000 })
     await waitFor(
       () => expect(screen.queryByRole('heading', { name: 'Delete race' })).not.toBeInTheDocument(),
       { timeout: 5000 },
@@ -510,7 +537,7 @@ describe('My Notes workspace', () => {
     const trashCard = (await screen.findByRole('heading', { name: 'Delete race' })).closest('article')
     expect(trashCard).not.toBeNull()
     await user.click(within(trashCard!).getByRole('button', { name: 'Restore' }))
-    expect(await getNotes()).toEqual([expect.objectContaining({ title: 'Delete race' })])
+    expect(await getNotes()).toContainEqual(expect.objectContaining({ title: 'Delete race' }))
 
     await user.click(screen.getByRole('button', { name: /All Notes/ }))
     expect(await screen.findByRole('heading', { name: 'Delete race' })).toBeInTheDocument()

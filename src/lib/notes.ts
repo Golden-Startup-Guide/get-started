@@ -17,6 +17,7 @@ import {
   MAX_NOTE_ATTACHMENT_BYTES,
   validateAttachmentDetails,
 } from '../features/notes/attachments'
+import { starterNotes } from './starterNotes'
 import {
   base64ToArrayBuffer,
   bytesToBase64,
@@ -198,6 +199,13 @@ const database = openDB<NotesDatabase>('my-notes', DATABASE_VERSION, {
         cursor.update({ ...cursor.value, shelfId: cursor.value.shelfId ?? DEFAULT_SHELF_ID })
         cursor = await cursor.continue()
       }
+    }
+
+    // A brand-new library only (never an upgrade of existing data): one starter note per
+    // starter notebook. They carry no tags, so the tags store needs no update.
+    if (oldVersion === 0) {
+      const notes = transaction.objectStore('notes')
+      for (const note of starterNotes(now)) notes.put(note)
     }
   },
 })

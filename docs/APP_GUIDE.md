@@ -48,11 +48,13 @@ find any note.
 
 #### Navigation on desktop, tablet, and phone
 
-The application header includes a sidebar toggle. On wide screens, the sidebar
-is visible by default and can be collapsed or restored with that toggle. At
-the compact breakpoint (1023 pixels and below), the same control opens a
-navigation drawer instead. The drawer has a close button, closes on Escape or
-when a destination is selected, and returns focus to its opener when dismissed.
+On wide screens, the sidebar is visible by default. Its **Collapse sidebar**
+button (top right of the sidebar) hides it, and the **Expand sidebar** button
+that then appears in the application header brings it back. At the compact
+breakpoint (1023 pixels and below), the header's menu button opens a
+navigation drawer instead. The drawer closes with its close button, on Escape,
+when the backdrop is tapped, or when a destination is selected, and returns
+focus to the menu button when dismissed.
 Its contents scroll independently of the page.
 
 The sidebar groups All Notes, Favorites, Trash, and Knowledge Graph above the
@@ -75,7 +77,11 @@ Library
 
 New installations start with **Personal Library**, a **General** shelf, and the
 starter notebooks **Personal**, **Work**, **Ideas**, **Research**, and
-**Health Handbook**. **All Notes** remains a virtual, flat view across the
+**Health Handbook**. Each starter notebook holds one short note to begin with:
+a welcome tour in Personal and a template in each of the others (a weekly plan,
+idea capture, research notes, and a health handbook). They are ordinary notes
+that can be edited or deleted. Starter notes are created only for a brand-new
+library; upgrading an existing library never adds them. **All Notes** remains a virtual, flat view across the
 workspace.
 
 Create, rename, and navigate libraries, shelves, and notebooks from the
