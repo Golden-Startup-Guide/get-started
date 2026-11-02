@@ -1,4 +1,4 @@
-import { createContext, memo, useContext, useState, type ComponentProps } from 'react'
+import { createContext, memo, useContext, useMemo, useState, type ComponentProps } from 'react'
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getChecklistTaskText } from './checklists'
@@ -77,9 +77,19 @@ const markdownComponents: Components = {
 
 const remarkPlugins = [remarkGfm]
 
-// Memoized: parsing is the expensive part of rendering a note, so the preview re-renders only
-// when its Markdown (or interactivity) changes, not when the title or tags are edited.
-export const MarkdownPreview = memo(function MarkdownPreview({
+// Parsing is the expensive part of rendering a note, so the parsed tree depends on the Markdown
+// text alone. Whether checkboxes are interactive travels through context, which re-renders
+// only the checkboxes: passing it as a prop here re-parsed the whole note (seconds for 1 MB)
+// at the first keystroke after every pause, when the preview became stale.
+const ParsedMarkdown = memo(function ParsedMarkdown({ markdown }: { markdown: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
+      {markdown || '_Nothing to preview yet._'}
+    </ReactMarkdown>
+  )
+})
+
+export function MarkdownPreview({
   markdown,
   onToggleTask,
 }: {
@@ -87,11 +97,10 @@ export const MarkdownPreview = memo(function MarkdownPreview({
   /** Omit to make checklist boxes read-only. */
   onToggleTask?: (lineNumber: number) => void
 }) {
+  const checklist = useMemo(() => ({ markdown, onToggleTask }), [markdown, onToggleTask])
   return (
-    <ChecklistContext.Provider value={{ markdown, onToggleTask }}>
-      <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
-        {markdown || '_Nothing to preview yet._'}
-      </ReactMarkdown>
+    <ChecklistContext.Provider value={checklist}>
+      <ParsedMarkdown markdown={markdown} />
     </ChecklistContext.Provider>
   )
-})
+}
