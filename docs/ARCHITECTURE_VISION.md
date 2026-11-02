@@ -74,7 +74,7 @@ Without AI, platforms reach the top through craft, not feature count. Obsidian w
 | Cold start | under 1 s |
 | Open a note | under 50 ms |
 | Search 100,000 notes | under 50 ms |
-| Typing in a 1 MB note | under 16 ms per keystroke (smooth at 60 fps) |
+| Typing in a 1 MB note | under 16 ms of main-thread work per keystroke, p95 (smooth at 60 fps; see [PERFORMANCE.md](PERFORMANCE.md) for how it is measured) |
 
 How to reach and keep them:
 
