@@ -40,7 +40,7 @@ import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownEditor } from './MarkdownEditor'
 import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
 import { buildTitleIndex, findWikilinkTargets, normalizeTitle } from '../../lib/wikilinks'
-import { toLinkTitles } from './wikilinkCompletion'
+import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
 import { usePreviewSource } from './usePreviewSource'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './attachments'
 
@@ -456,11 +456,14 @@ export function NoteEditor({
   const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || 'Untitled note')
   const titleIndex = useMemo(() => buildTitleIndex(notes), [notes])
   const resolveWikilink = useCallback((title: string) => titleIndex.get(normalizeTitle(title)), [titleIndex])
-  // One suggestion per title (the note a [[link]] would reach), in the library's order.
-  const linkTitles = useMemo(
-    () => toLinkTitles(notes.filter((item) => item.id !== note.id && titleIndex.get(normalizeTitle(item.title)) === item).map((item) => item.title)),
-    [notes, note.id, titleIndex],
-  )
+  // One suggestion per title (the note a [[link]] would reach), in the library's order. Built the
+  // first time "[[" is typed rather than when the note opens.
+  const getLinkTitles = useMemo(() => {
+    let titles: LinkTitle[] | undefined
+    return () => (titles ??= toLinkTitles(
+      notes.filter((item) => item.id !== note.id && titleIndex.get(normalizeTitle(item.title)) === item).map((item) => item.title),
+    ))
+  }, [notes, note.id, titleIndex])
   // Stable, so the preview's links do not re-render on every keystroke.
   const openWikilink = useCallback((target: WikilinkTarget) => {
     const related = noteById.get(target.id)
@@ -612,7 +615,7 @@ export function NoteEditor({
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
                 <p id="note-content-label" className="section-label mb-2 block">Markdown</p>
-                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" linkTitles={linkTitles} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
               </div>}
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">

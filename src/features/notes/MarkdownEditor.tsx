@@ -5,7 +5,7 @@ import { EditorView, keymap, placeholder as placeholderExtension } from '@codemi
 import { autocompletion } from '@codemirror/autocomplete'
 import { wikilinkCompletions, type LinkTitle } from './wikilinkCompletion'
 
-const NO_TITLES: readonly LinkTitle[] = []
+const noTitles = (): readonly LinkTitle[] => []
 
 /** The smallest single change that turns `from` into `to`, so the cursor elsewhere stays put. */
 function diff(from: string, to: string): ChangeSpec {
@@ -33,15 +33,15 @@ export function MarkdownEditor({
   onChange,
   labelledBy,
   placeholder,
-  linkTitles = NO_TITLES,
+  getLinkTitles = noTitles,
 }: {
   value: string
   onChange: (value: string) => void
   /** ID of the visible label; it gives the editor its accessible name. */
   labelledBy: string
   placeholder: string
-  /** Note titles suggested after typing "[[". */
-  linkTitles?: readonly LinkTitle[]
+  /** Note titles suggested after typing "[["; called only then. */
+  getLinkTitles?: () => readonly LinkTitle[]
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -49,12 +49,12 @@ export function MarkdownEditor({
   // document into a string on every render.
   const syncedRef = useRef(value)
   const onChangeRef = useRef(onChange)
-  const linkTitlesRef = useRef(linkTitles)
+  const getLinkTitlesRef = useRef(getLinkTitles)
   const initialRef = useRef({ value, labelledBy, placeholder })
 
   useLayoutEffect(() => {
     onChangeRef.current = onChange
-    linkTitlesRef.current = linkTitles
+    getLinkTitlesRef.current = getLinkTitles
   })
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function MarkdownEditor({
         extensions: [
           history(),
           // While suggestions are open, its own keymap (arrows, Enter, Escape) takes precedence.
-          autocompletion({ override: [wikilinkCompletions(() => linkTitlesRef.current)], icons: false }),
+          autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current())], icons: false }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           placeholderExtension(initial.placeholder),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   FileText,
   Menu,
@@ -139,8 +139,9 @@ function App() {
   const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
   const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || 'Untitled note'), [linkLabels])
   // [[Wikilinks]] are read from every note's text, so they are only worked out while the editor or
-  // the graph is showing; start-up and the note list never pay for it.
-  const needsTextLinks = Boolean(activeNote) || view === 'graph'
+  // the graph is showing; start-up and the note list never pay for it. Deferred, so opening a note
+  // shows the editor first and fills in text backlinks in a follow-up render.
+  const needsTextLinks = useDeferredValue(Boolean(activeNote) || view === 'graph')
   const textLinks = useMemo(() => (needsTextLinks ? deriveWikilinks(notes) : NO_LINKS), [needsTextLinks, notes])
   const graphLinks = useMemo(() => mergeLinks(links, textLinks), [links, textLinks])
 
