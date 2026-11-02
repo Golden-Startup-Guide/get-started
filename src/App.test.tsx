@@ -169,7 +169,9 @@ describe('My Notes workspace', () => {
     await screen.findByRole('heading', { name: 'All Notes' })
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Long note' } })
-    const filler = 'Plain paragraph text that makes this a long note.\n\n'.repeat(1100)
+    // Long enough for the paused preview, as one paragraph: 1,100 paragraphs made jsdom take
+    // 2–5 s to render the catch-up, which is about jsdom, not the behaviour under test.
+    const filler = `${'Plain words that make this a long note. '.repeat(1300)}\n\n`
     setMarkdown(`${filler}- [ ] Final task`)
 
     expect(screen.getByText('Long note: the preview updates when you pause typing')).toBeInTheDocument()
