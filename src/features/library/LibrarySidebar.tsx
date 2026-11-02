@@ -28,6 +28,7 @@ import type { Library } from '../../types'
 import { FALLBACK_FOCUS_ID } from './DeleteStructureDialog'
 import { useNoteCounts } from './noteCounts'
 import { shelfForNewNotebook } from './placement'
+import { TreeItemMenu } from './TreeItemMenu'
 
 export function LibrarySidebar({
   onNavigate,
@@ -64,6 +65,10 @@ export function LibrarySidebar({
   const [notebookName, setNotebookName] = useState('')
   const [shelfNames, setShelfNames] = useState<Record<string, string>>({})
   const isDrawer = isCompactNavigation && navigationOpen
+  const shelfOptions = shelves.map((shelf) => ({
+    id: shelf.id,
+    label: `${libraries.find((library) => library.id === shelf.libraryId)?.name ?? 'Library'} · ${shelf.name}`,
+  }))
 
   async function addShelf(library: Library, event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -156,10 +161,12 @@ export function LibrarySidebar({
                     icon={<LibraryBig size={16} />}
                     className="min-w-0 flex-1 !w-auto"
                   />
-                  <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                    <button className="icon-button !h-8 !w-8" aria-label={`Rename ${library.name}`} onClick={() => void promptRename({ kind: 'library', item: library })}><Settings size={13} /></button>
-                    <button className="icon-button !h-8 !w-8" aria-label={`Delete ${library.name}`} disabled={libraries.length <= 1} title={libraries.length <= 1 ? 'The last library cannot be deleted' : undefined} onClick={() => askToDelete({ kind: 'library', item: library })}><Trash2 size={13} /></button>
-                  </div>
+                  <TreeItemMenu
+                    name={library.name}
+                    onRename={() => void promptRename({ kind: 'library', item: library })}
+                    onDelete={() => askToDelete({ kind: 'library', item: library })}
+                    deleteDisabledReason={libraries.length <= 1 ? 'The last library cannot be deleted' : undefined}
+                  />
                 </div>
                 <div
                   id={`library-contents-${library.id}`}
@@ -190,10 +197,12 @@ export function LibrarySidebar({
                             icon={<Layers3 size={15} />}
                             className="min-w-0 flex-1 !w-auto"
                           />
-                          <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                            <button className="icon-button !h-8 !w-8" aria-label={`Rename ${shelf.name}`} onClick={() => void promptRename({ kind: 'shelf', item: shelf })}><Settings size={13} /></button>
-                            <button className="icon-button !h-8 !w-8" aria-label={`Delete ${shelf.name}`} disabled={libraryShelves.length <= 1} title={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined} onClick={() => askToDelete({ kind: 'shelf', item: shelf })}><Trash2 size={13} /></button>
-                          </div>
+                          <TreeItemMenu
+                            name={shelf.name}
+                            onRename={() => void promptRename({ kind: 'shelf', item: shelf })}
+                            onDelete={() => askToDelete({ kind: 'shelf', item: shelf })}
+                            deleteDisabledReason={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined}
+                          />
                         </div>
                         <div id={`shelf-contents-${shelf.id}`} role="group" aria-label={`${shelf.name} notebooks`} hidden={!shelfExpanded}>
                           {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
@@ -207,21 +216,16 @@ export function LibrarySidebar({
                                   icon={<Archive size={15} />}
                                   className="min-w-0 flex-1 !w-auto"
                                 />
-                                <div className="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                                  <button className="icon-button !h-8 !w-8" aria-label={`Rename ${notebook.name}`} onClick={() => void promptRename({ kind: 'notebook', item: notebook })}><Settings size={13} /></button>
-                                  <button className="icon-button !h-8 !w-8" aria-label={`Delete ${notebook.name}`} disabled={notebooks.length <= 1} title={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined} onClick={() => askToDelete({ kind: 'notebook', item: notebook })}><Trash2 size={13} /></button>
-                                </div>
+                                <TreeItemMenu
+                                  name={notebook.name}
+                                  onRename={() => void promptRename({ kind: 'notebook', item: notebook })}
+                                  onDelete={() => askToDelete({ kind: 'notebook', item: notebook })}
+                                  deleteDisabledReason={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined}
+                                  moveOptions={shelfOptions}
+                                  currentMoveId={notebook.shelfId}
+                                  onMove={(shelfId) => void moveNotebookToShelf(notebook.id, shelfId)}
+                                />
                               </div>
-                              <label className="sr-only" htmlFor={`move-notebook-${notebook.id}`}>Move {notebook.name} to shelf</label>
-                              <select
-                                id={`move-notebook-${notebook.id}`}
-                                className="small-input library-notebook-move !min-h-8 !px-2 text-xs"
-                                aria-label={`Move ${notebook.name} to shelf`}
-                                value={notebook.shelfId ?? ''}
-                                onChange={(event) => void moveNotebookToShelf(notebook.id, event.target.value)}
-                              >
-                                {shelves.map((option) => <option key={option.id} value={option.id}>{libraries.find((item) => item.id === option.libraryId)?.name ?? 'Library'} · {option.name}</option>)}
-                              </select>
                             </div>
                           ))}
                         </div>
