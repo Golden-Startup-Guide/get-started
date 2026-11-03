@@ -330,4 +330,15 @@ Longest main-thread task after a pause in typing, from `PerformanceObserver('lon
 | Plain prose: longest task (total blocking) | 0.70 s (0.65 s) | none |
 | Dense Markdown: longest task (total blocking) | 28.5 s (47.8 s) | 0.73 s (1.07 s) |
 
+GitHub Actions, `main` and this change benchmarked at the same time:
+
+| Measure | `main` | Preview in a worker |
+|---|---|---|
+| Typing work p95, 1 MB note, 10,000 notes | 12.5 ms | 8.7 / 10.4 ms |
+| Typing work p95, 1 MB note, 100,000 notes | 11.4 ms | 13.5 / 11.5 ms |
+| Open the 1 MB note, 10,000 notes | 757 ms | 121 / 132 ms |
+| Open the 1 MB note, 100,000 notes | 1,105 ms | 379 / 376 ms |
+
+Typing is unchanged within run-to-run variation. Opening a huge note is several times faster, because the editor no longer waits for its preview; the benchmark now waits for the preview to render before measuring typing, so the two do not overlap.
+
 The remaining 0.73 s for dense notes is mostly turning the parsed tree into React elements, which happens in one step. The worker file is 173 KB (not gzipped), loads only when a long note is opened, and is precached for offline use.
