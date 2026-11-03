@@ -169,6 +169,15 @@ common languages; other languages, code blocks without a language, inline
 code, and code blocks over 50,000 characters are shown in plain text. The
 highlighter is downloaded only the first time a note needs it.
 
+Notes with three or more headings show a collapsible **Contents** list at the
+top of the preview, indented by heading level (up to 300 entries; headings
+inside quotes or lists are not listed). Selecting an entry scrolls the preview
+to that heading and moves keyboard focus there. Every heading also has an
+anchor, `heading-` followed by its text in lower case with hyphens for spaces
+(for example `## Seed list` becomes `#heading-seed-list`; repeated headings get
+`-1`, `-2`, …), so links such as `[see the list](#heading-seed-list)` jump
+within the note.
+
 Task-list checkboxes in the preview are interactive. Toggling a checkbox
 updates the Markdown source, saves the changed note, and updates checklist
 completion progress. Each checkbox is tied to its own source line, so task
