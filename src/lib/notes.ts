@@ -9,6 +9,7 @@ import type {
   NoteHistoryEntry,
   Shelf,
   Tag,
+  EditorMode,
   ThemePreference,
 } from '../types'
 import {
@@ -846,10 +847,22 @@ export async function getSettings(): Promise<AppSettings> {
   return (await db.get('settings', 'preferences')) ?? { id: 'preferences', theme: 'system' }
 }
 
-export async function saveTheme(theme: ThemePreference): Promise<void> {
+// Each preference is saved without disturbing the others.
+async function saveSettings(change: Partial<Omit<AppSettings, 'id'>>): Promise<void> {
   const db = await database
-  await db.put('settings', { id: 'preferences', theme })
+  const transaction = db.transaction('settings', 'readwrite')
+  const current = (await transaction.store.get('preferences')) ?? { id: 'preferences', theme: 'system' }
+  await transaction.store.put({ ...current, ...change })
+  await transaction.done
   announceChange()
+}
+
+export async function saveTheme(theme: ThemePreference): Promise<void> {
+  await saveSettings({ theme })
+}
+
+export async function saveEditorMode(editorMode: EditorMode): Promise<void> {
+  await saveSettings({ editorMode })
 }
 
 export async function setNoteFlag(

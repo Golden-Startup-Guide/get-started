@@ -10,7 +10,7 @@ import {
   getTrash,
 } from '../lib/notes'
 import { sortNotes } from '../features/notes/noteDisplay'
-import type { AppSettings, Library, Note, Notebook, NoteLink, Shelf, Tag, ThemePreference } from '../types'
+import type { AppSettings, EditorMode, Library, Note, Notebook, NoteLink, Shelf, Tag, ThemePreference } from '../types'
 
 interface LibraryState {
   notes: Note[]
@@ -30,6 +30,7 @@ interface LibraryState {
   /** Updates the note lists after the editor saved a note, without reloading everything. */
   noteSaved: (note: Note) => Promise<void>
   setTheme: (theme: ThemePreference) => void
+  setEditorMode: (mode: EditorMode) => void
 }
 
 // The single in-memory copy of the library. Storage (src/lib/notes.ts) stays the source of
@@ -70,4 +71,5 @@ export const useLibraryStore = create<LibraryState>()((set) => ({
     set({ tags: await getTags() })
   },
   setTheme: (theme) => set((state) => ({ settings: { ...state.settings, theme } })),
+  setEditorMode: (editorMode) => set((state) => ({ settings: { ...state.settings, editorMode } })),
 }))

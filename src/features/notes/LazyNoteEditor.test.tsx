@@ -12,19 +12,21 @@ vi.mock('./NoteEditor', () => {
   return { NoteEditor: ({ note }: { note: { title: string } }) => <p>Editing {note.title}</p> }
 })
 
-const props = (onError: (message: string) => void) =>
-  ({ note: { title: 'Plan' }, onError }) as unknown as ComponentProps<typeof NoteEditor>
+const props = (onError: (message: string) => void, onClose = vi.fn()) =>
+  ({ note: { title: 'Plan' }, onError, onClose }) as unknown as ComponentProps<typeof NoteEditor>
 
 describe('LazyNoteEditor', () => {
   afterEach(cleanup)
 
-  it('reports a failed load, then loads on the next attempt and renders the editor', async () => {
+  it('says it is opening, reports a failed load and closes, then loads on the next attempt', async () => {
     const { LazyNoteEditor } = await import('./LazyNoteEditor')
     const onError = vi.fn()
+    const onClose = vi.fn()
 
-    const first = render(<LazyNoteEditor {...props(onError)} />)
+    const first = render(<LazyNoteEditor {...props(onError, onClose)} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Opening note…')
     await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.stringMatching(/could not be loaded/)))
-    expect(first.container).toBeEmptyDOMElement()
+    expect(onClose).toHaveBeenCalledOnce()
     first.unmount()
 
     render(<LazyNoteEditor {...props(onError)} />)

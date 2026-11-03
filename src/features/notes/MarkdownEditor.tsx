@@ -1,11 +1,17 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
-import { EditorState, type ChangeSpec } from '@codemirror/state'
+import { Compartment, EditorState, type ChangeSpec, type Extension } from '@codemirror/state'
 import { EditorView, keymap, placeholder as placeholderExtension } from '@codemirror/view'
 import { autocompletion } from '@codemirror/autocomplete'
+import type { EditorMode } from '../../types'
+import { livePreview, markdownSyntax } from './livePreview'
 import { wikilinkCompletions, type LinkTitle } from './wikilinkCompletion'
 
 const noTitles = (): readonly LinkTitle[] => []
+
+// Source mode has no Markdown parser at all, so it costs exactly what it did before live preview.
+const modeExtension = (mode: EditorMode): Extension => (mode === 'live' ? [markdownSyntax, livePreview] : [])
+const modeCompartment = new Compartment()
 
 /** The smallest single change that turns `from` into `to`, so the cursor elsewhere stays put. */
 function diff(from: string, to: string): ChangeSpec {
@@ -34,6 +40,7 @@ export function MarkdownEditor({
   labelledBy,
   placeholder,
   getLinkTitles = noTitles,
+  mode = 'source',
 }: {
   value: string
   onChange: (value: string) => void
@@ -42,6 +49,8 @@ export function MarkdownEditor({
   placeholder: string
   /** Note titles suggested after typing "[["; called only then. */
   getLinkTitles?: () => readonly LinkTitle[]
+  /** 'live' formats Markdown outside the lines being edited; 'source' shows it all as typed. */
+  mode?: EditorMode
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -50,7 +59,7 @@ export function MarkdownEditor({
   const syncedRef = useRef(value)
   const onChangeRef = useRef(onChange)
   const getLinkTitlesRef = useRef(getLinkTitles)
-  const initialRef = useRef({ value, labelledBy, placeholder })
+  const initialRef = useRef({ value, labelledBy, placeholder, mode })
 
   useLayoutEffect(() => {
     onChangeRef.current = onChange
@@ -71,6 +80,7 @@ export function MarkdownEditor({
           autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current())], icons: false }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
+          modeCompartment.of(modeExtension(initial.mode)),
           placeholderExtension(initial.placeholder),
           EditorView.contentAttributes.of({ 'aria-labelledby': initial.labelledBy, 'aria-multiline': 'true' }),
           EditorView.updateListener.of((update) => {
@@ -88,6 +98,10 @@ export function MarkdownEditor({
       viewRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: modeCompartment.reconfigure(modeExtension(mode)) })
+  }, [mode])
 
   // Changes made outside the editor (ticking a checklist item, restoring a revision).
   useEffect(() => {
