@@ -21,6 +21,7 @@ const sources: PaletteSources = {
 function setup() {
   const handlers: PaletteHandlers = {
     newNote: vi.fn(), openSettings: vi.fn(), setTheme: vi.fn(), toggleSidebar: vi.fn(), goTo: vi.fn(), openNote: vi.fn(),
+    openToday: vi.fn(), newFromTemplate: vi.fn(), createTemplate: vi.fn(),
   }
   const onClose = vi.fn()
   const onRun = vi.fn((item: { run: () => void }) => item.run())
@@ -39,7 +40,9 @@ describe('CommandPalette', () => {
     expect(screen.getByRole('combobox', { name: 'Search notes, places, and actions' })).toHaveFocus()
     expect(options().map((option) => option.textContent)).toEqual([
       'New noteAction',
+      'Open today’s noteAction',
       'Open settingsAction',
+      'Create a templateAction',
       'Use light themeAction',
       'Use dark themeAction',
       'Collapse sidebarAction',

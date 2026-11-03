@@ -1,3 +1,4 @@
+import { findTemplates } from '../../lib/templates'
 import type { View } from '../../state/workspaceStore'
 import type { Library, Note, Notebook, Shelf, Tag, ThemePreference } from '../../types'
 import type { PaletteItem } from './paletteSearch'
@@ -22,6 +23,9 @@ export interface PaletteHandlers {
   toggleSidebar: () => void
   goTo: (view: View) => void
   openNote: (note: Note) => void
+  openToday: () => void
+  newFromTemplate: (template: Note) => void
+  createTemplate: () => void
 }
 
 /** Every action, place, and note the palette can find, plus the newest notes for an empty query. */
@@ -33,8 +37,22 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
 
   const actions: PaletteItem[] = [
     { id: 'action:new-note', group: 'Actions', label: 'New note', keywords: 'create add write', run: handlers.newNote },
+    { id: 'action:today', group: 'Actions', label: 'Open today’s note', keywords: 'daily journal diary date log', run: handlers.openToday },
     { id: 'action:settings', group: 'Actions', label: 'Open settings', keywords: 'preferences backup export import restore storage', run: handlers.openSettings },
   ]
+  const templates = findTemplates(notes, notebooks)
+  for (const template of templates) {
+    actions.push({
+      id: `action:template-${template.id}`,
+      group: 'Actions',
+      label: `New note from template: ${template.title.trim() || 'Untitled'}`,
+      keywords: 'template create add',
+      run: () => handlers.newFromTemplate(template),
+    })
+  }
+  if (!templates.length) {
+    actions.push({ id: 'action:create-template', group: 'Actions', label: 'Create a template', keywords: 'template new note from', run: handlers.createTemplate })
+  }
   for (const [value, label] of [['light', 'Use light theme'], ['dark', 'Use dark theme'], ['system', 'Use system theme']] as const) {
     if (value !== theme) actions.push({ id: `action:theme-${value}`, group: 'Actions', label, keywords: 'appearance colour color mode', run: () => handlers.setTheme(value) })
   }

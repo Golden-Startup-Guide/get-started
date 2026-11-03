@@ -23,6 +23,8 @@ import {
   trashNote,
   type BackupOptions,
 } from '../lib/notes'
+import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templates'
+import { shelfForNewNotebook } from '../features/library/placement'
 import type { EditorMode, Library, Note, Notebook, Shelf, ThemePreference } from '../types'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
@@ -149,7 +151,40 @@ export async function deleteForever(note: Note) {
 export const createNotebookOnShelf = (name: string, shelfId: string | undefined, onCreated?: (notebook: Notebook) => void) =>
   refreshAfter(() => createNotebook(name, shelfId), 'The notebook could not be created.', onCreated)
 
-export const createNamedLibrary = (name: string, onCreated?: (library: Library) => void) =>
+/**
+ * The notebook with this name (ignoring case), created on the first shelf of the starter library
+ * when it does not exist yet. Used for the Daily notes and Templates notebooks.
+ */
+export async function ensureNotebook(name: string): Promise<Notebook | undefined> {
+  const { notebooks, shelves } = library()
+  const existing = findNotebook(notebooks, name)
+  if (existing) return existing
+  return refreshAfter(() => createNotebook(name, shelfForNewNotebook('all', notebooks, shelves)), `The ${name} notebook could not be created.`)
+}
+
+/** Creates (and saves) an example template in the Templates notebook, for people to adapt. */
+export async function createSampleTemplate(): Promise<Note | undefined> {
+  const notebook = await ensureNotebook(TEMPLATES_NOTEBOOK)
+  if (!notebook) return undefined
+  const now = Date.now()
+  const template: Note = {
+    id: crypto.randomUUID(),
+    title: 'Meeting {{date}}',
+    content: SAMPLE_TEMPLATE,
+    notebookId: notebook.id,
+    createdAt: now,
+    updatedAt: now,
+    tags: [],
+    pinned: false,
+    favorite: false,
+  }
+  return refreshAfter(async () => {
+    await saveNote(template)
+    return template
+  }, 'The template could not be created.')
+}
+
+export const createNamedLibrary =(name: string, onCreated?: (library: Library) => void) =>
   refreshAfter(() => createLibrary(name), 'The library could not be created.', onCreated)
 
 export const createShelfInLibrary = (libraryId: string, name: string, onCreated?: (shelf: Shelf) => void) =>

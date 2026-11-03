@@ -25,6 +25,8 @@ import { notebookForNewNote, shelfForNewNotebook } from './features/library/plac
 import {
   changeTheme,
   createNotebookOnShelf,
+  createSampleTemplate,
+  ensureNotebook,
   deleteForever,
   deleteOpenNote,
   loadLibrary,
@@ -39,6 +41,7 @@ import { useLibraryStore } from './state/libraryStore'
 import { usePersistenceStore } from './state/persistenceStore'
 import { compactNavigationQuery, useWorkspaceStore, type View } from './state/workspaceStore'
 import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery, pruneSearchCache } from './lib/search'
+import { DAILY_NOTEBOOK, dailyNoteContent, fillTemplate, findDailyNote, isoDate } from './lib/templates'
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
 import type { Note, NoteLink } from './types'
 import './workspace.css'
@@ -280,20 +283,50 @@ function App() {
     return document.activeElement instanceof HTMLElement ? document.activeElement : null
   }
 
-  function openNewNote() {
+  /** Opens a new, unsaved note; like any new note, it is saved once its title or text is edited. */
+  function openDraft({ title = '', content = '', notebookId }: { title?: string; content?: string; notebookId?: string } = {}) {
     focusReturnRef.current = focusToRestore()
     const now = Date.now()
     useEditorStore.getState().open({
       id: crypto.randomUUID(),
-      title: '',
-      content: '',
+      title,
+      content,
       createdAt: now,
       updatedAt: now,
-      notebookId: notebookForNewNote(view, notebooks, shelves),
+      notebookId: notebookId ?? notebookForNewNote(view, notebooks, shelves),
       tags: [],
       pinned: false,
       favorite: false,
     }, { creating: true })
+  }
+
+  function openNewNote() {
+    openDraft()
+  }
+
+  /** Today's note in the Daily notes notebook, started from the "Daily note" template if new. */
+  async function openTodayNote() {
+    const notebook = await ensureNotebook(DAILY_NOTEBOOK)
+    if (!notebook) return
+    const { notes: latestNotes, notebooks: latestNotebooks } = useLibraryStore.getState()
+    const today = new Date()
+    const existing = findDailyNote(latestNotes, latestNotebooks, today)
+    if (existing) openNote(existing)
+    else openDraft({ title: isoDate(today), content: dailyNoteContent(latestNotes, latestNotebooks, today), notebookId: notebook.id })
+  }
+
+  /** A new note from a template, in the notebook a new note would go to (never the Templates notebook). */
+  function openFromTemplate(template: Note) {
+    const now = new Date()
+    const title = fillTemplate(template.title, { date: now })
+    const target = notebookForNewNote(view, notebooks, shelves)
+    const notebookId = target === template.notebookId ? notebookForNewNote('all', notebooks, shelves) : target
+    openDraft({ title, content: fillTemplate(template.content, { date: now, title }), notebookId })
+  }
+
+  async function makeSampleTemplate() {
+    const template = await createSampleTemplate()
+    if (template) openNote(template)
   }
 
   // Stable (uses only a ref and the store), so memoized note cards keep the same handler.
@@ -378,6 +411,7 @@ function App() {
           onNavigate={navigateToView}
           onNewNote={openNewNote}
           onOpenSettings={openSettings}
+          onOpenToday={() => void openTodayNote()}
           onCloseNavigation={closeSidebarPanel}
           newNoteRef={newNoteRef}
           closeButtonRef={navigationCloseRef}
@@ -540,6 +574,9 @@ function App() {
               requestAnimationFrame(() => pageHeadingRef.current?.focus())
             },
             openNote,
+            openToday: () => void openTodayNote(),
+            newFromTemplate: openFromTemplate,
+            createTemplate: () => void makeSampleTemplate(),
           }}
           onClose={closePalette}
           onRun={runPaletteItem}
