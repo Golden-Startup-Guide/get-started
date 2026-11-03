@@ -56,7 +56,7 @@ Without AI, platforms reach the top through craft, not feature count. Obsidian w
 
 - **Replace the text box with CodeMirror 6 in live-preview mode** (as Obsidian does). Markdown stays the source of truth, multi-megabyte notes stay smooth, and it is accessible. A ProseMirror-based editor would make Markdown files second-class, which conflicts with promise 3.
 - **Typed links:** `[[wikilinks]]` with autocomplete, links derived from the text (replacing manual link records), links to specific blocks, embedded notes, and renames that update every link.
-- **Rich content, loaded only when needed:** tables, math (KaTeX), diagrams (Mermaid), and code highlighting.
+- **Rich content, loaded only when needed:** tables, math (KaTeX), diagrams (Mermaid), and code highlighting (**code highlighting done**, November 2026: lowlight, loaded on first use).
 - **Keyboard-first:** command palette (Ctrl+K), slash commands, templates, daily notes, and quick capture.
 
 ### D. Search that feels instant, without AI

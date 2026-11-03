@@ -163,6 +163,12 @@ The switch above the editor chooses how the Markdown is shown:
 Both show the same text; only its appearance changes. The choice is remembered
 on this device and included in backups.
 
+In the preview, fenced code blocks that name a language (for example
+`` ```js `` or `` ```python ``) are coloured by syntax. Highlighting supports the 37 most
+common languages; other languages, code blocks without a language, inline
+code, and code blocks over 50,000 characters are shown in plain text. The
+highlighter is downloaded only the first time a note needs it.
+
 Task-list checkboxes in the preview are interactive. Toggling a checkbox
 updates the Markdown source, saves the changed note, and updates checklist
 completion progress. Each checkbox is tied to its own source line, so task
