@@ -74,7 +74,10 @@ for (const size of sizes) {
     const openLargeNoteMs = (await now(page)) - started
     await editor.click()
     await editor.press('End')
-    // Let opening finish (layout, the first preview) so it is not counted as typing.
+    // Let opening finish (layout, the first preview) so it is not counted as typing. Long notes'
+    // previews are parsed in a worker and rendered in the background after the editor appears,
+    // so wait for the preview itself before the usual settling time.
+    await expect(page.locator('.prose-notes p').first()).toBeAttached({ timeout: 120_000 })
     await page.waitForTimeout(1500)
     const typing = await measureTyping(page, browser)
     const floor = await measureTypingFloor(browser)
