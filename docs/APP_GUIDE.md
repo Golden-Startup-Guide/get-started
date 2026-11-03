@@ -149,6 +149,20 @@ Supported
 content includes headings, paragraphs, emphasis, links, lists, task lists,
 blockquotes, code, and GitHub-Flavored Markdown features.
 
+The switch above the editor chooses how the Markdown is shown:
+
+- **Live** (the default) formats the text as you write, outside the line you are
+  editing: headings are larger, bold, italic, strikethrough, and code lose
+  their markers, links and `[[wikilinks]]` show just their text, list bullets
+  become dots, and task markers become checkboxes you can tick right in the
+  editor. The line with the cursor, and every line in a selection, shows its
+  Markdown so you can change it. Code blocks and inline code are never
+  formatted, and tables stay as text.
+- **Source** shows all Markdown exactly as typed, in a monospace font.
+
+Both show the same text; only its appearance changes. The choice is remembered
+on this device and included in backups.
+
 Task-list checkboxes in the preview are interactive. Toggling a checkbox
 updates the Markdown source, saves the changed note, and updates checklist
 completion progress. Each checkbox is tied to its own source line, so task

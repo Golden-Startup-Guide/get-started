@@ -290,3 +290,17 @@ The benchmark's "Search" row cannot show the difference: it times Playwright fil
 | Later searches, slowest key | 40 ms | 26 ms |
 
 `useDeferredValue` on the query was tried and removed: it made the benchmark's search about 100 ms slower, because React renders deferred work at low priority in small slices.
+
+### Live preview (November 3, 2026)
+
+Live preview (`src/features/notes/livePreview.ts`) parses Markdown with `@lezer/markdown` directly. `@codemirror/lang-markdown` was avoided because it also bundles the HTML, CSS, and JavaScript parsers. Decorations are built only for the visible lines, so their cost does not grow with the note. Source mode adds no parser at all.
+
+The development PC first suggested a slowdown (typing p95 20–22 ms, against 13–16 ms before), but that machine is noisy. One GitHub Actions benchmark run each of `main` and the branch, run at the same time, showed no difference:
+
+| Measure (1,000 / 10,000 notes) | `main` | Live preview |
+|---|---|---|
+| Typing work p95, 1 MB note | 8.3 / 7.7 ms | 7.6 / 8.6 ms |
+| Open note | 154 / 160 ms | 141 / 177 ms |
+| Open the 1 MB note | 657 / 677 ms | 667 / 645 ms |
+
+The parser adds about 14 KB gzipped to the editor chunk (161 to 174 KB), which loads after start-up; start-up JavaScript is unchanged (91 KB gzipped).

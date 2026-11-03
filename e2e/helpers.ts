@@ -31,8 +31,14 @@ export async function openWorkspace(page: Page) {
   await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
 }
 
-/** The Markdown editor's text. It is a CodeMirror editor, not a form field, so toHaveValue does not apply. */
-export function markdownText(page: Page): Promise<string> {
+/**
+ * The Markdown editor's text, exactly as stored. It is a CodeMirror editor, not a form field, so
+ * toHaveValue does not apply. Live preview hides Markdown markers on purpose, so this switches the
+ * editor to Source view first; the setting changes only how text is shown, never the text.
+ */
+export async function markdownText(page: Page): Promise<string> {
+  const source = page.getByRole('group', { name: 'Editor view' }).getByRole('button', { name: 'Source' })
+  if ((await source.getAttribute('aria-pressed')) !== 'true') await source.click()
   return page.getByRole('textbox', { name: 'Markdown' }).innerText()
 }
 

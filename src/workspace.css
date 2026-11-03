@@ -1331,3 +1331,13 @@ html[data-theme='dark'] .workspace .primary-button {
   border-top: 1px solid var(--border);
   vertical-align: middle;
 }
+
+.editor-loading {
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  padding: 0.9rem 1.2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+}
