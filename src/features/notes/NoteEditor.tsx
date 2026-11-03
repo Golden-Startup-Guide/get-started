@@ -38,6 +38,8 @@ import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownEditor } from './MarkdownEditor'
+import { changeEditorMode } from '../../state/actions'
+import { useLibraryStore } from '../../state/libraryStore'
 import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
 import { buildTitleIndex, findWikilinkTargets, normalizeTitle } from '../../lib/wikilinks'
 import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
@@ -85,6 +87,7 @@ export function NoteEditor({
   /** Links made by [[wikilinks]] in saved notes, across the library (see deriveWikilinks). */
   textLinks: NoteLink[]
 }) {
+  const editorMode = useLibraryStore((state) => state.settings.editorMode ?? 'live')
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const [noteTags, setNoteTags] = useState(note.tags ?? [])
@@ -614,8 +617,14 @@ export function NoteEditor({
             </section>
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
-                <p id="note-content-label" className="section-label mb-2 block">Markdown</p>
-                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p id="note-content-label" className="section-label">Markdown</p>
+                  <div className="segmented" role="group" aria-label="Editor view">
+                    <button type="button" aria-pressed={editorMode === 'live'} onClick={() => void changeEditorMode('live')} title="Format Markdown outside the line you are editing">Live</button>
+                    <button type="button" aria-pressed={editorMode === 'source'} onClick={() => void changeEditorMode('source')} title="Show all Markdown as typed">Source</button>
+                  </div>
+                </div>
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} mode={editorMode} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
               </div>}
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">

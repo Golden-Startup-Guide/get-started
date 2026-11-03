@@ -1224,3 +1224,110 @@ html[data-theme='dark'] .workspace .primary-button {
 .search-tips-example span {
   color: var(--muted);
 }
+
+/* Live / Source switch above the Markdown editor */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface-alt);
+  padding: 2px;
+}
+
+.segmented button {
+  min-height: 28px;
+  border-radius: 0.45rem;
+  padding: 0 0.7rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Live preview: Markdown formatted outside the lines being edited (see livePreview.ts). */
+.markdown-editor .cm-live-preview .cm-scroller {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.7;
+}
+
+.markdown-editor .cm-live-preview .cm-content {
+  font-size: 0.95rem;
+}
+
+.cm-live-preview .cm-lp-h { font-weight: 700; line-height: 1.35; }
+.cm-live-preview .cm-lp-h1 { font-size: 1.6em; padding-top: 0.35em; }
+.cm-live-preview .cm-lp-h2 { font-size: 1.35em; padding-top: 0.3em; }
+.cm-live-preview .cm-lp-h3 { font-size: 1.15em; padding-top: 0.2em; }
+.cm-live-preview .cm-lp-h4,
+.cm-live-preview .cm-lp-h5,
+.cm-live-preview .cm-lp-h6 { font-size: 1em; }
+
+.cm-live-preview .cm-lp-strong { font-weight: 700; }
+.cm-live-preview .cm-lp-em { font-style: italic; }
+.cm-live-preview .cm-lp-strike { text-decoration: line-through; }
+.cm-live-preview .cm-lp-dim { color: var(--muted); opacity: 0.7; }
+
+.cm-live-preview .cm-lp-code {
+  border-radius: 0.25rem;
+  background: var(--surface-alt);
+  padding: 0.05rem 0.2rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.cm-live-preview .cm-lp-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cm-live-preview .cm-lp-wikilink { text-decoration-style: dotted; text-underline-offset: 3px; }
+
+.cm-live-preview .cm-lp-codeblock,
+.cm-live-preview .cm-lp-table {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+.cm-live-preview .cm-lp-codeblock { background: var(--surface-alt); }
+
+.cm-live-preview .cm-lp-quote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.85rem !important;
+  color: var(--muted);
+}
+
+.cm-live-preview .cm-lp-bullet {
+  display: inline-block;
+  width: 0.9em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.cm-live-preview .cm-lp-checkbox {
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0 0.45em 0 0.05em;
+  vertical-align: -0.1em;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.cm-live-preview .cm-lp-task-done { color: var(--muted); }
+
+.cm-live-preview .cm-lp-rule {
+  display: inline-block;
+  width: 100%;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+}

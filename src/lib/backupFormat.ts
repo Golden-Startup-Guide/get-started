@@ -164,7 +164,8 @@ function validSettings(value: unknown): value is AppSettings {
   return (
     isRecord(value) &&
     value.id === 'preferences' &&
-    ['light', 'dark', 'system'].includes(String(value.theme))
+    ['light', 'dark', 'system'].includes(String(value.theme)) &&
+    (value.editorMode === undefined || value.editorMode === 'live' || value.editorMode === 'source')
   )
 }
 

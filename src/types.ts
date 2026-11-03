@@ -47,9 +47,14 @@ export interface Tag {
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 
+/** How the Markdown editor shows text: formatted outside the line being edited, or as typed. */
+export type EditorMode = 'live' | 'source'
+
 export interface AppSettings {
   id: 'preferences'
   theme: ThemePreference
+  /** Absent in libraries from before live preview, which means 'live'. */
+  editorMode?: EditorMode
 }
 
 export interface NoteHistoryEntry {

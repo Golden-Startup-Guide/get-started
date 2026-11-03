@@ -16,13 +16,14 @@ import {
   renameShelf,
   restoreNote,
   saveNote,
+  saveEditorMode,
   saveTheme,
   setNoteFlag,
   subscribeToStorage,
   trashNote,
   type BackupOptions,
 } from '../lib/notes'
-import type { Library, Note, Notebook, Shelf, ThemePreference } from '../types'
+import type { EditorMode, Library, Note, Notebook, Shelf, ThemePreference } from '../types'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
 import { usePersistenceStore } from './persistenceStore'
@@ -204,6 +205,16 @@ export async function changeTheme(theme: ThemePreference) {
     library().setTheme(theme)
   } catch {
     workspace().showError('Your theme preference could not be saved.')
+  }
+}
+
+export async function changeEditorMode(mode: EditorMode) {
+  // Applied at once; saving only remembers it for next time.
+  library().setEditorMode(mode)
+  try {
+    await saveEditorMode(mode)
+  } catch {
+    workspace().showError('Your editor preference could not be saved.')
   }
 }
 
