@@ -318,7 +318,7 @@ Notes over 50,000 characters already previewed only after a 400 ms pause in typi
 Three changes:
 
 - **Parsing moved to a Web Worker** (`markdownPreview.worker.ts`). Short and long notes share one function, `markdownToHast`. It applies the same safety rules react-markdown did: raw HTML becomes text, and URLs go through `defaultUrlTransform`. A newer parse abandons one still running.
-- **The result is rendered as a React transition,** and off-screen blocks of a long preview use `content-visibility: auto`.
+- **The result is rendered as a React transition.** `content-visibility: auto` on the preview's blocks was tried and removed: with thousands of paragraphs it added 5–8 ms to every keystroke on CI (typing p95 at 10,000 / 100,000 notes was 16.1 / 20.1 ms with it, 10.9 / 12.7 ms without), and it saved almost nothing when a dense preview appeared (longest task 0.69 s with it, 0.73 s without).
 - **Checkbox labels no longer split the whole note per checkbox.** When typing resumed, the checkboxes turned read-only, and each re-rendered checkbox split the 1 MB note to find its label. That was about 9,000 splits for the dense note, the biggest freeze of all. The note is now split once per version.
 
 Vite resolves packages with the "browser" condition even inside workers. That picked a DOM-only build of `decode-named-character-reference` and crashed the worker, so `vite.config.ts` points the worker build at the package's worker version.
@@ -328,6 +328,6 @@ Longest main-thread task after a pause in typing, from `PerformanceObserver('lon
 | 1 MB note | Before | After |
 |---|---|---|
 | Plain prose: longest task (total blocking) | 0.70 s (0.65 s) | none |
-| Dense Markdown: longest task (total blocking) | 28.5 s (47.8 s) | 0.69 s (0.86 s) |
+| Dense Markdown: longest task (total blocking) | 28.5 s (47.8 s) | 0.73 s (1.07 s) |
 
-The remaining 0.69 s for dense notes is mostly turning the parsed tree into React elements, which happens in one step. The worker file is 173 KB (not gzipped), loads only when a long note is opened, and is precached for offline use.
+The remaining 0.73 s for dense notes is mostly turning the parsed tree into React elements, which happens in one step. The worker file is 173 KB (not gzipped), loads only when a long note is opened, and is precached for offline use.

@@ -639,7 +639,7 @@ export function NoteEditor({
                     {checklistProgress.completed} of {checklistProgress.total} complete
                   </span>}
                 </div>
-                <div className={preview.delayed ? 'prose-notes prose-notes-long' : 'prose-notes'}>
+                <div className="prose-notes">
                   {shownSource === undefined ? (
                     <p className="text-sm text-[var(--muted)]" role="status">Preparing the preview…</p>
                   ) : (

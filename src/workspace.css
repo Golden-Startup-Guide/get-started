@@ -1342,10 +1342,3 @@ html[data-theme='dark'] .workspace .primary-button {
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
 }
 
-/* Long notes' previews can hold tens of thousands of elements. The browser skips style and layout
-   for blocks outside the visible area until they scroll near, so showing a new preview does not
-   lay out the whole note at once. */
-.prose-notes-long > * {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 3rem;
-}
