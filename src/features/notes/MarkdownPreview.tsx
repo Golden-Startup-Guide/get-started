@@ -6,6 +6,8 @@ import type { ExtraProps } from 'react-markdown'
 import { createTaskTextLookup } from './checklists'
 import { loadHighlighter, MAX_HIGHLIGHT_LENGTH } from './codeHighlight'
 import { markdownToHast } from './markdownToHast'
+import { NoteContents } from './NoteContents'
+import { collectHeadings } from './noteHeadings'
 
 interface ChecklistContextValue {
   /** A task's text by source line, for its checkbox's label (see createTaskTextLookup). */
@@ -165,15 +167,10 @@ const RenderedMarkdown = memo(function RenderedMarkdown({ tree }: { tree: Root }
   })
 })
 
-// Short notes are parsed here, on the main thread; it takes a few milliseconds.
-const ParsedMarkdown = memo(function ParsedMarkdown({ markdown }: { markdown: string }) {
-  const tree = useMemo(() => markdownToHast(markdown || EMPTY_PREVIEW), [markdown])
-  return <RenderedMarkdown tree={tree} />
-})
-
 export function MarkdownPreview({
   markdown,
   tree,
+  showContents = false,
   onToggleTask,
   resolveWikilink,
   onOpenWikilink,
@@ -182,12 +179,19 @@ export function MarkdownPreview({
   markdown: string
   /** Already parsed (by useMarkdownTree, in a worker) for long notes; otherwise parsed here. */
   tree?: Root
+  /** Show a table of contents when the note has enough headings. */
+  showContents?: boolean
   /** Omit to make checklist boxes read-only. */
   onToggleTask?: (lineNumber: number) => void
   /** Omit both to show `[[links]]` as plain text that cannot be followed. */
   resolveWikilink?: (title: string) => WikilinkTarget | undefined
   onOpenWikilink?: (target: WikilinkTarget) => void
 }) {
+  // Short notes are parsed here, on the main thread; it takes a few milliseconds. Only when the
+  // Markdown changes: not when checkboxes become read-only and back while typing.
+  const ownTree = useMemo(() => (tree ? undefined : markdownToHast(markdown || EMPTY_PREVIEW)), [tree, markdown])
+  const shownTree = tree ?? ownTree!
+  const headings = useMemo(() => (showContents ? collectHeadings(shownTree) : []), [showContents, shownTree])
   // Split per Markdown version, not per change in interactivity, so pausing and resuming typing
   // does not split a long note again.
   const taskText = useMemo(() => createTaskTextLookup(markdown), [markdown])
@@ -196,7 +200,8 @@ export function MarkdownPreview({
   return (
     <ChecklistContext.Provider value={checklist}>
       <WikilinkContext.Provider value={wikilinks}>
-        {tree ? <RenderedMarkdown tree={tree} /> : <ParsedMarkdown markdown={markdown} />}
+        <NoteContents headings={headings} />
+        <RenderedMarkdown tree={shownTree} />
       </WikilinkContext.Provider>
     </ChecklistContext.Provider>
   )

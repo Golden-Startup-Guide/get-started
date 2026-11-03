@@ -646,6 +646,7 @@ export function NoteEditor({
                     <MarkdownPreview
                       markdown={shownSource}
                       tree={parsedPreview?.tree}
+                      showContents
                       onToggleTask={previewStale ? undefined : toggleTask}
                       resolveWikilink={resolveWikilink}
                       onOpenWikilink={openWikilink}

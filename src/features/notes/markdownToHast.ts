@@ -1,4 +1,4 @@
-import type { Root } from 'hast'
+import type { Nodes, Root } from 'hast'
 import { urlAttributes } from 'html-url-attributes'
 import { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -7,6 +7,24 @@ import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
 import { visit } from 'unist-util-visit'
 import { remarkWikilinks } from './remarkWikilinks'
+
+/** The text inside a hast node, as the browser's textContent would give it. */
+export function textOf(node: Nodes): string {
+  if (node.type === 'text') return node.value
+  return 'children' in node ? node.children.map(textOf).join('') : ''
+}
+
+/**
+ * A heading's anchor: "heading-" plus its text in lower case with spaces as hyphens, numbered
+ * when a note repeats a heading ("heading-notes", "heading-notes-1"). The prefix keeps it from
+ * clashing with the app's own element IDs.
+ */
+function headingId(text: string, used: Map<string, number>): string {
+  const slug = text.trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-') || 'section'
+  const count = used.get(slug) ?? 0
+  used.set(slug, count + 1)
+  return `heading-${count ? `${slug}-${count}` : slug}`
+}
 
 const processor = unified()
   .use(remarkParse)
@@ -27,12 +45,14 @@ const processor = unified()
  */
 export function markdownToHast(markdown: string): Root {
   const tree = processor.runSync(processor.parse(markdown)) as Root
+  const usedIds = new Map<string, number>()
   visit(tree, (node, index, parent) => {
     if (node.type === 'raw' && parent && typeof index === 'number') {
       parent.children[index] = { type: 'text', value: node.value }
       return index
     }
     if (node.type !== 'element') return
+    if (/^h[1-6]$/.test(node.tagName)) node.properties.id = headingId(textOf(node), usedIds)
     for (const key in urlAttributes) {
       if (!Object.hasOwn(node.properties, key)) continue
       const tags = urlAttributes[key]
