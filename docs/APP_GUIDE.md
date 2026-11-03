@@ -187,6 +187,26 @@ KaTeX and its fonts (about 0.3 MB) are not part of the app's offline download:
 they are fetched the first time a note shows maths and then kept for offline
 use. Until then, or offline before that first time, the TeX source is shown.
 
+Diagrams are written in [Mermaid](https://mermaid.js.org/) syntax in a fenced
+block marked `mermaid`, for example:
+
+````text
+```mermaid
+flowchart LR
+  Seeds --> Sow --> Harvest
+```
+````
+
+Flowcharts, sequence, class, state, entity-relationship, Gantt, pie, mind-map,
+timeline, and Mermaid's other diagram types are drawn in the preview in the
+current light or dark theme, and redrawn when the theme changes. A diagram with
+a mistake shows its source with the problem underneath. Mermaid runs in its
+strict security mode: diagrams cannot contain clickable links, scripts, or
+HTML labels. Mermaid is a large download (about 3.3 MB in 56 files, most
+loaded only for the diagram types a note uses), so it is fetched the first time
+a note has a diagram and then kept for offline use; until then the source is
+shown.
+
 Notes with three or more headings show a collapsible **Contents** list at the
 top of the preview, indented by heading level (up to 300 entries; headings
 inside quotes or lists are not listed). Selecting an entry scrolls the preview
@@ -394,6 +414,13 @@ the app shell. After the first successful online load and service-worker
 installation, the app shell can be opened offline. Notes and attachments are
 already local, so their normal read/write operations do not require a network
 connection.
+
+The precached install download (about 1.2 MB) holds only the app's core: the
+page, its script and styles, the note editor, the long-note preview worker, the
+code highlighter, and icons. Maths (KaTeX and its fonts) and diagrams (Mermaid,
+about 3.3 MB in 56 files) are fetched the first time a note uses them and
+then kept by the service worker, so they also work offline from then on. A note
+opened offline before that first time shows the TeX or diagram source instead.
 
 Data belongs to the app's origin (scheme, hostname, and port), browser profile,
 and device where it was created. Opening the app at a different origin or in a

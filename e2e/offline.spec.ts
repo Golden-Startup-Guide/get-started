@@ -22,16 +22,17 @@ test('opens offline after the first visit', async ({ page, context, browserName 
   }
 })
 
-test('keeps maths working offline once a note has shown it', async ({ page, context, browserName }) => {
+test('keeps maths and diagrams working offline once a note has shown them', async ({ page, context, browserName }) => {
   test.skip(browserName !== 'chromium', 'Playwright emulates offline service workers reliably only in Chromium')
   await openWorkspace(page)
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
 
-  // Maths is not in the install download; showing it once online stores it for offline use.
+  // Neither is in the install download; showing them once online stores them for offline use.
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Circle')
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('Area: $$\\pi r^2$$')
+  await page.getByRole('textbox', { name: 'Markdown' }).fill('Area: $$\\pi r^2$$\n\n```mermaid\nflowchart LR\n  Seeds --> Harvest\n```')
   await expect(page.locator('.prose-notes .katex')).toBeVisible()
+  await expect(page.locator('.prose-notes .diagram-drawing svg')).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('.save-status')).toHaveText(/Saved/)
   await page.getByRole('button', { name: 'Close editor' }).first().click()
 
@@ -40,6 +41,7 @@ test('keeps maths working offline once a note has shown it', async ({ page, cont
     await page.reload()
     await page.getByRole('button', { name: 'Open note Circle' }).click()
     await expect(page.locator('.prose-notes .katex')).toBeVisible()
+    await expect(page.locator('.prose-notes .diagram-drawing svg')).toContainText('Harvest')
   } finally {
     await context.setOffline(false)
   }

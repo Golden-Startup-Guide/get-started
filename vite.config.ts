@@ -93,18 +93,24 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
-        globPatterns: ['**/*.{js,css,html,svg,ico,png,woff2}'],
-        // Maths (KaTeX's script, styles, and 19 fonts, about 0.7 MB) is left out of the install
-        // download, which every user pays; it is fetched when a note first shows maths and then
-        // kept for offline use. File names are content-hashed, so cache-first is always fresh.
-        globIgnores: ['**/mathRenderer-*', '**/KaTeX_*'],
+        // The install download, which every user pays, holds only the app's core: the page, its
+        // script and styles, the note editor, the long-note preview worker, the code highlighter,
+        // and icons. Maths (KaTeX and its fonts, about 0.7 MB) and diagrams (Mermaid, 56 files
+        // and about 3.3 MB) are fetched when a note first uses them.
+        globPatterns: [
+          '*.{html,js,svg,png,ico,webmanifest}',
+          'assets/{index,NoteEditor,markdownPreview.worker,highlighter}-*.{js,css}',
+        ],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => /\/assets\/(mathRenderer-|KaTeX_)/.test(url.pathname),
+            // Everything else the app loads from /assets/ is kept after its first use, so maths and
+            // diagrams work offline from then on. File names are content-hashed, so cache-first
+            // never serves a stale file.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/assets/'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'my-notes-maths',
-              expiration: { maxEntries: 60 },
+              cacheName: 'my-notes-on-demand',
+              expiration: { maxEntries: 200, purgeOnQuotaError: true },
             },
           },
         ],

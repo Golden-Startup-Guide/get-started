@@ -1487,3 +1487,33 @@ html[data-theme='dark'] .workspace {
 /* Maths (KaTeX). Errors use the theme's red rather than KaTeX's fixed dark red. */
 .prose-notes .math-display { margin: 0.9em 0; overflow-x: auto; overflow-y: hidden; }
 .prose-notes .katex-error { color: var(--code-keyword) !important; }
+
+/* Diagrams (Mermaid) */
+.prose-notes .diagram {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 0.75rem;
+}
+
+.prose-notes .diagram-drawing {
+  display: flex;
+  justify-content: center;
+}
+
+.prose-notes .diagram-drawing svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose-notes .diagram-source {
+  margin: 0;
+}
+
+.prose-notes .diagram-error {
+  margin-top: 0.5rem;
+  color: var(--code-keyword);
+  font-size: 0.85rem;
+}
