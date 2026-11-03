@@ -13,6 +13,8 @@ const noTitles = (): readonly LinkTitle[] => []
 // Source mode has no Markdown parser at all, so it costs exactly what it did before live preview.
 const modeExtension = (mode: EditorMode): Extension => (mode === 'live' ? [markdownSyntax, livePreview] : [])
 const modeCompartment = new Compartment()
+// How many reported texts are remembered; far more keystrokes than React ever falls behind.
+const MAX_REPORTED = 50
 
 /** The smallest single change that turns `from` into `to`, so the cursor elsewhere stays put. */
 function diff(from: string, to: string): ChangeSpec {
@@ -58,6 +60,8 @@ export function MarkdownEditor({
   // The text the editor and React last agreed on. Comparing against it avoids turning the whole
   // document into a string on every render.
   const syncedRef = useRef(value)
+  // Texts reported through onChange that React has not passed back as `value` yet, oldest first.
+  const reportedRef = useRef<string[]>([])
   const onChangeRef = useRef(onChange)
   const getLinkTitlesRef = useRef(getLinkTitles)
   const initialRef = useRef({ value, labelledBy, placeholder, mode })
@@ -88,6 +92,8 @@ export function MarkdownEditor({
             if (!update.docChanged) return
             const text = update.state.doc.toString()
             syncedRef.current = text
+            reportedRef.current.push(text)
+            if (reportedRef.current.length > MAX_REPORTED) reportedRef.current.shift()
             onChangeRef.current(text)
           }),
         ],
@@ -107,7 +113,16 @@ export function MarkdownEditor({
   // Changes made outside the editor (ticking a checklist item, restoring a revision).
   useEffect(() => {
     const view = viewRef.current
-    if (!view || value === syncedRef.current) return
+    if (!view) return
+    // Text this editor reported itself can come back after newer typing: this effect may run after
+    // the next keystroke. Applying it would undo that keystroke, so it is recognised and skipped.
+    // (Strings the editor passed out come back as the same objects, so these checks are cheap.)
+    const reported = reportedRef.current.indexOf(value)
+    if (reported >= 0) {
+      reportedRef.current.splice(0, reported + 1)
+      return
+    }
+    if (value === syncedRef.current) return
     const current = view.state.doc.toString()
     syncedRef.current = value
     if (current !== value) view.dispatch({ changes: diff(current, value) })

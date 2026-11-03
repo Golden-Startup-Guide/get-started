@@ -49,4 +49,25 @@ describe('MarkdownEditor', () => {
     expect(getMarkdown()).toBe('- [x] Water\nSecond line')
     expect(view.state.selection.main.head).toBe(view.state.doc.length)
   })
+  it('keeps the newest typing when its own earlier text arrives late (a dropped keystroke)', () => {
+    // React can hand the editor the text from one keystroke after the next keystroke has already
+    // happened. That stale text must be recognised as the editor's own, not applied as a change.
+    const onChange = vi.fn()
+    const { rerender } = render(<MarkdownEditor value="" onChange={onChange} labelledBy="label" placeholder="" />)
+    const field = screen.getByRole('textbox')
+    const view = EditorView.findFromDOM(field)!
+    view.dispatch({ changes: { from: 0, insert: 'a' } })
+    view.dispatch({ changes: { from: 1, insert: 'b' } })
+    expect(onChange).toHaveBeenNthCalledWith(1, 'a')
+    expect(onChange).toHaveBeenNthCalledWith(2, 'ab')
+
+    rerender(<MarkdownEditor value="a" onChange={onChange} labelledBy="label" placeholder="" />)
+    expect(getMarkdown(field)).toBe('ab')
+    rerender(<MarkdownEditor value="ab" onChange={onChange} labelledBy="label" placeholder="" />)
+    expect(getMarkdown(field)).toBe('ab')
+
+    // A real change from outside still applies, even back to text typed earlier.
+    rerender(<MarkdownEditor value="a" onChange={onChange} labelledBy="label" placeholder="" />)
+    expect(getMarkdown(field)).toBe('a')
+  })
 })
