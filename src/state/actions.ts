@@ -162,6 +162,45 @@ export async function ensureNotebook(name: string): Promise<Notebook | undefined
   return refreshAfter(() => createNotebook(name, shelfForNewNotebook('all', notebooks, shelves)), `The ${name} notebook could not be created.`)
 }
 
+/** Quick notes are saved to a notebook with this name, for sorting later. */
+export const INBOX_NOTEBOOK = 'Inbox'
+
+/**
+ * The title for a quick note: its first non-empty line, without heading or list markers, cut to
+ * 80 characters at a word boundary.
+ */
+export function quickNoteTitle(text: string): string {
+  const first = text.split(/\r?\n/).map((line) => line.replace(/^\s*(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|>\s*)/, '').trim()).find(Boolean) ?? ''
+  if (first.length <= 80) return first
+  const cut = first.slice(0, 80)
+  return `${cut.slice(0, cut.lastIndexOf(' ') > 40 ? cut.lastIndexOf(' ') : 80).trimEnd()}…`
+}
+
+/** Saves a quick note to the Inbox notebook. Returns whether it was saved. */
+export async function saveQuickNote(text: string): Promise<boolean> {
+  if (!text.trim()) return false
+  const notebook = await ensureNotebook(INBOX_NOTEBOOK)
+  if (!notebook) return false
+  const now = Date.now()
+  const note: Note = {
+    id: crypto.randomUUID(),
+    title: quickNoteTitle(text) || 'Quick note',
+    content: text.trimEnd(),
+    notebookId: notebook.id,
+    createdAt: now,
+    updatedAt: now,
+    tags: [],
+    pinned: false,
+    favorite: false,
+  }
+  const saved = await refreshAfter(async () => {
+    await saveNote(note)
+    return note
+  }, 'Your quick note could not be saved. It is still in the quick note box.')
+  if (saved) workspace().showNotice(`Saved “${saved.title}” to ${INBOX_NOTEBOOK}.`)
+  return Boolean(saved)
+}
+
 /** Creates (and saves) an example template in the Templates notebook, for people to adapt. */
 export async function createSampleTemplate(): Promise<Note | undefined> {
   const notebook = await ensureNotebook(TEMPLATES_NOTEBOOK)
