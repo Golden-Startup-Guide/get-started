@@ -8,10 +8,12 @@ import {
   Settings,
   TextSearch,
   X,
+  Zap,
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteGrid } from './features/notes/NoteGrid'
 import { SearchTips } from './features/notes/SearchTips'
+import { QuickCapture } from './features/notes/QuickCapture'
 import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
@@ -27,6 +29,7 @@ import {
   createNotebookOnShelf,
   createSampleTemplate,
   ensureNotebook,
+  saveQuickNote,
   deleteForever,
   deleteOpenNote,
   loadLibrary,
@@ -48,7 +51,9 @@ import './workspace.css'
 
 const NO_LINKS: NoteLink[] = []
 // Both Ctrl+K and ⌘K work everywhere; the hint shows the one this platform uses.
-const PALETTE_SHORTCUT = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
+const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.platform)
+const PALETTE_SHORTCUT = IS_APPLE ? '⌘K' : 'Ctrl K'
+const QUICK_NOTE_SHORTCUT = IS_APPLE ? '⌥N' : 'Alt N'
 
 // Module-level, so every note card receives the same functions on every render.
 const flagNote = (note: Note, flag: 'pinned' | 'favorite') => void toggleNoteFlag(note, flag)
@@ -86,6 +91,10 @@ function App() {
   const keepMine = useEditorStore((state) => state.keepMine)
   const [showSettings, setShowSettings] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(false)
+  // Kept while the quick note box is closed, until it is saved or cleared.
+  const [quickDraft, setQuickDraft] = useState('')
+  const quickReturnRef = useRef<HTMLElement | null>(null)
   const paletteReturnRef = useRef<HTMLElement | null>(null)
   const [shelfNotebookName, setShelfNotebookName] = useState('')
   const [systemDark, setSystemDark] = useState(
@@ -370,19 +379,40 @@ function App() {
     item.run()
   }
 
+  function openQuickCapture() {
+    quickReturnRef.current = focusToRestore()
+    setQuickOpen(true)
+  }
+
+  function closeQuickCapture() {
+    setQuickOpen(false)
+    const target = quickReturnRef.current
+    requestAnimationFrame(() => (target?.isConnected ? target : newNoteRef.current)?.focus())
+  }
+
   // The latest versions, so the shortcut listener is not re-added on every render.
   const openPaletteRef = useRef(openPalette)
   const closePaletteRef = useRef(closePalette)
+  const openQuickCaptureRef = useRef(openQuickCapture)
   useLayoutEffect(() => {
     openPaletteRef.current = openPalette
     closePaletteRef.current = closePalette
+    openQuickCaptureRef.current = openQuickCapture
   })
 
-  // Ctrl+K / ⌘K, when no other dialog is open. Inside the note editor it is left to the browser.
-  const otherDialogOpen = Boolean(activeNote) || showSettings || Boolean(structureToDelete)
+  // Ctrl+K / ⌘K for the palette and Alt+N for a quick note, when no other dialog is open. Inside the
+  // note editor they are left to the browser.
+  const otherDialogOpen = Boolean(activeNote) || showSettings || Boolean(structureToDelete) || quickOpen
   useEffect(() => {
     if (otherDialogOpen) return
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      // event.code, not event.key: on a Mac, Option+N types a character instead of "n".
+      if (event.code === 'KeyN' && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault()
+        if (paletteOpen) closePaletteRef.current()
+        openQuickCaptureRef.current()
+        return
+      }
       if (event.key.toLowerCase() !== 'k' || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
       event.preventDefault()
       if (paletteOpen) closePaletteRef.current()
@@ -455,6 +485,7 @@ function App() {
                 <TextSearch size={16} aria-hidden="true" />
                 <kbd className="palette-kbd">{PALETTE_SHORTCUT}</kbd>
               </button>
+              <button className="icon-button" onClick={openQuickCapture} aria-label="Quick note" aria-keyshortcuts="Alt+N" title={`Quick note (${QUICK_NOTE_SHORTCUT})`}><Zap size={18} /></button>
               <button className="icon-button" onClick={openSettings} aria-label="Open settings"><Settings size={18} /></button>
               <button className="primary-button flex items-center gap-2" onClick={openNewNote} aria-label="Create a new note"><Plus size={17} /><span className="new-note-label">New note</span></button>
             </div>
@@ -561,6 +592,9 @@ function App() {
         />
       )}
       {showSettings && <SettingsDialog onClose={closeSettings} />}
+      {quickOpen && (
+        <QuickCapture draft={quickDraft} onDraftChange={setQuickDraft} onSave={saveQuickNote} onClose={closeQuickCapture} shortcut={QUICK_NOTE_SHORTCUT} saveShortcut={IS_APPLE ? '⌘ Enter' : 'Ctrl Enter'} />
+      )}
       {paletteOpen && (
         <CommandPalette
           sources={{ notes, libraries, shelves, notebooks, tags, theme: settings.theme, sidebarCollapsed: isCompactNavigation ? undefined : sidebarCollapsed }}
@@ -577,6 +611,7 @@ function App() {
             openToday: () => void openTodayNote(),
             newFromTemplate: openFromTemplate,
             createTemplate: () => void makeSampleTemplate(),
+            quickCapture: openQuickCapture,
           }}
           onClose={closePalette}
           onRun={runPaletteItem}

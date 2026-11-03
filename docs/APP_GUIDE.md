@@ -259,6 +259,19 @@ tells that site the note was opened (a "tracking pixel"). The preview shows a
 **Load image from …** button in their place; images served by the app itself
 load normally.
 
+#### Quick notes
+
+To jot something down without leaving the page you are on, press **Alt+N**
+(**⌥N** on a Mac), select the lightning button in the header, or choose
+**Quick note** in the command palette. Type, then press **Ctrl+Enter** (**⌘
+Enter**) or select **Save**: the note goes into an **Inbox** notebook (created
+the first time) and a confirmation appears, while the page stays as it was.
+The first line with text becomes the title (without heading or list markers,
+shortened past 80 characters), and the whole text is kept. Escape, or a click
+outside, closes the box but keeps what you typed for the next time it opens,
+until you save it or select **Clear**. The shortcut works whenever no other
+dialog is open; inside the note editor it is left to the browser.
+
 #### Daily notes and templates
 
 **Today's note** (in the sidebar, or "Open today's note" in the command

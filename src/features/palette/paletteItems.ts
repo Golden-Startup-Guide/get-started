@@ -26,6 +26,7 @@ export interface PaletteHandlers {
   openToday: () => void
   newFromTemplate: (template: Note) => void
   createTemplate: () => void
+  quickCapture: () => void
 }
 
 /** Every action, place, and note the palette can find, plus the newest notes for an empty query. */
@@ -37,6 +38,7 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
 
   const actions: PaletteItem[] = [
     { id: 'action:new-note', group: 'Actions', label: 'New note', keywords: 'create add write', run: handlers.newNote },
+    { id: 'action:quick', group: 'Actions', label: 'Quick note', keywords: 'capture jot inbox fast idea', run: handlers.quickCapture },
     { id: 'action:today', group: 'Actions', label: 'Open today’s note', keywords: 'daily journal diary date log', run: handlers.openToday },
     { id: 'action:settings', group: 'Actions', label: 'Open settings', keywords: 'preferences backup export import restore storage', run: handlers.openSettings },
   ]
