@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { getChecklistProgress, getChecklistTaskLines, getChecklistTaskText, toggleChecklistItem } from './checklists'
+import { describe, expect, it, vi } from 'vitest'
+import { createTaskTextLookup, getChecklistProgress, getChecklistTaskLines, getChecklistTaskText, toggleChecklistItem } from './checklists'
 
 describe('Markdown checklists', () => {
   it('counts completed and incomplete tasks across GFM list markers', () => {
@@ -40,5 +40,15 @@ describe('Markdown checklists', () => {
     expect(getChecklistProgress(markdown)).toEqual({ completed: 1, total: 2 })
     expect(toggleChecklistItem(markdown, 1)).toBe('> - [x] Quoted task\n> > * [x] Nested quote')
     expect(getChecklistTaskText(markdown, 2)).toBe('Nested quote')
+  })
+
+  it('looks up task text by line after splitting the Markdown only once', () => {
+    const markdown = new String('- [ ] First\r\nPlain line\n- [x] Second  ') as string
+    const split = vi.spyOn(String.prototype, 'split')
+    const taskText = createTaskTextLookup(markdown)
+    expect(split).not.toHaveBeenCalled()
+    expect([1, 2, 3, 4].map(taskText)).toEqual(['First', '', 'Second', ''])
+    expect(split).toHaveBeenCalledTimes(1)
+    split.mockRestore()
   })
 })

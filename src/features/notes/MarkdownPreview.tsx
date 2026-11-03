@@ -1,16 +1,19 @@
 import { createContext, memo, useContext, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
-import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { getChecklistTaskText } from './checklists'
-import { remarkWikilinks } from './remarkWikilinks'
+import type { Root } from 'hast'
+import { toJsxRuntime, type Components } from 'hast-util-to-jsx-runtime'
+import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
+import type { ExtraProps } from 'react-markdown'
+import { createTaskTextLookup } from './checklists'
+import { markdownToHast } from './markdownToHast'
 
 interface ChecklistContextValue {
-  markdown: string
+  /** A task's text by source line, for its checkbox's label (see createTaskTextLookup). */
+  taskText: (lineNumber: number) => string
   /** Absent while the preview is behind the draft: line numbers may no longer match. */
   onToggleTask?: (lineNumber: number) => void
 }
 
-const ChecklistContext = createContext<ChecklistContextValue>({ markdown: '' })
+const ChecklistContext = createContext<ChecklistContextValue>({ taskText: () => '' })
 // Each list item exposes its source line, so its checkbox toggles exactly that line.
 // Counting rendered checkboxes instead breaks when task syntax appears in code blocks.
 const ListItemLineContext = createContext<number | undefined>(undefined)
@@ -25,9 +28,9 @@ function MarkdownListItem({ node, ...props }: ComponentProps<'li'> & ExtraProps)
 
 function TaskCheckbox({ node: _node, checked, ...props }: ComponentProps<'input'> & ExtraProps) {
   const lineNumber = useContext(ListItemLineContext)
-  const { markdown, onToggleTask } = useContext(ChecklistContext)
+  const { taskText: taskTextOf, onToggleTask } = useContext(ChecklistContext)
   if (props.type !== 'checkbox') return <input {...props} />
-  const taskText = lineNumber ? getChecklistTaskText(markdown, lineNumber) : ''
+  const taskText = lineNumber ? taskTextOf(lineNumber) : ''
   return (
     <input
       {...props}
@@ -105,46 +108,62 @@ function MarkdownImage({ node: _node, ...props }: ComponentProps<'img'> & ExtraP
   )
 }
 
-const markdownComponents: Components = {
+const markdownComponents: Partial<Components> = {
   a: MarkdownLink,
   img: MarkdownImage,
   input: TaskCheckbox,
   li: MarkdownListItem,
 }
 
-const remarkPlugins = [remarkGfm, remarkWikilinks]
+const EMPTY_PREVIEW = '_Nothing to preview yet._'
 
-// Parsing is the expensive part of rendering a note, so the parsed tree depends on the Markdown
-// text alone. Whether checkboxes are interactive travels through context, which re-renders
-// only the checkboxes: passing it as a prop here re-parsed the whole note (seconds for 1 MB)
-// at the first keystroke after every pause, when the preview became stale.
+// Rendering depends on the parsed tree alone. Whether checkboxes are interactive travels through
+// context, which re-renders only the checkboxes: passing it as a prop here re-rendered (and
+// before, re-parsed) the whole note at the first keystroke after every pause.
+const RenderedMarkdown = memo(function RenderedMarkdown({ tree }: { tree: Root }) {
+  return toJsxRuntime(tree, {
+    Fragment,
+    jsx,
+    jsxs,
+    components: markdownComponents,
+    ignoreInvalidStyle: true,
+    passKeys: true,
+    passNode: true,
+  })
+})
+
+// Short notes are parsed here, on the main thread; it takes a few milliseconds.
 const ParsedMarkdown = memo(function ParsedMarkdown({ markdown }: { markdown: string }) {
-  return (
-    <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
-      {markdown || '_Nothing to preview yet._'}
-    </ReactMarkdown>
-  )
+  const tree = useMemo(() => markdownToHast(markdown || EMPTY_PREVIEW), [markdown])
+  return <RenderedMarkdown tree={tree} />
 })
 
 export function MarkdownPreview({
   markdown,
+  tree,
   onToggleTask,
   resolveWikilink,
   onOpenWikilink,
 }: {
+  /** The Markdown shown; with `tree`, the Markdown the tree was parsed from. */
   markdown: string
+  /** Already parsed (by useMarkdownTree, in a worker) for long notes; otherwise parsed here. */
+  tree?: Root
   /** Omit to make checklist boxes read-only. */
   onToggleTask?: (lineNumber: number) => void
   /** Omit both to show `[[links]]` as plain text that cannot be followed. */
   resolveWikilink?: (title: string) => WikilinkTarget | undefined
   onOpenWikilink?: (target: WikilinkTarget) => void
 }) {
-  const checklist = useMemo(() => ({ markdown, onToggleTask }), [markdown, onToggleTask])
+  // Split per Markdown version, not per change in interactivity, so pausing and resuming typing
+  // does not split a long note again.
+  const taskText = useMemo(() => createTaskTextLookup(markdown), [markdown])
+  const checklist = useMemo(() => ({ taskText, onToggleTask }), [taskText, onToggleTask])
   const wikilinks = useMemo(() => ({ resolve: resolveWikilink, open: onOpenWikilink }), [resolveWikilink, onOpenWikilink])
   return (
     <ChecklistContext.Provider value={checklist}>
       <WikilinkContext.Provider value={wikilinks}>
-        <ParsedMarkdown markdown={markdown} />
+        {tree ? <RenderedMarkdown tree={tree} /> : <ParsedMarkdown markdown={markdown} />}
       </WikilinkContext.Provider>
     </ChecklistContext.Provider>
   )

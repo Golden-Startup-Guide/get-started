@@ -172,7 +172,10 @@ blockquotes work like any other task.
 Very long notes (over 50,000 characters) update their preview once typing
 pauses for about 0.4 seconds instead of on every keystroke, so typing stays
 responsive. While the preview is catching up, a note beside **Live preview**
-says so and its checklist boxes are read-only.
+says so and its checklist boxes are read-only. Their Markdown is parsed in a
+background worker and the result is drawn in small steps, so typing is never held
+up while the preview catches up; a long note's preview first shows
+"Preparing the preview…" while it is parsed.
 
 Edits are saved with a debounce rather than writing on every keystroke. The
 editor indicates whether changes are unsaved, saving, or saved. The save path

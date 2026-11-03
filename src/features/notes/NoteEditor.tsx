@@ -44,6 +44,7 @@ import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
 import { buildTitleIndex, findWikilinkTargets, normalizeTitle } from '../../lib/wikilinks'
 import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
 import { usePreviewSource } from './usePreviewSource'
+import { useMarkdownTree } from './useMarkdownTree'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './attachments'
 
 type SaveState = 'saved' | 'unsaved' | 'saving'
@@ -452,6 +453,10 @@ export function NoteEditor({
     !noteTags.some((item) => item.toLocaleLowerCase() === tag.id),
   )
   const preview = usePreviewSource(content)
+  // Long notes are parsed in a worker; their preview shows the last parsed version meanwhile.
+  const parsedPreview = useMarkdownTree(preview.source, preview.delayed)
+  const shownSource = preview.delayed ? parsedPreview?.source : preview.source
+  const previewStale = shownSource !== content
   const checklistProgress = useMemo(() => getChecklistProgress(preview.source), [preview.source])
   // Everything below depends only on the library and this note's links, not on the draft, so
   // typing never recomputes it.
@@ -629,18 +634,23 @@ export function NoteEditor({
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="section-label">Live preview</p>
-                  {preview.stale && preview.delayed && <span className="text-xs text-[var(--muted)]">Long note: the preview updates when you pause typing</span>}
+                  {previewStale && preview.delayed && <span className="text-xs text-[var(--muted)]">Long note: the preview updates when you pause typing</span>}
                   {checklistProgress.total > 0 && <span className="checklist-progress" role="progressbar" aria-label="Checklist progress" aria-valuemin={0} aria-valuemax={checklistProgress.total} aria-valuenow={checklistProgress.completed}>
                     {checklistProgress.completed} of {checklistProgress.total} complete
                   </span>}
                 </div>
                 <div className="prose-notes">
-                  <MarkdownPreview
-                    markdown={preview.source}
-                    onToggleTask={preview.stale ? undefined : toggleTask}
-                    resolveWikilink={resolveWikilink}
-                    onOpenWikilink={openWikilink}
-                  />
+                  {shownSource === undefined ? (
+                    <p className="text-sm text-[var(--muted)]" role="status">Preparing the preview…</p>
+                  ) : (
+                    <MarkdownPreview
+                      markdown={shownSource}
+                      tree={parsedPreview?.tree}
+                      onToggleTask={previewStale ? undefined : toggleTask}
+                      resolveWikilink={resolveWikilink}
+                      onOpenWikilink={openWikilink}
+                    />
+                  )}
                 </div>
               </article>
             </div>
