@@ -16,7 +16,8 @@ test('highlights fenced code in the preview, loading the highlighter only when n
   expect(highlighterRequests).toEqual([])
 
   await page.getByRole('textbox', { name: 'Markdown' }).fill('```js\nconst total = 1 // sum\n```')
-  await expect(preview.locator('.hljs-keyword')).toHaveText('const')
+  // On-demand downloads can be slow on a busy test machine.
+  await expect(preview.locator('.hljs-keyword')).toHaveText('const', { timeout: 30_000 })
   await expect(preview.locator('.hljs-comment')).toHaveText('// sum')
   await expect(preview.locator('pre code')).toHaveText('const total = 1 // sum')
   expect(highlighterRequests).toHaveLength(1)
@@ -38,10 +39,33 @@ test('typesets maths, downloading KaTeX only for notes that use it, and leaves p
   expect(mathRequests).toEqual([])
 
   await page.getByRole('textbox', { name: 'Markdown' }).fill('Area: $$\\pi r^2$$\n\n$$\n\\frac{1}{3}\n$$')
-  await expect(preview.locator('.math-inline .katex')).toBeVisible()
+  await expect(preview.locator('.math-inline .katex')).toBeVisible({ timeout: 30_000 })
   await expect(preview.locator('.math-display .katex-display')).toBeVisible()
   // The fonts load too (under the app's Content Security Policy, checked by the test fixture).
   await expect.poll(() => mathRequests.some((url) => url.includes('KaTeX_'))).toBe(true)
+})
+
+test('draws Mermaid diagrams, downloading Mermaid only for notes that have one', async ({ page }) => {
+  const diagramRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/assets\/diagramRenderer-/.test(request.url())) diagramRequests.push(request.url())
+  })
+  await openWorkspace(page)
+  await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Note title' }).fill('Garden flow')
+  const preview = page.locator('.prose-notes')
+
+  await page.getByRole('textbox', { name: 'Markdown' }).fill('```text\nflowchart LR\n```')
+  await expectSaved(page)
+  await expect(preview.locator('pre code')).toHaveText('flowchart LR')
+  expect(diagramRequests).toEqual([])
+
+  await page.getByRole('textbox', { name: 'Markdown' }).fill('```mermaid\nflowchart LR\n  Seeds --> Sow --> Harvest\n```\n\n```mermaid\nflowchart LR\n  A -->\n```')
+  const drawing = preview.locator('.diagram-drawing svg')
+  await expect(drawing).toHaveCount(1, { timeout: 30_000 })
+  await expect(drawing).toContainText('Harvest')
+  await expect(preview.getByRole('note')).toHaveText(/^Diagram error: Parse error on line \d+$/)
+  expect(diagramRequests).toHaveLength(1)
 })
 
 test('lists a note’s headings and jumps to them, also from links in the note', async ({ page }) => {

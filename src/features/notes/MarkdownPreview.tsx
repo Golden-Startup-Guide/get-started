@@ -5,6 +5,7 @@ import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { ExtraProps } from 'react-markdown'
 import { createTaskTextLookup } from './checklists'
 import { loadHighlighter, MAX_HIGHLIGHT_LENGTH } from './codeHighlight'
+import { DiagramBlock } from './DiagramBlock'
 import { MathFormula } from './MathFormula'
 import { markdownToHast } from './markdownToHast'
 import { NoteContents } from './NoteContents'
@@ -148,12 +149,13 @@ function CodeBlock({ node, className, children, ...props }: ComponentProps<'code
 /** A $$ block or ```math block becomes displayed maths rather than a code box. */
 function MathAwarePre({ node, children, ...props }: ComponentProps<'pre'> & ExtraProps) {
   const code = node?.children.find((child) => child.type === 'element')
-  const isMath = code?.type === 'element' && code.tagName === 'code'
-    && Array.isArray(code.properties.className) && code.properties.className.includes('language-math')
-  if (isMath) {
-    const tex = code.children.map((child) => (child.type === 'text' ? child.value : '')).join('').replace(/\n$/, '')
-    return <MathFormula tex={tex} display />
-  }
+  const classes = code?.type === 'element' && code.tagName === 'code' && Array.isArray(code.properties.className)
+    ? code.properties.className
+    : []
+  const text = () => (code?.type === 'element' ? code.children.map((child) => (child.type === 'text' ? child.value : '')).join('').replace(/\n$/, '') : '')
+  if (classes.includes('language-math')) return <MathFormula tex={text()} display />
+  // A ```mermaid block becomes a diagram.
+  if (classes.includes('language-mermaid')) return <DiagramBlock source={text()} />
   return <pre {...props}>{children}</pre>
 }
 
