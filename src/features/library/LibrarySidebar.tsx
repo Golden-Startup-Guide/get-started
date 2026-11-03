@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type RefObject } from 'react'
 import {
   Archive,
+  CalendarDays,
   ChevronDown,
   FileText,
   Heart,
@@ -34,6 +35,7 @@ export function LibrarySidebar({
   onNavigate,
   onNewNote,
   onOpenSettings,
+  onOpenToday,
   onCloseNavigation,
   newNoteRef,
   closeButtonRef,
@@ -41,6 +43,8 @@ export function LibrarySidebar({
   onNavigate: (view: View) => void
   onNewNote: () => void
   onOpenSettings: () => void
+  /** Opens (or starts) today's daily note. */
+  onOpenToday: () => void
   onCloseNavigation: () => void
   newNoteRef: RefObject<HTMLButtonElement>
   closeButtonRef: RefObject<HTMLButtonElement>
@@ -131,6 +135,9 @@ export function LibrarySidebar({
         <NavButton active={view === 'favorites'} label="Favorites" count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
         <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />
         <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => onNavigate('graph')} icon={<Network size={16} />} />
+        <button className="nav-button flex w-full items-center gap-3 text-left" onClick={onOpenToday}>
+          <CalendarDays size={16} aria-hidden="true" /><span className="min-w-0 flex-1 truncate">Today’s note</span>
+        </button>
       </nav>
       <div className="library-tree mt-8 min-w-0">
         <div className="mb-2 flex items-center justify-between px-2">

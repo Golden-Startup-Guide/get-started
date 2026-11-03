@@ -249,6 +249,36 @@ tells that site the note was opened (a "tracking pixel"). The preview shows a
 **Load image from …** button in their place; images served by the app itself
 load normally.
 
+#### Daily notes and templates
+
+**Today's note** (in the sidebar, or "Open today's note" in the command
+palette) opens the note titled with today's date, such as `2026-11-03`, in a
+**Daily notes** notebook. The notebook is created the first time. If today's
+note does not exist yet, a new one is started from your **Daily note**
+template, or from a simple layout with a heading, a task list, and a notes
+section. Like any new note, it is saved once you edit it, so opening it and
+closing it again leaves nothing behind.
+
+Any note in a notebook named **Templates** is a template. The command palette
+lists **New note from template: …** for each one; the new note goes into the
+notebook a new note would normally use (never the Templates notebook) and is
+saved once edited. When there are no templates yet, **Create a template** adds
+an example meeting template to a new Templates notebook and opens it. In a
+template's title and text these placeholders are filled in when a note is
+made from it:
+
+| Placeholder | Becomes |
+|---|---|
+| `{{date}}` | the date, as 2026-11-03 |
+| `{{time}}` | the time, as 14:05 |
+| `{{weekday}}` | the day of the week, in the device's language |
+| `{{longdate}}` | the full date, in the device's language |
+| `{{title}}` | the new note's title |
+
+Placeholder names ignore capitals and spaces (`{{ Date }}` works); unknown
+ones are left as written. A template titled **Daily note** shapes new daily
+notes.
+
 ### 2.5 History and restore
 
 The app stores timestamped snapshots when a successful save changes a note's
