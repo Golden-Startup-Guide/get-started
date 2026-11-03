@@ -39,6 +39,7 @@ import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownEditor } from './MarkdownEditor'
 import { changeEditorMode } from '../../state/actions'
+import { useEditorStore } from '../../state/editorStore'
 import { useLibraryStore } from '../../state/libraryStore'
 import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
 import { buildTitleIndex, findWikilinkTargets, normalizeTitle } from '../../lib/wikilinks'
@@ -223,6 +224,12 @@ export function NoteEditor({
     undefined,
     changedElsewhere,
   )
+
+  // Lets the command palette save this note before it switches to something else.
+  useLayoutEffect(() => {
+    useEditorStore.getState().setFlush(flush)
+    return () => useEditorStore.getState().setFlush(null)
+  }, [flush])
 
   async function addAttachment(file: File) {
     setAttachmentError(null)

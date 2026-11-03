@@ -374,8 +374,15 @@ function App() {
     ;(target?.isConnected ? target : newNoteRef.current)?.focus()
   }
 
-  function runPaletteItem(item: PaletteItem) {
+  async function runPaletteItem(item: PaletteItem) {
     closePalette()
+    // Opened over a note: save it first, then close it, unless the item keeps it open (a theme
+    // change). If saving fails, stay on the note; the editor shows why.
+    if (useEditorStore.getState().activeNote && !item.keepsEditor) {
+      const flush = useEditorStore.getState().flush
+      if (flush && !(await flush())) return
+      closeEditor()
+    }
     item.run()
   }
 
@@ -400,14 +407,15 @@ function App() {
     openQuickCaptureRef.current = openQuickCapture
   })
 
-  // Ctrl+K / ⌘K for the palette and Alt+N for a quick note, when no other dialog is open. Inside the
-  // note editor they are left to the browser.
-  const otherDialogOpen = Boolean(activeNote) || showSettings || Boolean(structureToDelete) || quickOpen
+  // Ctrl+K / ⌘K for the palette, also over the note editor, and Alt+N for a quick note when no
+  // dialog is open. Other dialogs (Settings, a delete confirmation, the quick note) keep them off.
+  const otherDialogOpen = showSettings || Boolean(structureToDelete) || quickOpen
+  const editorOpen = Boolean(activeNote)
   useEffect(() => {
     if (otherDialogOpen) return
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       // event.code, not event.key: on a Mac, Option+N types a character instead of "n".
-      if (event.code === 'KeyN' && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      if (!editorOpen && event.code === 'KeyN' && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
         event.preventDefault()
         if (paletteOpen) closePaletteRef.current()
         openQuickCaptureRef.current()
@@ -420,7 +428,7 @@ function App() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [otherDialogOpen, paletteOpen])
+  }, [otherDialogOpen, editorOpen, paletteOpen])
 
 
   async function addNotebookOnShelfPage(event: FormEvent<HTMLFormElement>) {
@@ -614,7 +622,7 @@ function App() {
             quickCapture: openQuickCapture,
           }}
           onClose={closePalette}
-          onRun={runPaletteItem}
+          onRun={(item) => void runPaletteItem(item)}
         />
       )}
       {structureToDelete && <DeleteStructureDialog target={structureToDelete} />}

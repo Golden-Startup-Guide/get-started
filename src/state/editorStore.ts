@@ -16,6 +16,9 @@ interface EditorState {
   close: () => void
   markChangedElsewhere: () => void
   keepMine: () => void
+  /** Saves the open editor's pending edits; resolves to false if saving failed. Set by the editor. */
+  flush: (() => Promise<boolean>) | null
+  setFlush: (flush: (() => Promise<boolean>) | null) => void
   /** Replaces the open note with its latest stored version, discarding this tab's draft. */
   loadLatest: () => Promise<void>
 }
@@ -29,6 +32,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   close: () => set({ activeNote: null, isCreating: false, changedElsewhere: false }),
   markChangedElsewhere: () => set({ changedElsewhere: true }),
   keepMine: () => set({ changedElsewhere: false }),
+  flush: null,
+  setFlush: (flush) => set({ flush }),
   loadLatest: async () => {
     const id = get().activeNote?.id
     if (!id) return

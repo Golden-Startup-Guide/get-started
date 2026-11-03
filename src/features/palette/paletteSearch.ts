@@ -8,6 +8,8 @@ export interface PaletteItem {
   detail?: string
   /** Extra words that should find this item, e.g. "dark" for the theme action. */
   keywords?: string
+  /** Runs over an open note without closing it (a theme change). Everything else saves and closes it first. */
+  keepsEditor?: boolean
   run: () => void
 }
 
