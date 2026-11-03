@@ -163,6 +163,16 @@ The switch above the editor chooses how the Markdown is shown:
 Both show the same text; only its appearance changes. The choice is remembered
 on this device and included in backups.
 
+Type `/` at the start of a line, or after a space, to open the **slash menu**:
+headings 1–3, checklist, bullet and numbered lists, quote, code block, table,
+divider, maths block, diagram, link to a note, today's date, and the current
+time. Keep typing to narrow it (by name or by words such as "todo" or
+"formula"), then press Enter or click. Block items start their own line; a
+table or diagram arrives with its sample text selected, ready to type over;
+**Link to note** goes straight on to note-title suggestions. A slash inside a
+word, web address, or date (`and/or`, `https://`, `3/11`) or inside a code
+block never opens the menu, and Escape closes it, leaving the slash.
+
 In the preview, fenced code blocks that name a language (for example
 `` ```js `` or `` ```python ``) are coloured by syntax. Highlighting supports the 37 most
 common languages; other languages, code blocks without a language, inline

@@ -5,6 +5,7 @@ import { EditorView, keymap, placeholder as placeholderExtension } from '@codemi
 import { autocompletion } from '@codemirror/autocomplete'
 import type { EditorMode } from '../../types'
 import { livePreview, markdownSyntax } from './livePreview'
+import { slashCommandCompletions } from './slashCommands'
 import { wikilinkCompletions, type LinkTitle } from './wikilinkCompletion'
 
 const noTitles = (): readonly LinkTitle[] => []
@@ -77,7 +78,7 @@ export function MarkdownEditor({
         extensions: [
           history(),
           // While suggestions are open, its own keymap (arrows, Enter, Escape) takes precedence.
-          autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current())], icons: false }),
+          autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current()), slashCommandCompletions], icons: false }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           modeCompartment.of(modeExtension(initial.mode)),

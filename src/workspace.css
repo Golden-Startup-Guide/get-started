@@ -1517,3 +1517,18 @@ html[data-theme='dark'] .workspace {
   color: var(--code-keyword);
   font-size: 0.85rem;
 }
+
+/* Slash menu: the Markdown each command writes, right-aligned. */
+.markdown-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+}
+
+.markdown-editor .cm-editor .cm-completionDetail {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8em;
+  font-style: normal;
+}
