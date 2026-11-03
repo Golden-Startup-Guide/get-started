@@ -82,7 +82,7 @@ In order of payoff:
 | **Done:** virtualize the note grid (TanStack Virtual), so only visible cards exist | Causes 2 and 4 | Medium |
 | **Done:** memoize the preview, defer it, and preview long notes after a pause in typing | Cause 3 | Small |
 | **Done:** replace the text area with CodeMirror 6, which renders only visible lines | Cause 3 (remaining) | Medium |
-| Parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
+| **Done:** parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
 | **Done:** load the editor (CodeMirror and the Markdown preview) in its own chunk after start-up | Start-up | Small |
 | **Done:** search lower-cases each note once (cached until it is saved), stops re-sorting the library on every keystroke, and looks up locations in a map | Cause 4 (part) | Small |
 | Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 (remaining) | Medium, overlaps Phase 2 |
@@ -304,3 +304,30 @@ The development PC first suggested a slowdown (typing p95 20–22 ms, against 13
 | Open the 1 MB note | 657 / 677 ms | 667 / 645 ms |
 
 The parser adds about 14 KB gzipped to the editor chunk (161 to 174 KB), which loads after start-up; start-up JavaScript is unchanged (91 KB gzipped).
+
+### Long-note preview off the main thread (November 3, 2026)
+
+Notes over 50,000 characters already previewed only after a 400 ms pause in typing, but the catch-up then parsed and rendered the whole note in one blocking step. Measured in Chromium on the development PC, for 1 MB notes:
+
+| Step | Plain prose | Dense Markdown (lists, tasks, links) |
+|---|---|---|
+| Parse | 1.9–2.0 s | 11.7–12.3 s |
+| Copy the parsed tree to or from a worker | 34–38 ms | 0.8 s |
+| Render to the page | 0.14–0.22 s | 14–15 s |
+
+Three changes:
+
+- **Parsing moved to a Web Worker** (`markdownPreview.worker.ts`). Short and long notes share one function, `markdownToHast`. It applies the same safety rules react-markdown did: raw HTML becomes text, and URLs go through `defaultUrlTransform`. A newer parse abandons one still running.
+- **The result is rendered as a React transition,** and off-screen blocks of a long preview use `content-visibility: auto`.
+- **Checkbox labels no longer split the whole note per checkbox.** When typing resumed, the checkboxes turned read-only, and each re-rendered checkbox split the 1 MB note to find its label. That was about 9,000 splits for the dense note, the biggest freeze of all. The note is now split once per version.
+
+Vite resolves packages with the "browser" condition even inside workers. That picked a DOM-only build of `decode-named-character-reference` and crashed the worker, so `vite.config.ts` points the worker build at the package's worker version.
+
+Longest main-thread task after a pause in typing, from `PerformanceObserver('longtask')` (development PC):
+
+| 1 MB note | Before | After |
+|---|---|---|
+| Plain prose: longest task (total blocking) | 0.70 s (0.65 s) | none |
+| Dense Markdown: longest task (total blocking) | 28.5 s (47.8 s) | 0.69 s (0.86 s) |
+
+The remaining 0.69 s for dense notes is mostly turning the parsed tree into React elements, which happens in one step. The worker file is 173 KB (not gzipped), loads only when a long note is opened, and is precached for offline use.

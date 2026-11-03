@@ -29,7 +29,26 @@ function contentSecurityPolicyPlugin(): Plugin {
   }
 }
 
+// Web Workers have no `document`. Vite resolves packages with the "browser" condition even inside
+// workers, which picks decode-named-character-reference's DOM version (used by the Markdown
+// parser) and crashes the preview worker. Point the worker build at the package's worker version.
+function workerSafeEntityDecoder(): Plugin {
+  return {
+    name: 'my-notes-worker-safe-entity-decoder',
+    enforce: 'pre',
+    async resolveId(source, importer, options) {
+      if (source !== 'decode-named-character-reference') return null
+      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true })
+      return resolved && { ...resolved, id: resolved.id.replace(/index\.dom\.js$/, 'index.js') }
+    },
+  }
+}
+
 export default defineConfig({
+  worker: {
+    format: 'es',
+    plugins: () => [workerSafeEntityDecoder()],
+  },
   plugins: [
     react(),
     contentSecurityPolicyPlugin(),
