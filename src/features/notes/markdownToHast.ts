@@ -2,6 +2,7 @@ import type { Nodes, Root } from 'hast'
 import { urlAttributes } from 'html-url-attributes'
 import { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
@@ -29,6 +30,9 @@ function headingId(text: string, used: Map<string, number>): string {
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
+  // Maths only as $$…$$ (inline or as a block) or ```math: single $ signs stay text, so prices
+  // such as "$5 and $10" are never turned into formulas.
+  .use(remarkMath, { singleDollarTextMath: false })
   .use(remarkWikilinks)
   // Raw HTML is kept as "raw" nodes only so it can be shown as text below; it never renders.
   .use(remarkRehype, { allowDangerousHtml: true })

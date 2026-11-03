@@ -45,6 +45,11 @@ function workerSafeEntityDecoder(): Plugin {
 }
 
 export default defineConfig({
+  build: {
+    // Never inline fonts as data: URLs (Vite inlines small files by default): the Content Security
+    // Policy only allows fonts from the app itself. KaTeX ships several fonts under 4 KB.
+    assetsInlineLimit: (filePath) => (/\.(woff2?|ttf|otf|eot)$/i.test(filePath) ? false : undefined),
+  },
   worker: {
     format: 'es',
     plugins: () => [workerSafeEntityDecoder()],
@@ -89,6 +94,20 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,ico,png,woff2}'],
+        // Maths (KaTeX's script, styles, and 19 fonts, about 0.7 MB) is left out of the install
+        // download, which every user pays; it is fetched when a note first shows maths and then
+        // kept for offline use. File names are content-hashed, so cache-first is always fresh.
+        globIgnores: ['**/mathRenderer-*', '**/KaTeX_*'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/(mathRenderer-|KaTeX_)/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'my-notes-maths',
+              expiration: { maxEntries: 60 },
+            },
+          },
+        ],
       },
     }),
   ],

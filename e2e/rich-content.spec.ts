@@ -22,6 +22,28 @@ test('highlights fenced code in the preview, loading the highlighter only when n
   expect(highlighterRequests).toHaveLength(1)
 })
 
+test('typesets maths, downloading KaTeX only for notes that use it, and leaves prices alone', async ({ page }) => {
+  const mathRequests: string[] = []
+  page.on('request', (request) => {
+    if (/\/assets\/(mathRenderer-|KaTeX_)/.test(request.url())) mathRequests.push(request.url())
+  })
+  await openWorkspace(page)
+  await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Note title' }).fill('Budget')
+  const preview = page.locator('.prose-notes')
+
+  await page.getByRole('textbox', { name: 'Markdown' }).fill('Seeds cost $5 and compost $10.')
+  await expectSaved(page)
+  await expect(preview).toHaveText('Seeds cost $5 and compost $10.')
+  expect(mathRequests).toEqual([])
+
+  await page.getByRole('textbox', { name: 'Markdown' }).fill('Area: $$\\pi r^2$$\n\n$$\n\\frac{1}{3}\n$$')
+  await expect(preview.locator('.math-inline .katex')).toBeVisible()
+  await expect(preview.locator('.math-display .katex-display')).toBeVisible()
+  // The fonts load too (under the app's Content Security Policy, checked by the test fixture).
+  await expect.poll(() => mathRequests.some((url) => url.includes('KaTeX_'))).toBe(true)
+})
+
 test('lists a note’s headings and jumps to them, also from links in the note', async ({ page }) => {
   await openWorkspace(page)
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
