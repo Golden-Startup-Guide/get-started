@@ -1483,3 +1483,7 @@ html[data-theme='dark'] .workspace {
 .prose-notes :is(h1, h2, h3, h4, h5, h6):focus {
   outline: none;
 }
+
+/* Maths (KaTeX). Errors use the theme's red rather than KaTeX's fixed dark red. */
+.prose-notes .math-display { margin: 0.9em 0; overflow-x: auto; overflow-y: hidden; }
+.prose-notes .katex-error { color: var(--code-keyword) !important; }

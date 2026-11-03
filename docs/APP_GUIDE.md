@@ -169,6 +169,24 @@ common languages; other languages, code blocks without a language, inline
 code, and code blocks over 50,000 characters are shown in plain text. The
 highlighter is downloaded only the first time a note needs it.
 
+Maths is written in TeX between double dollar signs: `$$\pi r^2$$` inside a
+line, or on lines of its own for a centred formula:
+
+```text
+$$
+\int_0^1 x^2\,dx = \frac{1}{3}
+$$
+```
+
+A fenced block marked `math` works the same way. Single dollar signs are left
+as text, so prices such as "$5 and $10" never turn into formulas. The preview
+typesets maths with KaTeX, which also provides MathML for screen readers.
+Mistakes are shown in red instead of the formula, and commands that could link
+or insert HTML (`\href`, `\url`, `\includegraphics`, `\html…`) are refused.
+KaTeX and its fonts (about 0.3 MB) are not part of the app's offline download:
+they are fetched the first time a note shows maths and then kept for offline
+use. Until then, or offline before that first time, the TeX source is shown.
+
 Notes with three or more headings show a collapsible **Contents** list at the
 top of the preview, indented by heading level (up to 300 entries; headings
 inside quotes or lists are not listed). Selecting an entry scrolls the preview
