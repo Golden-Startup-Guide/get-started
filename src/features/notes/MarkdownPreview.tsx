@@ -1,9 +1,10 @@
-import { createContext, memo, useContext, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
+import { createContext, memo, useContext, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import type { Root } from 'hast'
 import { toJsxRuntime, type Components } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { ExtraProps } from 'react-markdown'
 import { createTaskTextLookup } from './checklists'
+import { loadHighlighter, MAX_HIGHLIGHT_LENGTH } from './codeHighlight'
 import { markdownToHast } from './markdownToHast'
 
 interface ChecklistContextValue {
@@ -108,7 +109,39 @@ function MarkdownImage({ node: _node, ...props }: ComponentProps<'img'> & ExtraP
   )
 }
 
+/**
+ * Fenced code with a language ("```js") is coloured once the highlighter has loaded; until then,
+ * and for unknown languages, it shows as plain text. Inline code is never highlighted.
+ */
+function CodeBlock({ node, className, children, ...props }: ComponentProps<'code'> & ExtraProps) {
+  const language = /(?:^|\s)language-([\w+#-]+)/.exec(className ?? '')?.[1]?.toLowerCase()
+  const text = node?.children.length === 1 && node.children[0].type === 'text' ? node.children[0].value : undefined
+  const [highlighted, setHighlighted] = useState<{ text: string; tree: Root }>()
+
+  useEffect(() => {
+    if (!language || text === undefined || text.length > MAX_HIGHLIGHT_LENGTH) return
+    let active = true
+    loadHighlighter().then(
+      (highlight) => {
+        const tree = highlight(text, language)
+        if (active && tree) setHighlighted({ text, tree })
+      },
+      // Offline before the highlighter was cached: plain code is still fine.
+      () => undefined,
+    )
+    return () => { active = false }
+  }, [language, text])
+
+  const tree = highlighted && highlighted.text === text ? highlighted.tree : undefined
+  return (
+    <code {...props} className={tree ? `${className} hljs` : className}>
+      {tree ? toJsxRuntime(tree, { Fragment, jsx, jsxs }) : children}
+    </code>
+  )
+}
+
 const markdownComponents: Partial<Components> = {
+  code: CodeBlock,
   a: MarkdownLink,
   img: MarkdownImage,
   input: TaskCheckbox,
