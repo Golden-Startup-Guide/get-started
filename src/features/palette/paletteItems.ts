@@ -56,7 +56,7 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
     actions.push({ id: 'action:create-template', group: 'Actions', label: 'Create a template', keywords: 'template new note from', run: handlers.createTemplate })
   }
   for (const [value, label] of [['light', 'Use light theme'], ['dark', 'Use dark theme'], ['system', 'Use system theme']] as const) {
-    if (value !== theme) actions.push({ id: `action:theme-${value}`, group: 'Actions', label, keywords: 'appearance colour color mode', run: () => handlers.setTheme(value) })
+    if (value !== theme) actions.push({ id: `action:theme-${value}`, group: 'Actions', label, keywords: 'appearance colour color mode', keepsEditor: true, run: () => handlers.setTheme(value) })
   }
   if (sidebarCollapsed !== undefined) {
     actions.push({
@@ -64,6 +64,7 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
       group: 'Actions',
       label: sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
       keywords: 'navigation panel hide show toggle',
+      keepsEditor: true,
       run: handlers.toggleSidebar,
     })
   }

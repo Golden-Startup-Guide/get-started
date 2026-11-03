@@ -67,8 +67,16 @@ any order; titles that start with your text come first. With nothing typed, it
 lists the actions (new note, settings, theme, collapsing the sidebar) and your
 eight most recently updated notes. Escape or a click outside closes it and
 returns focus to where you were; choosing a place moves focus to that page's
-heading. The shortcut works whenever no other dialog is open; inside the note
-editor it is left to the browser.
+heading.
+
+The palette also opens over the note editor. Choosing something that leaves
+the note (another note, a page, Settings, a new note, a template, or today's
+note) first saves what you typed, even if autosave has not run yet, then
+closes the note and goes on; if saving fails, you stay on the note and the
+editor shows why. Changing the theme or showing or hiding the sidebar keeps
+the note open, and Escape returns you to where you were typing. The shortcut
+does nothing while Settings, a delete confirmation, or the quick note box is
+open.
 
 The sidebar groups All Notes, Favorites, Trash, and Knowledge Graph above the
 library hierarchy. Use the disclosure buttons to expand or collapse libraries
