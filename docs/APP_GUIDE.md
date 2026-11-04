@@ -353,6 +353,19 @@ preview such a link reads "Garden plan › Harvest" unless it has its own
 `[[#` suggests this note's. Section links count as links to the note, in
 backlinks and the graph.
 
+To show another note inside this one, put `![[Note title]]` on a line of its
+own. The preview shows that note's saved content in a framed block headed by
+its title, which opens it; `![[Note title#Section]]` shows just that section,
+from its heading to the next heading of the same or a higher level. Embedded
+copies are read-only (their checkboxes cannot be ticked) but their links work,
+and they update when the embedded note is saved. A note never shows inside
+itself: a note that embeds itself, or two notes that embed each other, show a
+short message instead of repeating forever, and embeds stop three levels deep.
+A missing note or section is named in a short message. Text longer than 20,000
+characters is cut short, with a pointer to the note. `![[Note]]` in the middle
+of other text works as an ordinary link. Embeds count as links, in backlinks
+and the graph.
+
 When you rename a note that other notes link to, the editor offers to update
 those links once you pause typing the new title: "2 notes link to 'Seed
 catalogue'. Update them to 'Seed list'?" **Update links** saves this note,

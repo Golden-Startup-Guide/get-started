@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findHeading, headingSlug, listHeadings, sectionOf } from './headings'
+import { extractSection, findHeading, headingSlug, listHeadings, sectionOf } from './headings'
 
 describe('headings as link targets', () => {
   it('makes anchors from heading text', () => {
@@ -28,5 +28,15 @@ describe('headings as link targets', () => {
     expect(sectionOf('#Seeds')).toBe('Seeds')
     expect(sectionOf('Garden plan')).toBeUndefined()
     expect(sectionOf('Garden plan#  ')).toBeUndefined()
+  })
+})
+
+describe('sections', () => {
+  it('cuts a section up to the next heading of the same or a higher level', () => {
+    const markdown = '# Plan\nIntro\n## Seeds\nBuy seeds\n### Tomatoes\nTwo kinds\n## Harvest\nPick\n# Next'
+    expect(extractSection(markdown, 'seeds')).toBe('## Seeds\nBuy seeds\n### Tomatoes\nTwo kinds')
+    expect(extractSection(markdown, 'Tomatoes')).toBe('### Tomatoes\nTwo kinds')
+    expect(extractSection(markdown, 'Next')).toBe('# Next')
+    expect(extractSection(markdown, 'Missing')).toBeUndefined()
   })
 })

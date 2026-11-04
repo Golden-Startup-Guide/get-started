@@ -41,7 +41,7 @@ import { MarkdownEditor } from './MarkdownEditor'
 import { changeEditorMode, updateLinksAfterRename } from '../../state/actions'
 import { useEditorStore } from '../../state/editorStore'
 import { useLibraryStore } from '../../state/libraryStore'
-import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
+import { MarkdownPreview, type EmbeddedNote, type WikilinkTarget } from './MarkdownPreview'
 import { findHeading, headingSlug, listHeadings } from '../../lib/headings'
 import { buildTitleIndex, findWikilinkTargets, normalizeTitle, notesLinkingTo, targetTitle } from '../../lib/wikilinks'
 import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
@@ -508,6 +508,13 @@ export function NoteEditor({
     return title ? titleIndex.get(normalizeTitle(title)) : { id: note.id, title: note.title }
   }, [titleIndex, note.id, note.title])
 
+  // ![[Note]] shows that note's saved content; ![[#Section]] would be this note, which the
+  // preview declines to repeat.
+  const resolveEmbed = useCallback((target: string): EmbeddedNote | undefined => {
+    const title = targetTitle(target).trim()
+    return title ? titleIndex.get(normalizeTitle(title)) : { id: note.id, title: note.title, content: '' }
+  }, [titleIndex, note.id, note.title])
+
   // Headings suggested after "[[Title#": that note's, or this draft's for "[[#".
   const getLinkHeadings = useCallback((title: string) => {
     const source = title ? titleIndex.get(normalizeTitle(title))?.content : latest.current.content
@@ -747,6 +754,8 @@ export function NoteEditor({
                       onToggleTask={previewStale ? undefined : toggleTask}
                       resolveWikilink={resolveWikilink}
                       onOpenWikilink={openWikilink}
+                      noteId={note.id}
+                      resolveEmbed={resolveEmbed}
                     />
                   )}
                 </div>

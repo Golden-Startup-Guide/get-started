@@ -31,6 +31,21 @@ function visit(node: Nodes) {
     }
   }
   parent.children = children
+  if (node.type === 'paragraph') embedOnlyChild(node)
+}
+
+/**
+ * A paragraph holding nothing but one ![[Note]] becomes an embed: a block (rendered by
+ * MarkdownPreview as the other note's content) instead of a paragraph with a link. An embed in the
+ * middle of other text stays a link, since a block cannot sit inside a line.
+ */
+function embedOnlyChild(paragraph: Parent) {
+  const content = paragraph.children.filter((child) => !(child.type === 'text' && !child.value.trim()))
+  const only = content.length === 1 ? content[0] : undefined
+  const embed = only?.type === 'link' ? (only.data?.hProperties as Record<string, unknown> | undefined)?.dataEmbed : undefined
+  if (typeof embed !== 'string') return
+  paragraph.children = []
+  paragraph.data = { hName: 'div', hProperties: { className: ['note-embed'], dataEmbed: embed } }
 }
 
 function split(node: Text): Array<Text | Link> {
@@ -39,12 +54,15 @@ function split(node: Text): Array<Text | Link> {
   for (const match of node.value.matchAll(WIKILINK_PATTERN)) {
     const target = match[1].trim()
     if (!target) continue
-    if (match.index > last) parts.push({ type: 'text', value: node.value.slice(last, match.index) })
+    // "![[Note]]" embeds the note; the "!" belongs to the embed, not the text before it.
+    const embed = match.index > 0 && node.value[match.index - 1] === '!'
+    const start = embed ? match.index - 1 : match.index
+    if (start > last) parts.push({ type: 'text', value: node.value.slice(last, start) })
     parts.push({
       type: 'link',
       url: '#',
       children: [{ type: 'text', value: match[2]?.trim() || defaultLabel(target) }],
-      data: { hProperties: { dataWikilink: target } },
+      data: { hProperties: embed ? { dataWikilink: target, dataEmbed: target } : { dataWikilink: target } },
     })
     last = match.index + match[0].length
   }

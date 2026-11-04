@@ -1,9 +1,9 @@
 import { createContext, memo, useContext, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
-import type { Root } from 'hast'
+import type { Element, Root } from 'hast'
 import { toJsxRuntime, type Components } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { ExtraProps } from 'react-markdown'
-import { sectionOf } from '../../lib/headings'
+import { extractSection, sectionOf } from '../../lib/headings'
 import { targetTitle } from '../../lib/wikilinks'
 import { createTaskTextLookup } from './checklists'
 import { loadHighlighter, MAX_HIGHLIGHT_LENGTH } from './codeHighlight'
@@ -164,8 +164,100 @@ function MathAwarePre({ node, children, ...props }: ComponentProps<'pre'> & Extr
   return <pre {...props}>{children}</pre>
 }
 
+export interface EmbeddedNote {
+  id: string
+  title: string
+  content: string
+}
+
+interface EmbedContextValue {
+  /** The note a ![[target]] embeds, with its saved content. */
+  resolve?: (target: string) => EmbeddedNote | undefined
+  /** Notes being shown, outermost first: the note itself, then any embeds around this point. */
+  ancestors: string[]
+}
+
+const EmbedContext = createContext<EmbedContextValue>({ ancestors: [] })
+/** Embeds inside embeds stop here; deeper ones show as links. */
+export const MAX_EMBED_DEPTH = 3
+/** Longer embedded text is cut short, with a link to read the rest in the note itself. */
+export const MAX_EMBED_LENGTH = 20_000
+// Embedded copies are read-only and add no heading anchors, so they never clash with the host note's.
+const READ_ONLY_CHECKLIST: ChecklistContextValue = { taskText: () => '' }
+
+/** An embedded note's text, cut to MAX_EMBED_LENGTH and parsed without heading anchors. */
+function parseEmbedded(text: string): Root {
+  const shown = text.length > MAX_EMBED_LENGTH ? `${text.slice(0, MAX_EMBED_LENGTH)}\n\n…` : text
+  const tree = markdownToHast(shown || '_This note is empty._')
+  visitElements(tree, (element) => {
+    if (/^h[1-6]$/.test(element.tagName)) delete element.properties.id
+  })
+  return tree
+}
+
+function visitElements(node: Root | Element, each: (element: Element) => void) {
+  for (const child of node.children) {
+    if (child.type === 'element') {
+      each(child)
+      visitElements(child, each)
+    }
+  }
+}
+
+function EmbeddedBody({ text }: { text: string }) {
+  const tree = useMemo(() => parseEmbedded(text), [text])
+  return (
+    <div className="note-embed-body">
+      <RenderedMarkdown tree={tree} />
+      {text.length > MAX_EMBED_LENGTH && <p className="note-embed-message">Open the note to read the rest.</p>}
+    </div>
+  )
+}
+
+/** ![[Note]] or ![[Note#Section]] on its own line: the other note's content, shown in place. */
+function NoteEmbed({ target }: { target: string }) {
+  const { resolve, ancestors } = useContext(EmbedContext)
+  const { open } = useContext(WikilinkContext)
+  const note = resolve?.(target)
+  const section = sectionOf(target)
+  const text = !note ? undefined : section ? extractSection(note.content, section) : note.content
+  const label = note ? `${note.title || 'Untitled note'}${section ? ` › ${section}` : ''}` : targetTitle(target).trim()
+
+  let problem: string | undefined
+  if (!note) problem = `No note titled “${label}” to show here.`
+  else if (ancestors.includes(note.id)) problem = `“${label}” is already shown above, so it is not repeated here.`
+  else if (ancestors.length > MAX_EMBED_DEPTH) problem = 'Too many notes inside notes to show this one here.'
+  else if (text === undefined) problem = `“${note.title || 'Untitled note'}” has no section “${section}”.`
+
+  return (
+    <section className={problem ? 'note-embed note-embed-problem' : 'note-embed'} aria-label={`Embedded: ${label}`}>
+      <header className="note-embed-header">
+        {note && open
+          ? <a href="#" className="wikilink" onClick={(event) => { event.preventDefault(); open({ id: note.id, title: note.title, section }) }}>{label}</a>
+          : <span>{label}</span>}
+      </header>
+      {problem ? (
+        <p className="note-embed-message">{problem}</p>
+      ) : (
+        <EmbedContext.Provider value={{ resolve, ancestors: [...ancestors, note!.id] }}>
+          <ChecklistContext.Provider value={READ_ONLY_CHECKLIST}>
+            <EmbeddedBody text={text!} />
+          </ChecklistContext.Provider>
+        </EmbedContext.Provider>
+      )}
+    </section>
+  )
+}
+
+function EmbedOrDiv({ node: _node, ...props }: ComponentProps<'div'> & ExtraProps) {
+  const embed = (props as Record<string, unknown>)['data-embed']
+  if (typeof embed === 'string') return <NoteEmbed target={embed} />
+  return <div {...props} />
+}
+
 const markdownComponents: Partial<Components> = {
   code: CodeBlock,
+  div: EmbedOrDiv,
   pre: MathAwarePre,
   a: MarkdownLink,
   img: MarkdownImage,
@@ -197,6 +289,8 @@ export function MarkdownPreview({
   onToggleTask,
   resolveWikilink,
   onOpenWikilink,
+  noteId,
+  resolveEmbed,
 }: {
   /** The Markdown shown; with `tree`, the Markdown the tree was parsed from. */
   markdown: string
@@ -209,6 +303,10 @@ export function MarkdownPreview({
   /** Omit both to show `[[links]]` as plain text that cannot be followed. */
   resolveWikilink?: (title: string) => WikilinkTarget | undefined
   onOpenWikilink?: (target: WikilinkTarget) => void
+  /** The note shown, so it never embeds itself. */
+  noteId?: string
+  /** Omit to show ![[embeds]] as "nothing to show" placeholders. */
+  resolveEmbed?: (target: string) => EmbeddedNote | undefined
 }) {
   // Short notes are parsed here, on the main thread; it takes a few milliseconds. Only when the
   // Markdown changes: not when checkboxes become read-only and back while typing.
@@ -220,11 +318,14 @@ export function MarkdownPreview({
   const taskText = useMemo(() => createTaskTextLookup(markdown), [markdown])
   const checklist = useMemo(() => ({ taskText, onToggleTask }), [taskText, onToggleTask])
   const wikilinks = useMemo(() => ({ resolve: resolveWikilink, open: onOpenWikilink }), [resolveWikilink, onOpenWikilink])
+  const embeds = useMemo(() => ({ resolve: resolveEmbed, ancestors: noteId ? [noteId] : [] }), [resolveEmbed, noteId])
   return (
     <ChecklistContext.Provider value={checklist}>
       <WikilinkContext.Provider value={wikilinks}>
-        <NoteContents headings={headings} />
-        <RenderedMarkdown tree={shownTree} />
+        <EmbedContext.Provider value={embeds}>
+          <NoteContents headings={headings} />
+          <RenderedMarkdown tree={shownTree} />
+        </EmbedContext.Provider>
       </WikilinkContext.Provider>
     </ChecklistContext.Provider>
   )
