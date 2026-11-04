@@ -52,3 +52,17 @@ export function sectionOf(target: string): string | undefined {
   const section = hash < 0 ? '' : target.slice(hash + 1).trim()
   return section || undefined
 }
+
+/**
+ * The part of the note under a section's heading: the heading line and everything after it, up to
+ * the next heading of the same or a higher level. Undefined when the note has no such heading.
+ */
+export function extractSection(markdown: string, section: string): string | undefined {
+  const headings = listHeadings(markdown)
+  const index = headings.findIndex((heading) => headingSlug(heading.text) === headingSlug(section))
+  if (index < 0) return undefined
+  const start = headings[index]
+  const end = headings.slice(index + 1).find((heading) => heading.depth <= start.depth)
+  const lines = markdown.split(/\r?\n/)
+  return lines.slice(start.line - 1, end ? end.line - 1 : lines.length).join('\n').trimEnd()
+}
