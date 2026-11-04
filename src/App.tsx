@@ -344,11 +344,25 @@ function App() {
     useEditorStore.getState().open(note)
   }, [])
 
+  /**
+   * After a dialog closes, moves focus back to where it was, on the next frame (once the dialog has
+   * left the page). If focus has already gone somewhere by then, for example into a dialog opened
+   * meanwhile, it is left there: a late frame (WebKit can delay one) once moved focus out of the
+   * newly opened command palette, and the next Enter pressed the button focus had moved to.
+   */
+  function restoreFocusAfterClose(target: () => HTMLElement | null | undefined) {
+    requestAnimationFrame(() => {
+      const active = document.activeElement
+      if (active && active !== document.body) return
+      target()?.focus()
+    })
+  }
+
   function closeEditor() {
     useEditorStore.getState().close()
-    requestAnimationFrame(() => {
+    restoreFocusAfterClose(() => {
       const target = focusReturnRef.current
-      ;(target?.isConnected ? target : newNoteRef.current)?.focus()
+      return target?.isConnected ? target : newNoteRef.current
     })
   }
 
@@ -359,7 +373,7 @@ function App() {
 
   function closeSettings() {
     setShowSettings(false)
-    requestAnimationFrame(() => settingsFocusReturnRef.current?.focus())
+    restoreFocusAfterClose(() => settingsFocusReturnRef.current)
   }
 
   function openPalette() {
@@ -394,7 +408,7 @@ function App() {
   function closeQuickCapture() {
     setQuickOpen(false)
     const target = quickReturnRef.current
-    requestAnimationFrame(() => (target?.isConnected ? target : newNoteRef.current)?.focus())
+    restoreFocusAfterClose(() => (target?.isConnected ? target : newNoteRef.current))
   }
 
   // The latest versions, so the shortcut listener is not re-added on every render.
