@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Note } from '../types'
-import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery } from './search'
+import { buildLocations, isEmptyQuery, matchesQuery, parseDateValue, parseSearchQuery } from './search'
 
 const locations = buildLocations(
   [
@@ -84,5 +84,66 @@ describe('note search', () => {
     expect(matchesQuery(changing, parseSearchQuery('new'), locations)).toBe(false)
     const saved = { ...changing, title: 'New title', updatedAt: changing.updatedAt + 1 }
     expect(matchesQuery(saved, parseSearchQuery('new'), locations)).toBe(true)
+  })
+
+  it('filters by attachments, open tasks, and links to other notes', () => {
+    const tasks = note('tasks', { content: 'Shopping\n- [x] eggs\n  - [ ] milk' })
+    const done = note('done', { content: '- [x] all done\nNot a task: [ ] here' })
+    const numbered = note('numbered', { content: '1. [ ] call the vet' })
+    const linked = note('linked', { content: 'See [[Weekly plan]] and ![[Garden]]' })
+    const all = [tasks, done, numbered, linked]
+    const find = (raw: string, attached = new Set(['done'])) =>
+      all.filter((item) => matchesQuery(item, parseSearchQuery(raw), locations, attached)).map((item) => item.id)
+    expect(find('has:task')).toEqual(['tasks', 'numbered'])
+    expect(find('has:todo -has:link')).toEqual(['tasks', 'numbered'])
+    expect(find('has:links')).toEqual(['linked'])
+    expect(find('has:attachment')).toEqual(['done'])
+    expect(find('has:files', new Set())).toEqual([])
+    expect(find('-has:file')).toEqual(['tasks', 'numbered', 'linked'])
+    // Without a set of notes with attachments, none has any.
+    expect(matchesQuery(done, parseSearchQuery('has:attachment'), locations)).toBe(false)
+  })
+
+  it('reads dates as the start of a day, month, or year, in local time', () => {
+    const now = new Date(2026, 10, 4, 15, 30)
+    expect(parseDateValue('2026-11-04')).toBe(new Date(2026, 10, 4).getTime())
+    expect(parseDateValue('2026-3-9')).toBe(new Date(2026, 2, 9).getTime())
+    expect(parseDateValue('2026-11')).toBe(new Date(2026, 10, 1).getTime())
+    expect(parseDateValue('2026')).toBe(new Date(2026, 0, 1).getTime())
+    expect(parseDateValue('Today', now)).toBe(new Date(2026, 10, 4).getTime())
+    expect(parseDateValue('yesterday', now)).toBe(new Date(2026, 10, 3).getTime())
+    expect(parseDateValue('7d', now)).toBe(new Date(2026, 9, 28).getTime())
+    expect(parseDateValue('2w', now)).toBe(new Date(2026, 9, 21).getTime())
+    expect(parseDateValue('3m', now)).toBe(new Date(2026, 7, 4).getTime())
+    expect(parseDateValue('1y', now)).toBe(new Date(2025, 10, 4).getTime())
+    for (const invalid of ['2026-02-30', '2026-13', '26-11-04', 'soon', '7x', '']) expect(parseDateValue(invalid)).toBeUndefined()
+  })
+
+  it('filters by when a note was last edited: after is on or after the day, before is earlier', () => {
+    const at = (day: number, hour = 12) => new Date(2026, 10, day, hour).getTime()
+    const dated = [
+      note('oct', { updatedAt: new Date(2026, 9, 31, 23, 59).getTime() }),
+      note('nov1', { updatedAt: at(1, 0) }),
+      note('nov3', { updatedAt: at(3) }),
+      note('nov4', { updatedAt: at(4, 9) }),
+    ]
+    const now = new Date(2026, 10, 4, 15)
+    const find = (raw: string) => dated.filter((item) => matchesQuery(item, parseSearchQuery(raw, now), locations)).map((item) => item.id)
+    expect(find('after:2026-11-01')).toEqual(['nov1', 'nov3', 'nov4'])
+    expect(find('before:2026-11-01')).toEqual(['oct'])
+    expect(find('before:2026-11')).toEqual(['oct'])
+    expect(find('after:2026-11-02 before:2026-11-04')).toEqual(['nov3'])
+    expect(find('after:today')).toEqual(['nov4'])
+    expect(find('after:yesterday')).toEqual(['nov3', 'nov4'])
+    expect(find('-after:2026-11-03')).toEqual(['oct', 'nov1'])
+    expect(find('-before:2026-11-03')).toEqual(['nov3', 'nov4'])
+    expect(find('after:3d')).toEqual(['nov1', 'nov3', 'nov4'])
+  })
+
+  it('searches an operator with a value it does not know as plain text, and waits for a value', () => {
+    expect(parseSearchQuery('has:pizza').include).toEqual(['has:pizza'])
+    expect(parseSearchQuery('before:soon').include).toEqual(['before:soon'])
+    expect(isEmptyQuery(parseSearchQuery('has: before: -after:'))).toBe(true)
+    expect(isEmptyQuery(parseSearchQuery('after:today'))).toBe(false)
   })
 })

@@ -14,6 +14,7 @@ const sources: PaletteSources = {
   shelves: [{ id: 'gen', libraryId: 'lib', name: 'General', createdAt: 1, updatedAt: 1 }],
   notebooks: [{ id: 'work', name: 'Work', shelfId: 'gen', createdAt: 1, updatedAt: 1 }],
   tags: [{ id: 'health', label: 'health', count: 2 }],
+  savedSearches: [{ id: 's1', name: 'Open tasks', query: 'has:task -tag:someday' }],
   theme: 'system',
   sidebarCollapsed: false,
 }
@@ -21,7 +22,7 @@ const sources: PaletteSources = {
 function setup() {
   const handlers: PaletteHandlers = {
     newNote: vi.fn(), openSettings: vi.fn(), setTheme: vi.fn(), toggleSidebar: vi.fn(), goTo: vi.fn(), openNote: vi.fn(),
-    openToday: vi.fn(), newFromTemplate: vi.fn(), createTemplate: vi.fn(), quickCapture: vi.fn(),
+    openToday: vi.fn(), newFromTemplate: vi.fn(), createTemplate: vi.fn(), quickCapture: vi.fn(), runSearch: vi.fn(),
   }
   const onClose = vi.fn()
   const onRun = vi.fn((item: { run: () => void }) => item.run())
@@ -52,6 +53,14 @@ describe('CommandPalette', () => {
       'Untitled note — WorkNote',
     ])
     expect(screen.getByText('Recent notes')).toBeInTheDocument()
+  })
+
+  it('finds saved searches by name and runs them', async () => {
+    const { handlers, user } = setup()
+    await user.type(screen.getByRole('combobox'), 'open tasks')
+    expect(options()[0]).toHaveTextContent('Open tasks — Saved searchGo to')
+    await user.keyboard('{Enter}')
+    expect(handlers.runSearch).toHaveBeenCalledWith('has:task -tag:someday')
   })
 
   it('filters as you type, moves with the arrow keys (wrapping), and opens the chosen note with Enter', async () => {

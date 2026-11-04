@@ -1,6 +1,6 @@
 import { findTemplates } from '../../lib/templates'
 import type { View } from '../../state/workspaceStore'
-import type { Library, Note, Notebook, Shelf, Tag, ThemePreference } from '../../types'
+import type { Library, Note, Notebook, SavedSearch, Shelf, Tag, ThemePreference } from '../../types'
 import type { PaletteItem } from './paletteSearch'
 
 export const RECENT_NOTE_COUNT = 8
@@ -11,6 +11,7 @@ export interface PaletteSources {
   shelves: readonly Shelf[]
   notebooks: readonly Notebook[]
   tags: readonly Tag[]
+  savedSearches: readonly SavedSearch[]
   theme: ThemePreference
   /** Undefined on compact screens, where the sidebar is a drawer rather than collapsible. */
   sidebarCollapsed: boolean | undefined
@@ -22,6 +23,7 @@ export interface PaletteHandlers {
   setTheme: (theme: ThemePreference) => void
   toggleSidebar: () => void
   goTo: (view: View) => void
+  runSearch: (query: string) => void
   openNote: (note: Note) => void
   openToday: () => void
   newFromTemplate: (template: Note) => void
@@ -31,7 +33,7 @@ export interface PaletteHandlers {
 
 /** Every action, place, and note the palette can find, plus the newest notes for an empty query. */
 export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHandlers): { items: PaletteItem[]; recent: PaletteItem[] } {
-  const { notes, libraries, shelves, notebooks, tags, theme, sidebarCollapsed } = sources
+  const { notes, libraries, shelves, notebooks, tags, savedSearches, theme, sidebarCollapsed } = sources
   const libraryName = new Map(libraries.map((library) => [library.id, library.name]))
   const shelfById = new Map(shelves.map((shelf) => [shelf.id, shelf]))
   const notebookName = new Map(notebooks.map((notebook) => [notebook.id, notebook.name]))
@@ -83,6 +85,14 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
       return place(`notebook:${notebook.id}`, notebook.name, `notebook:${notebook.id}`, shelf ? `Notebook on ${shelf.name}` : 'Notebook')
     }),
     ...tags.map((tag) => place(`tag:${tag.id}`, `#${tag.label}`, `tag:${tag.id}`, 'Tag', tag.label)),
+    ...savedSearches.map((search): PaletteItem => ({
+      id: `search:${search.id}`,
+      group: 'Places',
+      label: search.name,
+      detail: 'Saved search',
+      keywords: `${search.query} saved search`,
+      run: () => handlers.runSearch(search.query),
+    })),
   ]
 
   const noteItem = (note: Note): PaletteItem => ({

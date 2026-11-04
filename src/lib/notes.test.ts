@@ -290,6 +290,8 @@ describe('IndexedDB storage and backup', () => {
     await storage.saveNote(note)
     await storage.saveNote({ ...note, content: 'A later version', updatedAt: 40 })
     await storage.addNoteAttachment(note.id, new Blob(['keep with trash'], { type: 'text/plain' }), 'trash.txt')
+    await storage.addNoteAttachment(note.id, new Blob(['and another'], { type: 'text/plain' }), 'more.txt')
+    expect(await storage.getNoteIdsWithAttachments()).toEqual(new Set([note.id]))
     await expect(storage.permanentlyDeleteNote(note.id)).rejects.toThrow('Only notes in Trash')
     await storage.trashNote(note.id)
 
@@ -311,10 +313,11 @@ describe('IndexedDB storage and backup', () => {
     expect(restoredNote).toBeDefined()
     expect(restoredNote).not.toHaveProperty('deletedAt')
     expect(await storage.getTags()).toContainEqual(expect.objectContaining({ id: 'recoverable', count: 1 }))
-    expect(await storage.getNoteAttachments(note.id)).toHaveLength(1)
+    expect(await storage.getNoteAttachments(note.id)).toHaveLength(2)
 
     await storage.trashNote(note.id)
     await storage.permanentlyDeleteNote(note.id)
+    expect(await storage.getNoteIdsWithAttachments()).toEqual(new Set())
     expect(await storage.getTrash()).not.toContainEqual(expect.objectContaining({ id: note.id }))
     expect(await storage.getNoteHistory(note.id)).toHaveLength(0)
     expect(await storage.getNoteAttachments(note.id)).toHaveLength(0)
@@ -349,6 +352,32 @@ describe('IndexedDB storage and backup', () => {
     await storage.trashNote(source.id)
     await storage.permanentlyDeleteNote(source.id)
     expect((await storage.getNoteLinks(backlink.id)).outgoing).toEqual([])
+  })
+
+  it('saves searches with the settings, backs them up, and adds a backup’s new ones on import', async () => {
+    await storage.saveTheme('dark')
+    expect(await storage.saveSearch('Open tasks', ' has:task ')).toEqual([expect.objectContaining({ name: 'Open tasks', query: 'has:task' })])
+    await expect(storage.saveSearch('', 'x')).rejects.toThrow('Give the saved search a name')
+    const backup = await storage.exportBackup()
+    expect(backup.settings.savedSearches).toHaveLength(1)
+
+    // This device keeps its own theme and searches, and gains the backup's other searches.
+    await storage.saveTheme('light')
+    const [kept] = await storage.deleteSavedSearch(
+      (await storage.saveSearch('Recent', 'after:7d')).find((search) => search.query === 'has:task')!.id,
+    )
+    expect(kept.query).toBe('after:7d')
+    const imported = { ...backup, settings: { ...backup.settings, savedSearches: [...backup.settings.savedSearches!, { id: 'x', name: 'Recent too', query: 'after:7d ' }] } }
+    await storage.importBackupFile(jsonFile(JSON.stringify(imported)))
+    const settings = await storage.getSettings()
+    expect(settings.theme).toBe('light')
+    expect(settings.savedSearches?.map((search) => search.name)).toEqual(['Recent', 'Open tasks'])
+
+    const invalid = { ...backup, settings: { ...backup.settings, savedSearches: [{ id: 'y', name: '', query: 'x' }] } }
+    await expect(storage.importBackupFile(jsonFile(JSON.stringify(invalid)))).rejects.toThrow()
+
+    // Leave the settings as the later tests expect them.
+    await (await storage.openNotesDatabase()).put('settings', { id: 'preferences', theme: 'system' })
   })
 
   it('backs up links across local and imported notes while skipping missing and existing edges', async () => {

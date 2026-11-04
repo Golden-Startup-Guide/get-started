@@ -16,6 +16,7 @@ import {
   MAX_ATTACHMENTS_PER_NOTE,
   MAX_NOTE_ATTACHMENT_BYTES,
 } from '../features/notes/attachments'
+import { MAX_SAVED_SEARCHES, validSavedSearch } from './savedSearches'
 
 export const DEFAULT_LIBRARY_ID = 'starter-library'
 export const DEFAULT_SHELF_ID = 'starter-shelf'
@@ -165,7 +166,9 @@ function validSettings(value: unknown): value is AppSettings {
     isRecord(value) &&
     value.id === 'preferences' &&
     ['light', 'dark', 'system'].includes(String(value.theme)) &&
-    (value.editorMode === undefined || value.editorMode === 'live' || value.editorMode === 'source')
+    (value.editorMode === undefined || value.editorMode === 'live' || value.editorMode === 'source') &&
+    (value.savedSearches === undefined ||
+      (Array.isArray(value.savedSearches) && value.savedSearches.length <= MAX_SAVED_SEARCHES && value.savedSearches.every(validSavedSearch)))
   )
 }
 

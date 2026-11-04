@@ -5,6 +5,7 @@ import {
   createNotebook,
   createShelf,
   deleteLibrary,
+  deleteSavedSearch,
   deleteNotebook,
   deleteShelf,
   exportBackupFile,
@@ -17,6 +18,7 @@ import {
   restoreNote,
   saveNote,
   saveEditorMode,
+  saveSearch,
   saveTheme,
   setNoteFlag,
   subscribeToStorage,
@@ -26,7 +28,7 @@ import {
 import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templates'
 import { notesLinkingTo, renameWikilinks } from '../lib/wikilinks'
 import { shelfForNewNotebook } from '../features/library/placement'
-import type { EditorMode, Library, Note, Notebook, Shelf, ThemePreference } from '../types'
+import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemePreference } from '../types'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
 import { usePersistenceStore } from './persistenceStore'
@@ -346,5 +348,21 @@ export async function requestPersistenceFromSettings() {
   const status = await usePersistenceStore.getState().requestNow()
   if (status !== 'persisted') {
     workspace().showNotice('The browser did not grant persistent storage. Installing My Notes as an app, or bookmarking it, can help. Keep exporting backups.')
+  }
+}
+
+// --- Saved searches ----------------------------------------------------------------------
+
+/** Saves the search by name. Throws with a message to show if it cannot be saved. */
+export async function saveNamedSearch(name: string, query: string) {
+  library().setSavedSearches(await saveSearch(name, query))
+}
+
+export async function removeSavedSearch(search: SavedSearch) {
+  try {
+    library().setSavedSearches(await deleteSavedSearch(search.id))
+    workspace().showNotice(`Removed the saved search “${search.name}”.`)
+  } catch (reason) {
+    reportError(reason, 'The saved search could not be removed.')
   }
 }

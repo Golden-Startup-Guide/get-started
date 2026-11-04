@@ -9,10 +9,19 @@ import type { Library, Note, Notebook, Shelf } from '../types'
  *   tag:health  #health has the tag (exact, ignoring case)
  *   notebook:work       its notebook's name starts with "work"; also shelf:, library:
  *   is:pinned           also is:favorite
+ *   has:attachment      has attached files; also has:task (an unticked checklist item), has:link
+ *   after:2026-11-01    last edited on or after that day; before: is earlier than it. Also takes
+ *                       2026-11, 2026, today, yesterday, and 7d / 2w / 3m / 1y ago
  *
  * Operators can be negated (-tag:draft) and take quoted values (notebook:"Health Handbook").
- * A word with an unknown operator, like 10:30 or https://…, is searched as plain text.
+ * A word with an unknown operator or value, like 10:30, https://…, or has:pizza, is searched as
+ * plain text.
  */
+export type HasFilter = 'attachment' | 'task' | 'link'
+
+/** The parts of a note that search reads. */
+export type SearchFields = Pick<Note, 'id' | 'title' | 'content' | 'tags' | 'notebookId' | 'pinned' | 'favorite' | 'updatedAt'>
+
 export interface SearchQuery {
   include: string[]
   exclude: string[]
@@ -26,6 +35,12 @@ export interface SearchQuery {
   notLibraries: string[]
   is: Array<'pinned' | 'favorite'>
   notIs: Array<'pinned' | 'favorite'>
+  has: HasFilter[]
+  notHas: HasFilter[]
+  /** Last edited on or after each of these times. */
+  after: number[]
+  /** Last edited before each of these times. */
+  before: number[]
   /** Plain words and phrases, as typed, for highlighting matches. */
   highlights: string[]
 }
@@ -38,12 +53,47 @@ const LOCATION_OPERATORS = {
   library: ['libraries', 'notLibraries'],
 } as const
 // An operator typed without a value yet, such as "tag:", is ignored until the value follows.
-const BARE_OPERATOR = /^-?(tag|notebook|shelf|library|is):$/i
+const BARE_OPERATOR = /^-?(tag|notebook|shelf|library|is|has|before|after):$/i
 
-export function parseSearchQuery(raw: string): SearchQuery {
+const HAS_VALUES: Record<string, HasFilter> = {
+  attachment: 'attachment', attachments: 'attachment', file: 'attachment', files: 'attachment',
+  task: 'task', tasks: 'task', todo: 'task', todos: 'task',
+  link: 'link', links: 'link',
+}
+
+/**
+ * The start of the day, month, or year a date value names, in local time: 2026-11-04, 2026-11,
+ * 2026, today, yesterday, or a count of days, weeks, months, or years ago (7d, 2w, 3m, 1y).
+ */
+export function parseDateValue(value: string, now = new Date()): number | undefined {
+  const text = lower(value)
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (text === 'today') return today.getTime()
+  if (text === 'yesterday') return new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1).getTime()
+  const ago = /^(\d{1,4})([dwmy])$/.exec(text)
+  if (ago) {
+    const count = Number(ago[1])
+    const unit = ago[2]
+    return new Date(
+      today.getFullYear() - (unit === 'y' ? count : 0),
+      today.getMonth() - (unit === 'm' ? count : 0),
+      today.getDate() - (unit === 'd' ? count : unit === 'w' ? count * 7 : 0),
+    ).getTime()
+  }
+  const date = /^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/.exec(text)
+  if (!date) return undefined
+  const [year, month, day] = [Number(date[1]), Number(date[2] ?? 1), Number(date[3] ?? 1)]
+  const start = new Date(year, month - 1, day)
+  // Reject dates the calendar does not have, such as 2026-02-30, rather than rolling them over.
+  if (start.getFullYear() !== year || start.getMonth() !== month - 1 || start.getDate() !== day) return undefined
+  return start.getTime()
+}
+
+export function parseSearchQuery(raw: string, now = new Date()): SearchQuery {
   const query: SearchQuery = {
     include: [], exclude: [], tags: [], notTags: [], notebooks: [], notNotebooks: [],
-    shelves: [], notShelves: [], libraries: [], notLibraries: [], is: [], notIs: [], highlights: [],
+    shelves: [], notShelves: [], libraries: [], notLibraries: [], is: [], notIs: [],
+    has: [], notHas: [], after: [], before: [], highlights: [],
   }
   for (const match of raw.matchAll(TOKEN)) {
     const negated = match[1] === '-'
@@ -61,6 +111,12 @@ export function parseSearchQuery(raw: string): SearchQuery {
       if (value) query[negated ? excluded : included].push(lower(value))
     } else if (operator === 'is' && (lower(value) === 'pinned' || /^fav(ou?rites?)?$/i.test(value))) {
       ;(negated ? query.notIs : query.is).push(lower(value) === 'pinned' ? 'pinned' : 'favorite')
+    } else if (operator === 'has' && Object.hasOwn(HAS_VALUES, lower(value))) {
+      ;(negated ? query.notHas : query.has).push(HAS_VALUES[lower(value)])
+    } else if ((operator === 'before' || operator === 'after') && parseDateValue(value, now) !== undefined) {
+      // Not before a day is on or after it, and the other way round.
+      const time = parseDateValue(value, now) as number
+      ;((operator === 'after') !== negated ? query.after : query.before).push(time)
     } else {
       // Not an operator we know: search for the whole token as typed.
       const text = operator ? `${match[2]}:${quoted ? `"${value}"` : value}` : value
@@ -84,7 +140,7 @@ export function isEmptyQuery(query: SearchQuery): boolean {
 // the note is saved (its updatedAt changes).
 const textCache = new Map<string, { updatedAt: number; text: string }>()
 
-function searchableText(note: Note): string {
+function searchableText(note: SearchFields): string {
   const cached = textCache.get(note.id)
   if (cached && cached.updatedAt === note.updatedAt) return cached.text
   const text = lower(`${note.title}\n${note.content}\n${(note.tags ?? []).join('\n')}`)
@@ -92,12 +148,12 @@ function searchableText(note: Note): string {
   return text
 }
 
-/** Drops cached text for notes that no longer exist, so deleted notes do not stay in memory. */
 /** Prepares a note's lower-cased text ahead of the first search (the search worker does this when idle). */
-export function prepareForSearch(note: Note): void {
+export function prepareForSearch(note: SearchFields): void {
   searchableText(note)
 }
 
+/** Drops cached text for notes that no longer exist, so deleted notes do not stay in memory. */
 export function pruneSearchCache(liveIds: Iterable<string>) {
   const live = new Set(liveIds)
   for (const id of textCache.keys()) if (!live.has(id)) textCache.delete(id)
@@ -111,7 +167,6 @@ interface Location {
   text: string
 }
 
-/** Each notebook's lower-cased notebook, shelf, and library names, looked up once per search. */
 /** Each notebook's lower-cased location, by notebook ID. */
 export type Locations = Map<string, Location>
 
@@ -133,8 +188,24 @@ const EMPTY_LOCATION: Location = { notebook: '', shelf: '', library: '', text: '
 
 const startsAny = (name: string, prefixes: string[]) => prefixes.some((prefix) => name.startsWith(prefix))
 
-export function matchesQuery(note: Note, query: SearchQuery, locations: Locations): boolean {
+// A checklist item not yet ticked: "- [ ] …", also with * or + or a number.
+const OPEN_TASK = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[ \]/m
+const NOTE_LINK = /\[\[[^\]\n]+\]\]/
+const NO_ATTACHMENTS: ReadonlySet<string> = new Set()
+
+function noteHas(note: SearchFields, filter: HasFilter, attached: ReadonlySet<string>): boolean {
+  if (filter === 'attachment') return attached.has(note.id)
+  return (filter === 'task' ? OPEN_TASK : NOTE_LINK).test(note.content)
+}
+
+/**
+ * `attached` holds the IDs of notes with attachments, for has:attachment (attachments are stored
+ * apart from notes).
+ */
+export function matchesQuery(note: SearchFields, query: SearchQuery, locations: Locations, attached = NO_ATTACHMENTS): boolean {
   const location = locations.get(note.notebookId ?? '') ?? EMPTY_LOCATION
+  if (query.after.some((time) => note.updatedAt < time)) return false
+  if (query.before.some((time) => note.updatedAt >= time)) return false
   if (query.is.includes('pinned') && !note.pinned) return false
   if (query.is.includes('favorite') && !note.favorite) return false
   if (query.notIs.includes('pinned') && note.pinned) return false
@@ -150,6 +221,8 @@ export function matchesQuery(note: Note, query: SearchQuery, locations: Location
     if (!query.tags.every((tag) => tags.includes(tag))) return false
     if (query.notTags.some((tag) => tags.includes(tag))) return false
   }
+  if (query.has.some((filter) => !noteHas(note, filter, attached))) return false
+  if (query.notHas.some((filter) => noteHas(note, filter, attached))) return false
   if (!query.include.length && !query.exclude.length) return true
   const text = searchableText(note)
   for (const term of query.include) {

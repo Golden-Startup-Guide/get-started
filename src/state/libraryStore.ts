@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   getAllNoteLinks,
   getLibraries,
+  getNoteIdsWithAttachments,
   getNotebooks,
   getNotes,
   getSettings,
@@ -10,7 +11,7 @@ import {
   getTrash,
 } from '../lib/notes'
 import { sortNotes } from '../features/notes/noteDisplay'
-import type { AppSettings, EditorMode, Library, Note, Notebook, NoteLink, Shelf, Tag, ThemePreference } from '../types'
+import type { AppSettings, EditorMode, Library, Note, Notebook, NoteLink, SavedSearch, Shelf, Tag, ThemePreference } from '../types'
 
 interface LibraryState {
   notes: Note[]
@@ -20,6 +21,8 @@ interface LibraryState {
   shelves: Shelf[]
   tags: Tag[]
   links: NoteLink[]
+  /** IDs of notes with attachments, for searching with has:attachment. */
+  attachedNoteIds: ReadonlySet<string>
   settings: AppSettings
   /** True until the first load from storage has finished (or failed). */
   isLoading: boolean
@@ -31,6 +34,7 @@ interface LibraryState {
   noteSaved: (note: Note) => Promise<void>
   setTheme: (theme: ThemePreference) => void
   setEditorMode: (mode: EditorMode) => void
+  setSavedSearches: (savedSearches: SavedSearch[]) => void
 }
 
 // The single in-memory copy of the library. Storage (src/lib/notes.ts) stays the source of
@@ -43,10 +47,11 @@ export const useLibraryStore = create<LibraryState>()((set) => ({
   shelves: [],
   tags: [],
   links: [],
+  attachedNoteIds: new Set(),
   settings: { id: 'preferences', theme: 'system' },
   isLoading: true,
   refresh: async () => {
-    const [notes, trash, notebooks, libraries, shelves, tags, settings, links] = await Promise.all([
+    const [notes, trash, notebooks, libraries, shelves, tags, settings, links, attachedNoteIds] = await Promise.all([
       getNotes(),
       getTrash(),
       getNotebooks(),
@@ -55,8 +60,9 @@ export const useLibraryStore = create<LibraryState>()((set) => ({
       getTags(),
       getSettings(),
       getAllNoteLinks(),
+      getNoteIdsWithAttachments(),
     ])
-    set({ notes: sortNotes(notes), trash, notebooks, libraries, shelves, tags, settings, links })
+    set({ notes: sortNotes(notes), trash, notebooks, libraries, shelves, tags, settings, links, attachedNoteIds })
   },
   finishLoading: () => set({ isLoading: false }),
   noteSaved: async (note) => {
@@ -72,4 +78,5 @@ export const useLibraryStore = create<LibraryState>()((set) => ({
   },
   setTheme: (theme) => set((state) => ({ settings: { ...state.settings, theme } })),
   setEditorMode: (editorMode) => set((state) => ({ settings: { ...state.settings, editorMode } })),
+  setSavedSearches: (savedSearches) => set((state) => ({ settings: { ...state.settings, savedSearches } })),
 }))

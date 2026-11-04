@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteGrid } from './features/notes/NoteGrid'
+import { SaveSearchButton } from './features/notes/SaveSearchButton'
 import { SearchTips } from './features/notes/SearchTips'
 import { useSearchMatches, WORKER_SEARCH_THRESHOLD } from './features/notes/useSearchMatches'
 import { QuickCapture } from './features/notes/QuickCapture'
@@ -45,6 +46,7 @@ import { useLibraryStore } from './state/libraryStore'
 import { usePersistenceStore } from './state/persistenceStore'
 import { compactNavigationQuery, useWorkspaceStore, type View } from './state/workspaceStore'
 import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery, pruneSearchCache } from './lib/search'
+import { findSavedSearch } from './lib/savedSearches'
 import { DAILY_NOTEBOOK, dailyNoteContent, fillTemplate, findDailyNote, isoDate } from './lib/templates'
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
 import type { Note, NoteLink } from './types'
@@ -72,6 +74,7 @@ function App() {
   const shelves = useLibraryStore((state) => state.shelves)
   const tags = useLibraryStore((state) => state.tags)
   const links = useLibraryStore((state) => state.links)
+  const attachedNoteIds = useLibraryStore((state) => state.attachedNoteIds)
   const settings = useLibraryStore((state) => state.settings)
   const isLoading = useLibraryStore((state) => state.isLoading)
   const refresh = useLibraryStore((state) => state.refresh)
@@ -192,7 +195,7 @@ function App() {
     const timer = window.setTimeout(prime, 1000)
     return () => window.clearTimeout(timer)
   }, [isLoading, searchPrimed, largeLibrary])
-  const workerSearch = useSearchMatches(graphNotes, searchQuery, locations, largeLibrary, searchPrimed)
+  const workerSearch = useSearchMatches(graphNotes, searchQuery, locations, attachedNoteIds, largeLibrary, searchPrimed)
 
   // Once the worker holds the library, it answers every search (the list keeps its previous
   // results, or all notes, until the answer arrives). Until then search runs here, as in small
@@ -239,8 +242,8 @@ function App() {
       return matches.sort((a, b) => (listPosition.get(a.id) ?? 0) - (listPosition.get(b.id) ?? 0))
     }
     const ordered = view === 'trash' ? trash : sortedNotes
-    return ordered.filter((note) => inView(note) && (!searching || matchesQuery(note, searchQuery, locations)))
-  }, [listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, useWorkerResults, workerSearch.ids])
+    return ordered.filter((note) => inView(note) && (!searching || matchesQuery(note, searchQuery, locations, attachedNoteIds)))
+  }, [attachedNoteIds, listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, useWorkerResults, workerSearch.ids])
 
   // Forget the cached search text of notes deleted for good.
   useEffect(() => {
@@ -310,6 +313,12 @@ function App() {
       setNavigationOpen(false)
       requestAnimationFrame(() => pageHeadingRef.current?.focus())
     }
+  }
+
+  /** Runs a saved search over all notes; its own filters say where to look. */
+  function runSavedSearch(savedQuery: string) {
+    setQuery(savedQuery)
+    navigateToView('all')
   }
 
   /** The header button: opens the drawer on compact screens, expands the collapsed sidebar on desktop. */
@@ -513,6 +522,7 @@ function App() {
           onNewNote={openNewNote}
           onOpenSettings={openSettings}
           onOpenToday={() => void openTodayNote()}
+          onRunSearch={runSavedSearch}
           onCloseNavigation={closeSidebarPanel}
           newNoteRef={newNoteRef}
           closeButtonRef={navigationCloseRef}
@@ -591,6 +601,7 @@ function App() {
                   <label htmlFor="note-search" className="sr-only">Search notes, libraries, shelves, notebooks, and tags</label>
                   <input ref={searchInputRef} id="note-search" type="search" value={query} onFocus={() => setSearchPrimed(true)} onChange={(event) => setQuery(event.target.value)} placeholder={'Search notes — try tag:health, notebook:work, "a phrase", -word'} />
                   {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
+                  {query.trim() && <SaveSearchButton query={query} saved={findSavedSearch(settings.savedSearches, query)} />}
                   <SearchTips onAdd={(example) => {
                     setQuery(query.trim() ? `${query.trimEnd()} ${example}` : example)
                     searchInputRef.current?.focus()
@@ -668,7 +679,7 @@ function App() {
       )}
       {paletteOpen && (
         <CommandPalette
-          sources={{ notes, libraries, shelves, notebooks, tags, theme: settings.theme, sidebarCollapsed: isCompactNavigation ? undefined : sidebarCollapsed }}
+          sources={{ notes, libraries, shelves, notebooks, tags, savedSearches: settings.savedSearches ?? [], theme: settings.theme, sidebarCollapsed: isCompactNavigation ? undefined : sidebarCollapsed }}
           handlers={{
             newNote: openNewNote,
             openSettings,
@@ -676,6 +687,10 @@ function App() {
             toggleSidebar,
             goTo: (nextView) => {
               navigateToView(nextView)
+              requestAnimationFrame(() => pageHeadingRef.current?.focus())
+            },
+            runSearch: (savedQuery) => {
+              runSavedSearch(savedQuery)
               requestAnimationFrame(() => pageHeadingRef.current?.focus())
             },
             openNote,

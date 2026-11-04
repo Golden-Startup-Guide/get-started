@@ -9,6 +9,9 @@ const TIPS: Array<[example: string, meaning: string]> = [
   ['notebook:work', 'Notes in a notebook whose name starts with this'],
   ['shelf:general', 'The same for shelves (and library:)'],
   ['is:pinned', 'Pinned notes (or is:favorite)'],
+  ['has:attachment', 'Notes with files (or has:task, has:link)'],
+  ['after:2026-11-01', 'Edited on or after a day (or before:)'],
+  ['after:7d', 'Edited in the last week (also today, 2w, 3m)'],
   ['-tag:draft', 'Put - before any filter to exclude matches'],
 ]
 

@@ -63,7 +63,7 @@ Without AI, platforms reach the top through craft, not feature count. Obsidian w
 
 - **Run search in a Web Worker**, using FTS5 or MiniSearch, so it never blocks typing.
 - **Quality:** BM25 relevance ranking, prefix and fuzzy matching, word stemming per language, and exact-phrase search.
-- **Operators:** `tag:`, `in:notebook`, `is:pinned`, `has:attachment`, `before:2026-01-01`. Saved searches become "smart folders".
+- **Operators:** `tag:`, `in:notebook`, `is:pinned`, `has:attachment`, `before:2026-01-01`. Saved searches become "smart folders" (**done**, November 2026: `tag:`, `notebook:`/`shelf:`/`library:`, `is:`, `has:attachment`/`task`/`link`, `before:`/`after:` with dates and relative dates, and named saved searches in the sidebar and palette).
 - **Search inside attachments:** PDF text extraction with pdf.js; optional OCR for images with Tesseract (classic OCR, not AI).
 - **Graph:** a whole-library view rendered with WebGL (for example sigma.js), with filters and a local "neighbourhood" mode.
 
