@@ -496,6 +496,34 @@ attachments** and/or **Include history** before exporting; Settings shows how
 much of each is stored. A backup without attachments or history imports
 normally and restores everything else.
 
+### Automatic backups and reminders
+
+Your notes live only in this browser, which can clear a site's data when the
+device runs low on space, when you clear browsing data, or (Safari) when the
+site has not been opened for 7 days and is not on the Home Screen. **Settings →
+Automatic backups** keeps copies elsewhere:
+
+- **In Chrome and Edge on a computer**, select **Choose a backup folder…** and
+  pick a folder, ideally one a cloud drive keeps in sync. My Notes writes a
+  backup there at once, then again once a day (or once a week, or only when you
+  select **Back up now**) while the app is open and the notes have changed.
+  Each backup is a normal JSON backup named `my-notes-backup-2026-11-04.json`;
+  a second backup on the same day replaces that day's file, and the newest 14
+  are kept (other files in the folder are never touched). If a backup would be
+  over 40 MiB, it leaves out history, then attachments as well, and Settings
+  says so. After the browser restarts it may need your permission again: a
+  banner offers **Allow access**, and backups continue once allowed. A failed
+  backup is reported in a banner with **Try again**, and retried every quarter
+  of an hour.
+- **In other browsers**, which cannot write to a folder, My Notes reminds you
+  instead: a week (or a day, as chosen) after your notes change without a
+  backup, a banner offers **Download a backup**. **Later** hides it for a day,
+  and **never** in Settings turns reminders off.
+
+Exporting a backup by hand counts as a backup for reminders. The backup folder
+and the times of backups belong to this device: they are kept in a small
+database of their own (`my-notes-device`) and are not part of backups.
+
 ### Import
 
 Use **Settings → Import JSON backup** to select a backup file. The importer

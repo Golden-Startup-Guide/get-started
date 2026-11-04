@@ -29,6 +29,7 @@ import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templa
 import { notesLinkingTo, renameWikilinks } from '../lib/wikilinks'
 import { shelfForNewNotebook } from '../features/library/placement'
 import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemePreference } from '../types'
+import { useBackupStore } from './backupStore'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
 import { usePersistenceStore } from './persistenceStore'
@@ -326,6 +327,7 @@ export async function downloadBackup(options: BackupOptions) {
     link.click()
     URL.revokeObjectURL(url)
     workspace().showNotice('Your backup has been downloaded.')
+    await useBackupStore.getState().recordDownload()
   } catch (reason) {
     reportError(reason, 'The backup could not be created.')
   }
