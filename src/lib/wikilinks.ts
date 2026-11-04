@@ -80,6 +80,45 @@ export function deriveWikilinks(notes: Note[], titleIndex = buildTitleIndex(note
   return links
 }
 
+/** The note title a link target names: the part before any "#section". */
+export function targetTitle(target: string): string {
+  const hash = target.indexOf('#')
+  return hash < 0 ? target : target.slice(0, hash)
+}
+
+/**
+ * Rewrites [[links]] to `oldTitle` so they name `newTitle`, keeping each link's "#section" and
+ * "|shown text". Links inside code, and links to other titles, are left exactly as they were.
+ */
+export function renameWikilinks(markdown: string, oldTitle: string, newTitle: string): string {
+  if (!markdown.includes('[[')) return markdown
+  const from = normalizeTitle(oldTitle)
+  const to = newTitle.trim()
+  if (!from || !to) return markdown
+  // Matches are found in the text with code blanked out; offsets are the same in the original.
+  const masked = withoutCode(markdown)
+  let result = ''
+  let last = 0
+  for (const match of masked.matchAll(WIKILINK_PATTERN)) {
+    const target = match[1]
+    if (normalizeTitle(targetTitle(target)) !== from) continue
+    const start = match.index + 2
+    const section = target.slice(targetTitle(target).length)
+    result += markdown.slice(last, start) + to + section
+    last = start + target.length
+  }
+  return last ? result + markdown.slice(last) : markdown
+}
+
+/** Notes (other than `excludeId`) whose text links to `title`, by [[title]] or [[title#section]]. */
+export function notesLinkingTo(notes: readonly Note[], title: string, excludeId?: string): Note[] {
+  const key = normalizeTitle(title)
+  if (!key) return []
+  return notes.filter((note) => note.id !== excludeId
+    && note.deletedAt === undefined
+    && targetsOf(note).some((target) => normalizeTitle(targetTitle(target)) === key))
+}
+
 const linkKey = (link: NoteLink) => `${link.sourceNoteId}\u0000${link.targetNoteId}`
 
 /** Stored links plus wikilinks, each pair once. */

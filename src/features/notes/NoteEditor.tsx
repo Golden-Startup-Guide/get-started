@@ -38,11 +38,11 @@ import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownEditor } from './MarkdownEditor'
-import { changeEditorMode } from '../../state/actions'
+import { changeEditorMode, updateLinksAfterRename } from '../../state/actions'
 import { useEditorStore } from '../../state/editorStore'
 import { useLibraryStore } from '../../state/libraryStore'
 import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
-import { buildTitleIndex, findWikilinkTargets, normalizeTitle } from '../../lib/wikilinks'
+import { buildTitleIndex, findWikilinkTargets, normalizeTitle, notesLinkingTo } from '../../lib/wikilinks'
 import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
 import { usePreviewSource } from './usePreviewSource'
 import { useMarkdownTree } from './useMarkdownTree'
@@ -91,6 +91,11 @@ export function NoteEditor({
 }) {
   const editorMode = useLibraryStore((state) => state.settings.editorMode ?? 'live')
   const [title, setTitle] = useState(note.title)
+  // The title other notes' [[links]] were written for. After a rename, offering to update those
+  // links waits for a pause in typing the title, and is never done automatically: autosave
+  // saves every few keystrokes, and intermediate titles could match other notes.
+  const [linkedTitle, setLinkedTitle] = useState(isCreating ? '' : note.title.trim())
+  const [updatingLinks, setUpdatingLinks] = useState(false)
   const [content, setContent] = useState(note.content)
   const [noteTags, setNoteTags] = useState(note.tags ?? [])
   // The select can only show existing notebooks, so never keep an ID it cannot display.
@@ -470,6 +475,32 @@ export function NoteEditor({
   const noteById = useMemo(() => new Map([...notes, ...trash].map((item) => [item.id, item])), [notes, trash])
   const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || 'Untitled note')
   const titleIndex = useMemo(() => buildTitleIndex(notes), [notes])
+  // Notes whose [[links]] still name this note's old title, once typing the new title pauses.
+  const [settledTitle, setSettledTitle] = useState(title)
+  useEffect(() => {
+    const timer = setTimeout(() => setSettledTitle(title), 600)
+    return () => clearTimeout(timer)
+  }, [title])
+  const linksToOldTitle = useMemo(() => {
+    const newTitle = settledTitle.trim()
+    if (!linkedTitle || !newTitle || normalizeTitle(newTitle) === normalizeTitle(linkedTitle)) return []
+    // Another note still has the old title, so those links already lead somewhere.
+    const holder = titleIndex.get(normalizeTitle(linkedTitle))
+    if (holder && holder.id !== note.id) return []
+    return notesLinkingTo(notes, linkedTitle, note.id)
+  }, [settledTitle, linkedTitle, titleIndex, notes, note.id])
+
+  async function updateLinks() {
+    const newTitle = title.trim()
+    if (!newTitle) return
+    setUpdatingLinks(true)
+    // Save the new title first, so the updated links resolve to this note.
+    if (await flush()) {
+      const updated = await updateLinksAfterRename(linkedTitle, newTitle, note.id)
+      if (updated !== undefined) setLinkedTitle(newTitle)
+    }
+    setUpdatingLinks(false)
+  }
   const resolveWikilink = useCallback((title: string) => titleIndex.get(normalizeTitle(title)), [titleIndex])
   // One suggestion per title (the note a [[link]] would reach), in the library's order. Built the
   // first time "[[" is typed rather than when the note opens.
@@ -561,6 +592,20 @@ export function NoteEditor({
             )}
             <label htmlFor="note-title" className="sr-only">Note title</label>
             <input ref={titleRef} id="note-title" className="title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Untitled note" />
+            {linksToOldTitle.length > 0 && (
+              <div className="rename-links" role="status">
+                <span>
+                  {linksToOldTitle.length} {linksToOldTitle.length === 1 ? 'note links' : 'notes link'} to “{linkedTitle}”.
+                  Update {linksToOldTitle.length === 1 ? 'it' : 'them'} to “{title.trim()}”?
+                </span>
+                <span className="flex gap-2">
+                  <button type="button" className="secondary-button" onClick={() => setLinkedTitle(title.trim())}>Not now</button>
+                  <button type="button" className="primary-button" disabled={updatingLinks} onClick={() => void updateLinks()}>
+                    {updatingLinks ? 'Updating…' : 'Update links'}
+                  </button>
+                </span>
+              </div>
+            )}
             <div className="tag-editor">
               <TagIcon size={15} aria-hidden="true" />
               <div className="flex flex-wrap items-center gap-1.5">

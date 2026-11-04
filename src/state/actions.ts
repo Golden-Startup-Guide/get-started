@@ -24,6 +24,7 @@ import {
   type BackupOptions,
 } from '../lib/notes'
 import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templates'
+import { notesLinkingTo, renameWikilinks } from '../lib/wikilinks'
 import { shelfForNewNotebook } from '../features/library/placement'
 import type { EditorMode, Library, Note, Notebook, Shelf, ThemePreference } from '../types'
 import { useEditorStore } from './editorStore'
@@ -160,6 +161,27 @@ export async function ensureNotebook(name: string): Promise<Notebook | undefined
   const existing = findNotebook(notebooks, name)
   if (existing) return existing
   return refreshAfter(() => createNotebook(name, shelfForNewNotebook('all', notebooks, shelves)), `The ${name} notebook could not be created.`)
+}
+
+/**
+ * After a note is renamed, rewrites [[links]] to its old title in other notes so they keep pointing
+ * at it. Returns how many notes were updated, or undefined if saving failed part-way (the ones
+ * already saved stay updated).
+ */
+export async function updateLinksAfterRename(oldTitle: string, newTitle: string, renamedId: string): Promise<number | undefined> {
+  const now = Date.now()
+  const changed = notesLinkingTo(library().notes, oldTitle, renamedId)
+    .map((note) => ({ before: note, after: { ...note, content: renameWikilinks(note.content, oldTitle, newTitle), updatedAt: now } }))
+    .filter(({ before, after }) => after.content !== before.content)
+    .map(({ after }) => after)
+  const count = await refreshAfter(async () => {
+    for (const note of changed) await saveNote(note)
+    return changed.length
+  }, 'Some links could not be updated. Try again.')
+  if (count !== undefined) {
+    workspace().showNotice(`Updated links in ${count} ${count === 1 ? 'note' : 'notes'} to “${newTitle.trim()}”.`)
+  }
+  return count
 }
 
 /** Quick notes are saved to a notebook with this name, for sorting later. */

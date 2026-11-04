@@ -342,6 +342,16 @@ are read from the text: deleting `[[...]]` removes the link, and `[[...]]`
 inside code is ignored. They appear under **Links from this note** (marked
 "in text"), in the other note's **Backlinks**, and in the knowledge graph.
 
+When you rename a note that other notes link to, the editor offers to update
+those links once you pause typing the new title: "2 notes link to 'Seed
+catalogue'. Update them to 'Seed list'?" **Update links** saves this note,
+then rewrites `[[Seed catalogue]]` to `[[Seed list]]` in those notes, keeping
+any `|shown text` or `#section` and leaving links inside code alone. **Not
+now** leaves them as they are. Links are never rewritten without asking:
+autosave saves the title as you type it, and in-between titles could match
+other notes. Nothing is offered when another note still has the old title,
+because those links already lead to it.
+
 Notes can also be linked explicitly by their stable IDs, without changing the
 text. In the editor, type part of
 a note's title or notebook under **Linked notes**, choose a match with the
