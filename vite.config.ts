@@ -94,12 +94,12 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         // The install download, which every user pays, holds only the app's core: the page, its
-        // script and styles, the note editor, the long-note preview worker, the code highlighter,
+        // script and styles, the note editor, the preview and search workers, the code highlighter,
         // and icons. Maths (KaTeX and its fonts, about 0.7 MB) and diagrams (Mermaid, 56 files
         // and about 3.3 MB) are fetched when a note first uses them.
         globPatterns: [
           '*.{html,js,svg,png,ico,webmanifest}',
-          'assets/{index,NoteEditor,markdownPreview.worker,highlighter}-*.{js,css}',
+          'assets/{index,NoteEditor,markdownPreview.worker,search.worker,highlighter}-*.{js,css}',
         ],
         runtimeCaching: [
           {

@@ -13,6 +13,7 @@ import {
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
 import { NoteGrid } from './features/notes/NoteGrid'
 import { SearchTips } from './features/notes/SearchTips'
+import { useSearchMatches, WORKER_SEARCH_THRESHOLD } from './features/notes/useSearchMatches'
 import { QuickCapture } from './features/notes/QuickCapture'
 import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
@@ -174,6 +175,20 @@ function App() {
   const sortedNotes = useMemo(() => sortNotes(notes), [notes])
   const locations = useMemo(() => buildLocations(notebooks, shelves, libraries), [notebooks, shelves, libraries])
   const searchQuery = useMemo(() => parseSearchQuery(query), [query])
+  // Large libraries are searched in a worker; while it answers, the previous results stay shown
+  // and the count reads "Searching…". Smaller ones search here, instantly.
+  // The worker starts getting a copy of the library as soon as the search box has focus.
+  const [searchPrimed, setSearchPrimed] = useState(false)
+  const workerSearch = useSearchMatches(graphNotes, searchQuery, locations, graphNotes.length >= WORKER_SEARCH_THRESHOLD, searchPrimed)
+
+  // Each note's place in the list it is shown in, so worker results can be put back in order.
+  const listPosition = useMemo(() => {
+    const positions = new Map<string, number>()
+    sortedNotes.forEach((note, index) => positions.set(note.id, index))
+    trash.forEach((note, index) => positions.set(note.id, index))
+    return positions
+  }, [sortedNotes, trash])
+  const noteById = useMemo(() => new Map(graphNotes.map((note) => [note.id, note])), [graphNotes])
 
   const filteredNotes = useMemo(() => {
     const currentNotebookId = view.startsWith('notebook:') ? view.slice('notebook:'.length) : undefined
@@ -181,17 +196,30 @@ function App() {
     const selectedTag = view.startsWith('tag:') ? view.slice('tag:'.length) : undefined
     const shelfOfNotebook = new Map(notebooks.map((notebook) => [notebook.id, notebook.shelfId]))
     const searching = !isEmptyQuery(searchQuery)
-    const ordered = view === 'trash' ? trash : sortedNotes
-    return ordered.filter((note) => {
+    const inView = (note: Note) => {
       if (view === 'trash' && note.deletedAt === undefined) return false
       if (view !== 'trash' && note.deletedAt !== undefined) return false
       if (view === 'favorites' && !note.favorite) return false
       if (currentNotebookId && note.notebookId !== currentNotebookId) return false
       if (currentShelfId && shelfOfNotebook.get(note.notebookId ?? '') !== currentShelfId) return false
       if (selectedTag && !(note.tags ?? []).some((tag) => tag.toLocaleLowerCase() === selectedTag)) return false
-      return !searching || matchesQuery(note, searchQuery, locations)
-    })
-  }, [locations, notebooks, searchQuery, sortedNotes, trash, view])
+      return true
+    }
+    // With the worker's answer, start from the matches rather than walking the whole library:
+    // at 100,000 notes, filtering every note on each keystroke was the largest remaining cost.
+    if (searching && workerSearch.available && workerSearch.ids) {
+      const matches: Note[] = []
+      for (const id of workerSearch.ids) {
+        const note = noteById.get(id)
+        if (note && inView(note)) matches.push(note)
+      }
+      return matches.sort((a, b) => (listPosition.get(a.id) ?? 0) - (listPosition.get(b.id) ?? 0))
+    }
+    const ordered = view === 'trash' ? trash : sortedNotes
+    // Until the worker's first answer arrives, the view is shown unfiltered.
+    const matchHere = searching && !workerSearch.available
+    return ordered.filter((note) => inView(note) && (!matchHere || matchesQuery(note, searchQuery, locations)))
+  }, [listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, workerSearch.available, workerSearch.ids])
 
   // Forget the cached search text of notes deleted for good.
   useEffect(() => {
@@ -540,7 +568,7 @@ function App() {
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
                   <label htmlFor="note-search" className="sr-only">Search notes, libraries, shelves, notebooks, and tags</label>
-                  <input ref={searchInputRef} id="note-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={'Search notes — try tag:health, notebook:work, "a phrase", -word'} />
+                  <input ref={searchInputRef} id="note-search" type="search" value={query} onFocus={() => setSearchPrimed(true)} onChange={(event) => setQuery(event.target.value)} placeholder={'Search notes — try tag:health, notebook:work, "a phrase", -word'} />
                   {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
                   <SearchTips onAdd={(example) => {
                     setQuery(query.trim() ? `${query.trimEnd()} ${example}` : example)
@@ -548,7 +576,7 @@ function App() {
                   }} />
                 </div>
                 <p id="note-count" className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
-                  {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
+                  {workerSearch.pending ? 'Searching…' : `${filteredNotes.length} ${filteredNotes.length === 1 ? 'note' : 'notes'}`}
                 </p>
               </>
             )}
