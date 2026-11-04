@@ -1225,6 +1225,40 @@ html[data-theme='dark'] .workspace .primary-button {
   color: var(--muted);
 }
 
+/* The whole-library graph (LibraryGraph.tsx); sigma draws into it. */
+.library-graph {
+  position: relative;
+  height: min(70vh, 640px);
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface-alt);
+  touch-action: none;
+}
+
+.graph-match {
+  display: inline-flex;
+  max-width: 16rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.graph-match:hover,
+.graph-match[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.graph-match:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Naming a search to save it; shares the tips panel's placement */
 .save-search-form {
   display: grid;

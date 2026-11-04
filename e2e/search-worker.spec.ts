@@ -7,11 +7,12 @@ test('searches a large library in a worker, with exact counts, filters, and edit
   test.setTimeout(180_000)
   await openWorkspace(page)
   const library = await page.evaluate(seedLibrary, { notes: 5_200 })
+  // The worker starts on focus, or earlier in idle time after loading, so listen from the reload.
+  const workerStarted = page.waitForEvent('worker', { predicate: (worker) => worker.url().includes('search.worker'), timeout: 60_000 })
   await page.reload()
   const count = page.locator('#note-count')
   await expect(count).toHaveText(`${library.notes} notes`, { timeout: 60_000 })
 
-  const workerStarted = page.waitForEvent('worker', { predicate: (worker) => worker.url().includes('search.worker'), timeout: 30_000 })
   const search = page.getByRole('searchbox', { name: /Search notes/ })
   await search.focus()
   await workerStarted
