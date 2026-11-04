@@ -5,8 +5,8 @@ import type { SearchableNote, SearchWorkerRequest, SearchWorkerResponse } from '
 
 /** Libraries with at least this many notes (including Trash) are searched in a worker. */
 export const WORKER_SEARCH_THRESHOLD = 5_000
-/** Notes sent to the worker per step, with a pause between steps so the page stays responsive. */
-export const SYNC_BATCH_SIZE = 5_000
+/** Notes sent to the worker per step; steps run in idle time so the page stays responsive. */
+export const SYNC_BATCH_SIZE = 2_000
 
 export interface SearchMatches {
   /** IDs of the notes matching the query, once known. */
@@ -102,7 +102,19 @@ export function useSearchMatches(
     }
 
     let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
+    let cancelNext = () => {}
+    // Steps of a large copy run only when the browser is idle, so they never hold up a keystroke,
+    // a search on the page, or a screen update (copying 2,000 notes takes tens of milliseconds).
+    // Safari has no requestIdleCallback; there a short pause between steps stands in for it.
+    const whenIdle = (step: () => void) => {
+      if (window.requestIdleCallback) {
+        const handle = window.requestIdleCallback(step, { timeout: 2000 })
+        cancelNext = () => window.cancelIdleCallback(handle)
+      } else {
+        const timer = window.setTimeout(step, 50)
+        cancelNext = () => window.clearTimeout(timer)
+      }
+    }
     const sendFrom = (start: number) => {
       if (cancelled) return
       const batch = changed.slice(start, start + SYNC_BATCH_SIZE)
@@ -110,15 +122,15 @@ export function useSearchMatches(
         target.postMessage({ type: 'sync', upserts: batch.map(searchable), removals: [] } satisfies SearchWorkerRequest)
         for (const note of batch) sent.set(note.id, note.updatedAt)
       }
-      if (start + SYNC_BATCH_SIZE < changed.length) timer = setTimeout(() => sendFrom(start + SYNC_BATCH_SIZE), 0)
+      if (start + SYNC_BATCH_SIZE < changed.length) whenIdle(() => sendFrom(start + SYNC_BATCH_SIZE))
       else setSynced({ notes, locations })
     }
-    // A few changed notes (an edit) go at once; a whole library goes in steps.
+    // A few changed notes (an edit) go at once; a whole library goes in idle steps.
     if (changed.length <= SYNC_BATCH_SIZE) sendFrom(0)
-    else timer = setTimeout(() => sendFrom(0), 0)
+    else whenIdle(() => sendFrom(0))
     return () => {
       cancelled = true
-      if (timer) clearTimeout(timer)
+      cancelNext()
     }
   }, [active, notes, locations])
 
