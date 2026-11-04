@@ -194,14 +194,23 @@ function App() {
   }, [isLoading, searchPrimed, largeLibrary])
   const workerSearch = useSearchMatches(graphNotes, searchQuery, locations, largeLibrary, searchPrimed)
 
+  // Once the worker holds the library, it answers every search (the list keeps its previous
+  // results, or all notes, until the answer arrives). Until then search runs here, as in small
+  // libraries, so the first results never wait for the worker's copy.
+  const useWorkerResults = workerSearch.ready
   // Each note's place in the list it is shown in, so worker results can be put back in order.
+  // Built only while worker results are in use, so loading the library does not pay for it.
   const listPosition = useMemo(() => {
     const positions = new Map<string, number>()
+    if (!useWorkerResults) return positions
     sortedNotes.forEach((note, index) => positions.set(note.id, index))
     trash.forEach((note, index) => positions.set(note.id, index))
     return positions
-  }, [sortedNotes, trash])
-  const noteById = useMemo(() => new Map(graphNotes.map((note) => [note.id, note])), [graphNotes])
+  }, [useWorkerResults, sortedNotes, trash])
+  const noteById = useMemo(
+    () => (useWorkerResults ? new Map(graphNotes.map((note) => [note.id, note])) : new Map<string, Note>()),
+    [useWorkerResults, graphNotes],
+  )
 
   const filteredNotes = useMemo(() => {
     const currentNotebookId = view.startsWith('notebook:') ? view.slice('notebook:'.length) : undefined
@@ -220,7 +229,8 @@ function App() {
     }
     // With the worker's answer, start from the matches rather than walking the whole library:
     // at 100,000 notes, filtering every note on each keystroke was the largest remaining cost.
-    if (searching && workerSearch.available && workerSearch.ids) {
+    if (searching && useWorkerResults) {
+      if (!workerSearch.ids) return (view === 'trash' ? trash : sortedNotes).filter(inView)
       const matches: Note[] = []
       for (const id of workerSearch.ids) {
         const note = noteById.get(id)
@@ -229,10 +239,8 @@ function App() {
       return matches.sort((a, b) => (listPosition.get(a.id) ?? 0) - (listPosition.get(b.id) ?? 0))
     }
     const ordered = view === 'trash' ? trash : sortedNotes
-    // Until the worker's first answer arrives, the view is shown unfiltered.
-    const matchHere = searching && !workerSearch.available
-    return ordered.filter((note) => inView(note) && (!matchHere || matchesQuery(note, searchQuery, locations)))
-  }, [listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, workerSearch.available, workerSearch.ids])
+    return ordered.filter((note) => inView(note) && (!searching || matchesQuery(note, searchQuery, locations)))
+  }, [listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, useWorkerResults, workerSearch.ids])
 
   // Forget the cached search text of notes deleted for good.
   useEffect(() => {
@@ -589,7 +597,7 @@ function App() {
                   }} />
                 </div>
                 <p id="note-count" className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
-                  {workerSearch.pending ? 'Searching…' : `${filteredNotes.length} ${filteredNotes.length === 1 ? 'note' : 'notes'}`}
+                  {useWorkerResults && workerSearch.pending ? 'Searching…' : `${filteredNotes.length} ${filteredNotes.length === 1 ? 'note' : 'notes'}`}
                 </p>
               </>
             )}

@@ -15,6 +15,11 @@ export interface SearchMatches {
   pending: boolean
   /** False when the worker cannot run; search then happens on the main thread. */
   available: boolean
+  /**
+   * The worker holds the current library. Until then, search on the main thread as for small
+   * libraries, so the first results never wait for the worker's copy.
+   */
+  ready: boolean
 }
 
 const searchable = (note: Note): SearchableNote => ({
@@ -130,5 +135,6 @@ export function useSearchMatches(
     ids: searching ? result?.ids : undefined,
     pending: searching && (!ready || result?.query !== query),
     available,
+    ready: available && ready,
   }
 }
