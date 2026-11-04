@@ -1587,3 +1587,19 @@ html[data-theme='dark'] .workspace {
   font-size: 0.75rem;
   line-height: 1.6;
 }
+
+/* Offer to update [[links]] after a note is renamed (NoteEditor) */
+.rename-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.6rem;
+  background: var(--surface-alt);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.85rem;
+}
