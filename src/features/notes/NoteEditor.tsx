@@ -42,7 +42,8 @@ import { changeEditorMode, updateLinksAfterRename } from '../../state/actions'
 import { useEditorStore } from '../../state/editorStore'
 import { useLibraryStore } from '../../state/libraryStore'
 import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
-import { buildTitleIndex, findWikilinkTargets, normalizeTitle, notesLinkingTo } from '../../lib/wikilinks'
+import { findHeading, headingSlug, listHeadings } from '../../lib/headings'
+import { buildTitleIndex, findWikilinkTargets, normalizeTitle, notesLinkingTo, targetTitle } from '../../lib/wikilinks'
 import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
 import { usePreviewSource } from './usePreviewSource'
 import { useMarkdownTree } from './useMarkdownTree'
@@ -501,7 +502,45 @@ export function NoteEditor({
     }
     setUpdatingLinks(false)
   }
-  const resolveWikilink = useCallback((title: string) => titleIndex.get(normalizeTitle(title)), [titleIndex])
+  // "Title", "Title#Section", or "#Section", which is a heading in this note.
+  const resolveWikilink = useCallback((target: string): WikilinkTarget | undefined => {
+    const title = targetTitle(target).trim()
+    return title ? titleIndex.get(normalizeTitle(title)) : { id: note.id, title: note.title }
+  }, [titleIndex, note.id, note.title])
+
+  // Headings suggested after "[[Title#": that note's, or this draft's for "[[#".
+  const getLinkHeadings = useCallback((title: string) => {
+    const source = title ? titleIndex.get(normalizeTitle(title))?.content : latest.current.content
+    return source ? [...new Set(listHeadings(source).map((heading) => heading.text))] : []
+  }, [titleIndex])
+
+  // Showing a heading: the editor moves to its line and the preview scrolls to it.
+  const [reveal, setReveal] = useState<{ line: number }>()
+  const jumpToSection = useCallback((section: string) => {
+    const heading = findHeading(latest.current.content, section)
+    if (!heading) return false
+    setReveal({ line: heading.line })
+    const target = document.getElementById(`heading-${headingSlug(heading.text)}`)
+    if (target) {
+      target.setAttribute('tabindex', '-1')
+      target.scrollIntoView?.({ block: 'start' })
+      target.focus({ preventScroll: true })
+    }
+    return true
+  }, [])
+  // Opened from a [[Note#Section]] link in another note: show that heading once the preview is ready.
+  const [sectionToShow, setSectionToShow] = useState(() => useEditorStore.getState().pendingSection ?? undefined)
+  useEffect(() => {
+    useEditorStore.getState().setPendingSection(null)
+  }, [])
+  useEffect(() => {
+    if (!sectionToShow || shownSource === undefined) return
+    const frame = requestAnimationFrame(() => {
+      jumpToSection(sectionToShow)
+      setSectionToShow(undefined)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [sectionToShow, shownSource, jumpToSection])
   // One suggestion per title (the note a [[link]] would reach), in the library's order. Built the
   // first time "[[" is typed rather than when the note opens.
   const getLinkTitles = useMemo(() => {
@@ -512,15 +551,21 @@ export function NoteEditor({
   }, [notes, note.id, titleIndex])
   // Stable, so the preview's links do not re-render on every keystroke.
   const openWikilink = useCallback((target: WikilinkTarget) => {
+    if (target.id === note.id) {
+      if (target.section) jumpToSection(target.section)
+      return
+    }
     const related = noteById.get(target.id)
-    if (related && related.id !== note.id) void openRelatedNoteRef.current(related)
-  }, [noteById, note.id])
+    if (!related) return
+    useEditorStore.getState().setPendingSection(target.section ?? null)
+    void openRelatedNoteRef.current(related)
+  }, [noteById, note.id, jumpToSection])
   // [[Links]] in this note follow the preview, which trails typing in long notes, so finding them
   // never adds work to a keystroke.
   const textTargetIds = useMemo(() => {
     const ids = new Set<string>()
     for (const target of findWikilinkTargets(preview.source)) {
-      const id = titleIndex.get(normalizeTitle(target))?.id
+      const id = titleIndex.get(normalizeTitle(targetTitle(target)))?.id
       if (id && id !== note.id) ids.add(id)
     }
     return ids
@@ -681,7 +726,7 @@ export function NoteEditor({
                     <button type="button" aria-pressed={editorMode === 'source'} onClick={() => void changeEditorMode('source')} title="Show all Markdown as typed">Source</button>
                   </div>
                 </div>
-                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} mode={editorMode} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} getLinkHeadings={getLinkHeadings} mode={editorMode} reveal={reveal} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
               </div>}
               <article className="markdown-preview-pane" aria-label="Live Markdown preview">
                 <div className="mb-2 flex items-center justify-between gap-3">

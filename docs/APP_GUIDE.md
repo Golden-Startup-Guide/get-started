@@ -342,6 +342,17 @@ are read from the text: deleting `[[...]]` removes the link, and `[[...]]`
 inside code is ignored. They appear under **Links from this note** (marked
 "in text"), in the other note's **Backlinks**, and in the knowledge graph.
 
+To link to a section, add the heading after `#`: `[[Garden plan#Harvest]]`
+opens Garden plan at its "Harvest" heading, with the preview scrolled there,
+keyboard focus on the heading, and the editor's cursor on that line.
+`[[#Harvest]]` jumps to a heading in the same note. Headings match ignoring
+case and punctuation; if a note repeats a heading, the first one is used, and
+a heading that no longer exists simply opens the note at the top. In the
+preview such a link reads "Garden plan › Harvest" unless it has its own
+`|shown text`. While typing, `[[Garden plan#` suggests that note's headings and
+`[[#` suggests this note's. Section links count as links to the note, in
+backlinks and the graph.
+
 When you rename a note that other notes link to, the editor offers to update
 those links once you pause typing the new title: "2 notes link to 'Seed
 catalogue'. Update them to 'Seed list'?" **Update links** saves this note,

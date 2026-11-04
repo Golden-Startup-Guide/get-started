@@ -32,12 +32,25 @@ function applyTitle(view: EditorView, completion: Completion, from: number, to: 
 
 /**
  * Suggests note titles after "[[". Titles starting with what was typed come first, then titles
- * containing it, in the order given (most recently updated first), at most 50.
+ * containing it, in the order given (most recently updated first), at most 50. After "[[Title#"
+ * (or "[[#" for this note) it suggests that note's headings instead.
  */
-export function wikilinkCompletions(getTitles: () => readonly LinkTitle[]) {
+export function wikilinkCompletions(
+  getTitles: () => readonly LinkTitle[],
+  getHeadings: (title: string) => readonly string[] = () => [],
+) {
   return (context: CompletionContext): CompletionResult | null => {
     const typed = context.matchBefore(/\[\[[^[\]|\n]*$/)
     if (!typed) return null
+    const hash = typed.text.indexOf('#')
+    if (hash >= 0) {
+      const sectionQuery = normalizeTitle(typed.text.slice(hash + 1))
+      const headings = getHeadings(typed.text.slice(2, hash).trim())
+        .filter((heading) => normalizeTitle(heading).includes(sectionQuery))
+        .slice(0, MAX_WIKILINK_SUGGESTIONS)
+        .map((heading): Completion => ({ label: heading, type: 'text', apply: applyTitle }))
+      return headings.length ? { from: typed.from + hash + 1, options: headings, filter: false } : null
+    }
     const query = normalizeTitle(typed.text.slice(2))
     const starts: Completion[] = []
     const contains: Completion[] = []
