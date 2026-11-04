@@ -3,6 +3,8 @@ import type { Root } from 'hast'
 import { toJsxRuntime, type Components } from 'hast-util-to-jsx-runtime'
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { ExtraProps } from 'react-markdown'
+import { sectionOf } from '../../lib/headings'
+import { targetTitle } from '../../lib/wikilinks'
 import { createTaskTextLookup } from './checklists'
 import { loadHighlighter, MAX_HIGHLIGHT_LENGTH } from './codeHighlight'
 import { DiagramBlock } from './DiagramBlock'
@@ -51,11 +53,13 @@ function TaskCheckbox({ node: _node, checked, ...props }: ComponentProps<'input'
 export interface WikilinkTarget {
   id: string
   title: string
+  /** The heading a [[Note#Section]] link points to. */
+  section?: string
 }
 
 interface WikilinkContextValue {
-  /** The note a `[[title]]` points to, if one exists. */
-  resolve?: (title: string) => WikilinkTarget | undefined
+  /** The note a link target ("Title", "Title#Section", or "#Section" for this note) points to, if any. */
+  resolve?: (target: string) => WikilinkTarget | undefined
   open?: (target: WikilinkTarget) => void
 }
 
@@ -63,15 +67,16 @@ const WikilinkContext = createContext<WikilinkContextValue>({})
 
 function Wikilink({ title, children }: { title: string; children: ReactNode }) {
   const { resolve, open } = useContext(WikilinkContext)
-  const target = resolve?.(title)
-  if (!target || !open) {
-    return <span className="wikilink wikilink-missing" title={`No note titled “${title}” yet`}>{children}</span>
+  const resolved = resolve?.(title)
+  if (!resolved || !open) {
+    return <span className="wikilink wikilink-missing" title={`No note titled “${targetTitle(title).trim()}” yet`}>{children}</span>
   }
+  const target = { ...resolved, section: sectionOf(title) }
   return (
     <a
       href="#"
       className="wikilink"
-      title={`Open note ${target.title || 'Untitled note'}`}
+      title={`Open note ${target.title || 'Untitled note'}${target.section ? ` at “${target.section}”` : ''}`}
       onClick={(event) => {
         event.preventDefault()
         open(target)

@@ -18,6 +18,9 @@ interface EditorState {
   keepMine: () => void
   /** Saves the open editor's pending edits; resolves to false if saving failed. Set by the editor. */
   flush: (() => Promise<boolean>) | null
+  /** A heading to show when the next note opens, from a [[Note#Section]] link. */
+  pendingSection: string | null
+  setPendingSection: (section: string | null) => void
   setFlush: (flush: (() => Promise<boolean>) | null) => void
   /** Replaces the open note with its latest stored version, discarding this tab's draft. */
   loadLatest: () => Promise<void>
@@ -34,6 +37,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   keepMine: () => set({ changedElsewhere: false }),
   flush: null,
   setFlush: (flush) => set({ flush }),
+  pendingSection: null,
+  setPendingSection: (pendingSection) => set({ pendingSection }),
   loadLatest: async () => {
     const id = get().activeNote?.id
     if (!id) return

@@ -9,6 +9,7 @@ import { slashCommandCompletions } from './slashCommands'
 import { wikilinkCompletions, type LinkTitle } from './wikilinkCompletion'
 
 const noTitles = (): readonly LinkTitle[] => []
+const noHeadings = (): readonly string[] => []
 
 // Source mode has no Markdown parser at all, so it costs exactly what it did before live preview.
 const modeExtension = (mode: EditorMode): Extension => (mode === 'live' ? [markdownSyntax, livePreview] : [])
@@ -43,7 +44,9 @@ export function MarkdownEditor({
   labelledBy,
   placeholder,
   getLinkTitles = noTitles,
+  getLinkHeadings = noHeadings,
   mode = 'source',
+  reveal,
 }: {
   value: string
   onChange: (value: string) => void
@@ -52,8 +55,12 @@ export function MarkdownEditor({
   placeholder: string
   /** Note titles suggested after typing "[["; called only then. */
   getLinkTitles?: () => readonly LinkTitle[]
+  /** Headings suggested after "[[Title#" (an empty title means this note). */
+  getLinkHeadings?: (title: string) => readonly string[]
   /** 'live' formats Markdown outside the lines being edited; 'source' shows it all as typed. */
   mode?: EditorMode
+  /** Moves the cursor to the start of this 1-based line and scrolls it to the top; a new object each time. */
+  reveal?: { line: number }
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -64,11 +71,13 @@ export function MarkdownEditor({
   const reportedRef = useRef<string[]>([])
   const onChangeRef = useRef(onChange)
   const getLinkTitlesRef = useRef(getLinkTitles)
+  const getLinkHeadingsRef = useRef(getLinkHeadings)
   const initialRef = useRef({ value, labelledBy, placeholder, mode })
 
   useLayoutEffect(() => {
     onChangeRef.current = onChange
     getLinkTitlesRef.current = getLinkTitles
+    getLinkHeadingsRef.current = getLinkHeadings
   })
 
   useEffect(() => {
@@ -82,7 +91,7 @@ export function MarkdownEditor({
         extensions: [
           history(),
           // While suggestions are open, its own keymap (arrows, Enter, Escape) takes precedence.
-          autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current()), slashCommandCompletions], icons: false }),
+          autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current(), (title) => getLinkHeadingsRef.current(title)), slashCommandCompletions], icons: false }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           modeCompartment.of(modeExtension(initial.mode)),
@@ -109,6 +118,19 @@ export function MarkdownEditor({
   useEffect(() => {
     viewRef.current?.dispatch({ effects: modeCompartment.reconfigure(modeExtension(mode)) })
   }, [mode])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view || !reveal) return
+    const line = view.state.doc.line(Math.min(Math.max(reveal.line, 1), view.state.doc.lines))
+    view.dispatch({ selection: { anchor: line.from } })
+    // Scroll only the editor's own text area: CodeMirror's scrollIntoView also scrolls the page
+    // and dialog around it, which would pull the preview away from the same heading.
+    view.requestMeasure({
+      read: (current) => current.lineBlockAt(line.from).top,
+      write: (top, current) => { current.scrollDOM.scrollTop = Math.max(0, top - 12) },
+    })
+  }, [reveal])
 
   // Changes made outside the editor (ticking a checklist item, restoring a revision).
   useEffect(() => {

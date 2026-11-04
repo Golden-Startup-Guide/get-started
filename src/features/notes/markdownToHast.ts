@@ -7,6 +7,7 @@ import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
 import { visit } from 'unist-util-visit'
+import { headingSlug } from '../../lib/headings'
 import { remarkWikilinks } from './remarkWikilinks'
 
 /** The text inside a hast node, as the browser's textContent would give it. */
@@ -21,7 +22,7 @@ export function textOf(node: Nodes): string {
  * clashing with the app's own element IDs.
  */
 function headingId(text: string, used: Map<string, number>): string {
-  const slug = text.trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-') || 'section'
+  const slug = headingSlug(text)
   const count = used.get(slug) ?? 0
   used.set(slug, count + 1)
   return `heading-${count ? `${slug}-${count}` : slug}`

@@ -1,5 +1,14 @@
 import type { Link, Nodes, Parent, Root, Text } from 'mdast'
-import { WIKILINK_PATTERN } from '../../lib/wikilinks'
+import { sectionOf } from '../../lib/headings'
+import { targetTitle, WIKILINK_PATTERN } from '../../lib/wikilinks'
+
+/** How a link without shown text reads: "Note", "Note › Section", or "Section" within this note. */
+function defaultLabel(target: string): string {
+  const title = targetTitle(target).trim()
+  const section = sectionOf(target)
+  if (!section) return title
+  return title ? `${title} › ${section}` : section
+}
 
 /**
  * Turns `[[Title]]` and `[[Title|shown text]]` in Markdown text into link nodes carrying the
@@ -34,7 +43,7 @@ function split(node: Text): Array<Text | Link> {
     parts.push({
       type: 'link',
       url: '#',
-      children: [{ type: 'text', value: (match[2] ?? match[1]).trim() }],
+      children: [{ type: 'text', value: match[2]?.trim() || defaultLabel(target) }],
       data: { hProperties: { dataWikilink: target } },
     })
     last = match.index + match[0].length

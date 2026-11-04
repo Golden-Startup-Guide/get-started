@@ -51,3 +51,16 @@ describe('wikilinkCompletions', () => {
     }
   })
 })
+
+describe('heading suggestions', () => {
+  it('suggests the named note’s headings after "#", and this note’s after "[[#"', () => {
+    const headings = (title: string) => (title === 'Garden plan' ? ['Seeds', 'Harvest time'] : title === '' ? ['Intro'] : [])
+    const complete = wikilinkCompletions(() => titles, headings)
+    const at = (doc: string) => complete(new CompletionContext(EditorState.create({ doc }), doc.length, false))
+    expect(at('[[Garden plan#')?.options.map((option) => option.label)).toEqual(['Seeds', 'Harvest time'])
+    expect(at('[[Garden plan#harv')?.options.map((option) => option.label)).toEqual(['Harvest time'])
+    expect(at('[[Garden plan#harv')?.from).toBe('[[Garden plan#'.length)
+    expect(at('[[#')?.options.map((option) => option.label)).toEqual(['Intro'])
+    expect(at('[[Unknown#')).toBeNull()
+  })
+})

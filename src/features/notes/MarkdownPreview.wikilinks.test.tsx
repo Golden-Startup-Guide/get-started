@@ -43,3 +43,25 @@ describe('MarkdownPreview wikilinks', () => {
     expect(screen.getByRole('link')).toHaveTextContent('A [[Garden plan]] link')
   })
 })
+
+describe('section links in the preview', () => {
+  afterEach(cleanup)
+
+  it('reads "Note › Section", opens with the section, and links within the note by "#Section"', () => {
+    const onOpen = vi.fn()
+    const resolveWithSelf = (target: string) => (target.startsWith('#') ? { id: 'self', title: 'This note' } : resolve(target.split('#')[0]))
+    render(
+      <MarkdownPreview
+        markdown={'See [[Garden plan#Seeds]], [[garden plan#Seeds|the seeds]], and [[#Harvest]].'}
+        resolveWikilink={resolveWithSelf}
+        onOpenWikilink={onOpen}
+      />,
+    )
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['Garden plan › Seeds', 'the seeds', 'Harvest'])
+    expect(screen.getByRole('link', { name: 'Garden plan › Seeds' })).toHaveAttribute('title', 'Open note Garden plan at “Seeds”')
+    fireEvent.click(screen.getByRole('link', { name: 'Garden plan › Seeds' }))
+    expect(onOpen).toHaveBeenLastCalledWith({ id: 'garden', title: 'Garden plan', section: 'Seeds' })
+    fireEvent.click(screen.getByRole('link', { name: 'Harvest' }))
+    expect(onOpen).toHaveBeenLastCalledWith({ id: 'self', title: 'This note', section: 'Harvest' })
+  })
+})

@@ -73,7 +73,8 @@ export function deriveWikilinks(notes: Note[], titleIndex = buildTitleIndex(note
   const links: NoteLink[] = []
   for (const note of notes) {
     for (const target of targetsOf(note)) {
-      const targetNote = titleIndex.get(normalizeTitle(target))
+      // [[Title#Section]] links to the note; [[#Section]] is within this note and not a link.
+      const targetNote = titleIndex.get(normalizeTitle(targetTitle(target)))
       if (targetNote && targetNote.id !== note.id) links.push({ sourceNoteId: note.id, targetNoteId: targetNote.id })
     }
   }
