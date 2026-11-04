@@ -85,7 +85,7 @@ In order of payoff:
 | **Done:** parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
 | **Done:** load the editor (CodeMirror and the Markdown preview) in its own chunk after start-up | Start-up | Small |
 | **Done:** search lower-cases each note once (cached until it is saved), stops re-sorting the library on every keystroke, and looks up locations in a map | Cause 4 (part) | Small |
-| Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 (remaining) | Medium, overlaps Phase 2 |
+| **Done:** search libraries of 5,000+ notes in a worker, and build results from the matches rather than walking every note | Cause 4 (remaining) | Medium |
 | Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
 With the grid virtualized, the largest remaining wins at 100,000 notes are the link picker's one option per note (opening a note), a search index (search), and keeping fewer full notes in memory (cold start and the 391 MB heap), which the storage migration in the architecture vision addresses.

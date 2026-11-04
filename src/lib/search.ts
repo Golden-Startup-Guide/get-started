@@ -93,6 +93,11 @@ function searchableText(note: Note): string {
 }
 
 /** Drops cached text for notes that no longer exist, so deleted notes do not stay in memory. */
+/** Prepares a note's lower-cased text ahead of the first search (the search worker does this when idle). */
+export function prepareForSearch(note: Note): void {
+  searchableText(note)
+}
+
 export function pruneSearchCache(liveIds: Iterable<string>) {
   const live = new Set(liveIds)
   for (const id of textCache.keys()) if (!live.has(id)) textCache.delete(id)

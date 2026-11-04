@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { matchesQuery, pruneSearchCache, type Locations, type SearchQuery } from '../../lib/search'
+import { matchesQuery, prepareForSearch, pruneSearchCache, type Locations, type SearchQuery } from '../../lib/search'
 import type { Note } from '../../types'
 
 /**
@@ -20,6 +20,17 @@ export interface SearchWorkerResponse {
 
 const notes = new Map<string, SearchableNote>()
 let locations: Locations = new Map()
+// Notes whose lower-cased text is not prepared yet; done between messages, so the first search
+// after the library arrives does not have to do it.
+const unprepared: SearchableNote[] = []
+let preparing: ReturnType<typeof setTimeout> | undefined
+
+function prepareSome() {
+  preparing = undefined
+  const deadline = performance.now() + 20
+  while (unprepared.length && performance.now() < deadline) prepareForSearch(unprepared.pop() as Note)
+  if (unprepared.length) preparing = setTimeout(prepareSome, 0)
+}
 
 self.onmessage = (event: MessageEvent<SearchWorkerRequest>) => {
   const message = event.data
@@ -28,6 +39,10 @@ self.onmessage = (event: MessageEvent<SearchWorkerRequest>) => {
     for (const id of message.removals) notes.delete(id)
     if (message.removals.length) pruneSearchCache(notes.keys())
     if (message.locations) locations = message.locations
+    if (message.upserts.length) {
+      unprepared.push(...message.upserts)
+      preparing ??= setTimeout(prepareSome, 0)
+    }
     return
   }
   const ids: string[] = []

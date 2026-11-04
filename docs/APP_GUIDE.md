@@ -144,6 +144,14 @@ is searched as plain text. The **?** button in the search field lists these and
 adds an example to the search when selected; Escape closes it without clearing
 the search. Search runs locally against the browser's stored data.
 
+In libraries of 5,000 notes or more, search runs in a background worker so
+typing in the search box stays smooth. The worker receives a copy of the
+library when the search box first gets focus (sent in small steps, so the page
+keeps responding) and afterwards only the notes that change. While it is
+answering, the count beside the search box reads **Searching…** and the
+previous results stay on screen; results are the same as in smaller
+libraries, which are searched instantly on the page.
+
 There is no remote index, model download, or semantic-search service.
 
 ### 2.4 Markdown, checklists, and autosave

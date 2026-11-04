@@ -54,13 +54,13 @@ describe('useSearchMatches', () => {
     const { result, rerender } = renderHook(({ query }) => useSearchMatches(library, query, locations, true, true), { initialProps: { query: empty } })
     const worker = FakeWorker.instances[0]
     expect(worker).toBeDefined()
-    // 4,500 notes: 2,000 + 2,000 + 500.
+    // Two full batches and a part batch.
     await waitFor(() => expect(upsertBatches(worker)).toBe(3))
     expect(queries(worker)).toHaveLength(0)
 
     rerender({ query: parseSearchQuery('rare') })
-    // Notes 0, 1000, 2000, 3000, and 4000 have the rare word.
-    await waitFor(() => expect(result.current.ids?.size).toBe(5))
+    // Every 1,000th note has the rare word.
+    await waitFor(() => expect(result.current.ids?.size).toBe(Math.ceil(library.length / 1000)))
     expect(result.current.pending).toBe(false)
     expect(queries(worker)).toHaveLength(1)
   })

@@ -179,7 +179,20 @@ function App() {
   // and the count reads "Searching…". Smaller ones search here, instantly.
   // The worker starts getting a copy of the library as soon as the search box has focus.
   const [searchPrimed, setSearchPrimed] = useState(false)
-  const workerSearch = useSearchMatches(graphNotes, searchQuery, locations, graphNotes.length >= WORKER_SEARCH_THRESHOLD, searchPrimed)
+  // In a large library, start that copy in idle time after loading, so even the first search finds
+  // the worker ready. Focusing the search box starts it sooner if that comes first.
+  const largeLibrary = graphNotes.length >= WORKER_SEARCH_THRESHOLD
+  useEffect(() => {
+    if (isLoading || searchPrimed || !largeLibrary) return
+    const prime = () => setSearchPrimed(true)
+    if (window.requestIdleCallback) {
+      const handle = window.requestIdleCallback(prime, { timeout: 3000 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const timer = window.setTimeout(prime, 1000)
+    return () => window.clearTimeout(timer)
+  }, [isLoading, searchPrimed, largeLibrary])
+  const workerSearch = useSearchMatches(graphNotes, searchQuery, locations, largeLibrary, searchPrimed)
 
   // Each note's place in the list it is shown in, so worker results can be put back in order.
   const listPosition = useMemo(() => {

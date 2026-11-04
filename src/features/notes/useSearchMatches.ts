@@ -6,7 +6,7 @@ import type { SearchableNote, SearchWorkerRequest, SearchWorkerResponse } from '
 /** Libraries with at least this many notes (including Trash) are searched in a worker. */
 export const WORKER_SEARCH_THRESHOLD = 5_000
 /** Notes sent to the worker per step, with a pause between steps so the page stays responsive. */
-export const SYNC_BATCH_SIZE = 2_000
+export const SYNC_BATCH_SIZE = 5_000
 
 export interface SearchMatches {
   /** IDs of the notes matching the query, once known. */
