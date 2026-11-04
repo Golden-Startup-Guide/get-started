@@ -85,7 +85,7 @@ In order of payoff:
 | **Done:** parse long notes' preview off the main thread, so a keystroke during the catch-up parse does not wait | Cause 3 (remaining) | Medium |
 | **Done:** load the editor (CodeMirror and the Markdown preview) in its own chunk after start-up | Start-up | Small |
 | **Done:** search lower-cases each note once (cached until it is saved), stops re-sorting the library on every keystroke, and looks up locations in a map | Cause 4 (part) | Small |
-| Move search to a worker-backed index (MiniSearch now; SQLite FTS5 after the storage migration) | Cause 4 (remaining) | Medium, overlaps Phase 2 |
+| **Done:** search libraries of 5,000+ notes in a worker, and build results from the matches rather than walking every note | Cause 4 (remaining) | Medium |
 | Compare drafts field by field instead of serialising them (profiling shows the whole editor render at about 4 ms per keystroke in the 1 MB note, so this is low priority) | Cause 5 | Small |
 
 With the grid virtualized, the largest remaining wins at 100,000 notes are the link picker's one option per note (opening a note), a search index (search), and keeping fewer full notes in memory (cold start and the 391 MB heap), which the storage migration in the architecture vision addresses.
@@ -342,3 +342,35 @@ GitHub Actions, `main` and this change benchmarked at the same time:
 Typing is unchanged within run-to-run variation. Opening a huge note is several times faster, because the editor no longer waits for its preview; the benchmark now waits for the preview to render before measuring typing, so the two do not overlap.
 
 The remaining 0.73 s for dense notes is mostly turning the parsed tree into React elements, which happens in one step. The worker file is 173 KB (not gzipped), loads only when a long note is opened, and is precached for offline use.
+
+### Search in a worker for large libraries (November 4, 2026)
+
+At 100,000 notes, each keystroke in the search box blocked the main thread for 80–175 ms (median, development PC), and the first search took over 0.6 s. A CPU profile showed that matching was not the main cost. Most of the time went to filtering every note for the list on each keystroke.
+
+Libraries of 5,000 notes or more (`WORKER_SEARCH_THRESHOLD`) now search in a Web Worker (`search.worker.ts`, `useSearchMatches.ts`) that runs the same `lib/search.ts` matching:
+
+- **Copying the library.** The worker gets a copy of the library in 2,000-note steps scheduled with `requestIdleCallback`; Safari, which lacks it, uses short timeouts. The copy starts when the search box gets focus, or in idle time after a large library loads. Afterwards the worker receives only notes that changed. Once it has a note, it prepares the note's lower-cased text in idle time.
+- **Before the copy is complete,** search runs on the page exactly as before, so the first results never wait for the worker.
+- **Once the worker is ready,** it answers every search. The list keeps its previous results while the count reads "Searching…", and is then built from the matches rather than by walking every note.
+
+Two earlier versions made the benchmark's first search slower. Each was measured on GitHub Actions against `main` and changed:
+
+- **Waiting for the copy before searching:** first search 183 / 924 ms at 10,000 / 100,000 notes, against `main`'s 75 / 301 ms.
+- **Copying with `setTimeout` steps that competed with that search:** 399 and 525 ms at 100,000, against 312 and 316 ms.
+
+The final version, on GitHub Actions with `main` measured at the same time:
+
+| Measure | `main` | Worker |
+|---|---|---|
+| Search, 10,000 / 100,000 notes | 75 / 319 ms | 80 / 306 ms |
+| Cold start, 10,000 / 100,000 notes | 567 / 4,972 ms | 560 / 4,699 ms |
+| Typing work p95, 1 MB note, 10,000 / 100,000 notes | 9.5 / 14.8 ms | 7.9 / 14.0 ms |
+
+Main-thread time per keystroke typing a search at 100,000 notes, measured in the page on the development PC, after the page has settled:
+
+| Per keystroke | `main` | Worker |
+|---|---|---|
+| Median | 81–175 ms | 7–35 ms |
+| Slowest keystroke | 105–671 ms | 46 ms |
+
+Typing a search straight after loading behaves as on `main` until the worker has its copy.

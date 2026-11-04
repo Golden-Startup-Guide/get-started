@@ -1,0 +1,35 @@
+import { seedLibrary } from '../bench/seedLibrary'
+import { expect, openWorkspace, test } from './helpers'
+
+// Libraries of 5,000 notes or more are searched in a Web Worker; results must match exactly.
+test('searches a large library in a worker, with exact counts, filters, and edits picked up', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'Seeding 5,200 notes into WebKit’s IndexedDB takes several minutes on Windows')
+  test.setTimeout(180_000)
+  await openWorkspace(page)
+  const library = await page.evaluate(seedLibrary, { notes: 5_200 })
+  await page.reload()
+  const count = page.locator('#note-count')
+  await expect(count).toHaveText(`${library.notes} notes`, { timeout: 60_000 })
+
+  const workerStarted = page.waitForEvent('worker', { predicate: (worker) => worker.url().includes('search.worker'), timeout: 30_000 })
+  const search = page.getByRole('searchbox', { name: /Search notes/ })
+  await search.focus()
+  await workerStarted
+
+  await search.fill(library.searchTerm)
+  await expect(count).toHaveText(`${library.searchMatches} notes`, { timeout: 30_000 })
+
+  // Exclusion: every note without the word.
+  await search.fill(`-${library.searchTerm}`)
+  await expect(count).toHaveText(`${library.notes - library.searchMatches} notes`, { timeout: 30_000 })
+
+  // An edit made after the worker started is searchable.
+  await search.fill('')
+  await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Note title' }).fill('Quokka sightings')
+  await expect(page.locator('.save-status')).toHaveText(/Saved/)
+  await page.getByRole('button', { name: 'Close editor' }).first().click()
+  await search.fill('quokka')
+  await expect(count).toHaveText('1 note', { timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: 'Quokka sightings' })).toBeVisible()
+})

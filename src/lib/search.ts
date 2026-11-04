@@ -93,6 +93,11 @@ function searchableText(note: Note): string {
 }
 
 /** Drops cached text for notes that no longer exist, so deleted notes do not stay in memory. */
+/** Prepares a note's lower-cased text ahead of the first search (the search worker does this when idle). */
+export function prepareForSearch(note: Note): void {
+  searchableText(note)
+}
+
 export function pruneSearchCache(liveIds: Iterable<string>) {
   const live = new Set(liveIds)
   for (const id of textCache.keys()) if (!live.has(id)) textCache.delete(id)
@@ -107,7 +112,10 @@ interface Location {
 }
 
 /** Each notebook's lower-cased notebook, shelf, and library names, looked up once per search. */
-export function buildLocations(notebooks: readonly Notebook[], shelves: readonly Shelf[], libraries: readonly Library[]): Map<string, Location> {
+/** Each notebook's lower-cased location, by notebook ID. */
+export type Locations = Map<string, Location>
+
+export function buildLocations(notebooks: readonly Notebook[], shelves: readonly Shelf[], libraries: readonly Library[]): Locations {
   const shelfById = new Map(shelves.map((shelf) => [shelf.id, shelf]))
   const libraryName = new Map(libraries.map((library) => [library.id, library.name]))
   return new Map(notebooks.map((notebook) => {
@@ -125,7 +133,7 @@ const EMPTY_LOCATION: Location = { notebook: '', shelf: '', library: '', text: '
 
 const startsAny = (name: string, prefixes: string[]) => prefixes.some((prefix) => name.startsWith(prefix))
 
-export function matchesQuery(note: Note, query: SearchQuery, locations: Map<string, Location>): boolean {
+export function matchesQuery(note: Note, query: SearchQuery, locations: Locations): boolean {
   const location = locations.get(note.notebookId ?? '') ?? EMPTY_LOCATION
   if (query.is.includes('pinned') && !note.pinned) return false
   if (query.is.includes('favorite') && !note.favorite) return false
