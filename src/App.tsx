@@ -245,6 +245,12 @@ function App() {
     return ordered.filter((note) => inView(note) && (!searching || matchesQuery(note, searchQuery, locations, attachedNoteIds)))
   }, [attachedNoteIds, listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, useWorkerResults, workerSearch.ids])
 
+  // In the graph, the search narrows the notes shown.
+  const graphMatches = useMemo(
+    () => (view === 'graph' && !isEmptyQuery(searchQuery) ? new Set(filteredNotes.map((note) => note.id)) : undefined),
+    [view, searchQuery, filteredNotes],
+  )
+
   // Forget the cached search text of notes deleted for good.
   useEffect(() => {
     pruneSearchCache([...notes, ...trash].map((note) => note.id))
@@ -594,7 +600,7 @@ function App() {
             </div>
           )}
           <div className="mb-5 flex min-w-0 items-center gap-3">
-            {view !== 'graph' && !view.startsWith('library:') && (
+            {!view.startsWith('library:') && (
               <>
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
@@ -621,6 +627,8 @@ function App() {
             <KnowledgeGraph
               notes={graphNotes}
               links={graphLinks}
+              matchingIds={graphMatches}
+              theme={theme}
               noteLabel={noteLabel}
               onOpenNote={openNote}
             />

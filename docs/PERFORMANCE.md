@@ -374,3 +374,41 @@ Main-thread time per keystroke typing a search at 100,000 notes, measured in the
 | Slowest keystroke | 105–671 ms | 46 ms |
 
 Typing a search straight after loading behaves as on `main` until the worker has its copy.
+
+### Whole-library graph (November 4, 2026)
+
+The Knowledge Graph's **Whole library** view draws every note with sigma.js (WebGL) and lays the
+graph out with ForceAtlas2 in a worker. The view and its libraries are a separate download of
+169 KB (plus a 79 KB layout worker), fetched only when the view is first opened.
+
+Measured locally in headless Chromium (seeded libraries with 1.5 links per note), with the
+milliseconds of main-thread long tasks:
+
+| | 20,000 notes | 100,000 notes |
+|---|---|---|
+| Graph shown after opening the view | 2.7 s | 10.7 s |
+| Layout settled | 17 s | 34 s |
+| Slowest search keystroke with the graph shown | 383 ms | 1,163 ms |
+
+What was tried and changed:
+
+- **sigma 4 replaced by sigma 3.** sigma 4 (released October 2026) evaluates a style engine for
+  every note and link on each redraw, through compiled object-spread helpers. At 20,000 notes
+  each redraw took 1.5–3.5 s of script, and search keystrokes up to 4.6 s. sigma 3 copies each
+  item's attributes once and hands that copy to the reducer. With it, search keystrokes take
+  at most 383 ms, and the download is 169 KB instead of 456 KB.
+- **Reducers change only what differs** (and, on sigma 4, returned shared objects); copying
+  each item's whole look was most of the cost.
+- **Partial redraws:** pointing at a note redraws only it, its neighbours, and their links,
+  rather than dimming the whole graph. A search keystroke redraws only the notes whose match
+  changed; a full redraw happens only when more than a quarter of the notes change.
+- **Fewer layout updates for large graphs:** positions are posted every 120 ms up to 5,000
+  notes, every second up to 20,000, and every 4 seconds above that. Every update redraws the
+  whole graph.
+- **Links are hidden while panning or zooming** when there are more than 5,000 of them.
+
+Most of the remaining long tasks are WebGL drawing. Headless Chromium here draws WebGL in
+software (SwiftShader), so these numbers overstate the cost on a machine with a graphics card;
+WebKit on the same machine reports the Intel GPU. The views outside the graph are unchanged:
+it is a separate chunk and runs only while the graph is shown.
+

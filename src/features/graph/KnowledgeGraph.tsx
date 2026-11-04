@@ -1,14 +1,24 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, ExternalLink, Network } from 'lucide-react'
 import type { Note, NoteLink } from '../../types'
 import { getGraphNeighbors, MAX_VISIBLE_GRAPH_NEIGHBORS } from './graphModel'
+import { canDrawLibraryGraph } from './libraryGraphData'
+
+// WebGL drawing and the layout are fetched only when the whole-library graph is first shown.
+const LibraryGraph = lazy(() => import('./LibraryGraph'))
 
 interface KnowledgeGraphProps {
   notes: Note[]
   links: NoteLink[]
+  /** Notes matching the search, or undefined when not searching. */
+  matchingIds?: ReadonlySet<string>
+  /** 'light' or 'dark'. */
+  theme: string
   noteLabel: (note: Note) => string
   onOpenNote: (note: Note) => void
 }
+
+type GraphMode = 'library' | 'note'
 
 interface GraphPosition {
   x: number
@@ -28,9 +38,16 @@ function getEdgePath(from: GraphPosition, to: GraphPosition, offset: number): st
   return `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`
 }
 
-export function KnowledgeGraph({ notes, links, noteLabel, onOpenNote }: KnowledgeGraphProps) {
+export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, onOpenNote }: KnowledgeGraphProps) {
   const activeNotes = useMemo(() => notes.filter((note) => note.deletedAt === undefined), [notes])
+  // The whole library where the browser can draw it; otherwise the neighbourhood explorer.
+  const [mode, setMode] = useState<GraphMode>(() => (canDrawLibraryGraph() ? 'library' : 'note'))
   const [focusNoteId, setFocusNoteId] = useState(() => activeNotes[0]?.id ?? '')
+  // While searching, the explorer offers only the matching notes (and the one shown).
+  const choices = useMemo(
+    () => (matchingIds ? activeNotes.filter((note) => matchingIds.has(note.id) || note.id === focusNoteId) : activeNotes),
+    [activeNotes, matchingIds, focusNoteId],
+  )
   // If the chosen note leaves the graph (trashed or deleted), show the first note instead.
   const focusNote = activeNotes.find((note) => note.id === focusNoteId) ?? activeNotes[0]
   const activeFocusNoteId = focusNote?.id ?? ''
@@ -61,6 +78,41 @@ export function KnowledgeGraph({ notes, links, noteLabel, onOpenNote }: Knowledg
   const outgoing = neighbors.filter((neighbor) => neighbor.outgoing)
   const backlinks = neighbors.filter((neighbor) => neighbor.incoming)
 
+  const modeSwitch = (
+    <div className="segmented" role="group" aria-label="Graph view">
+      <button type="button" aria-pressed={mode === 'library'} onClick={() => setMode('library')}>Whole library</button>
+      <button type="button" aria-pressed={mode === 'note'} onClick={() => setMode('note')}>Around a note</button>
+    </div>
+  )
+
+  if (mode === 'library') {
+    return (
+      <section aria-labelledby="knowledge-graph-heading" className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 id="knowledge-graph-heading" className="text-xl font-semibold">Whole library</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">Every note and link. Point at a note to pick out its links; search to narrow the graph.</p>
+          </div>
+          {modeSwitch}
+        </div>
+        <Suspense fallback={<p role="status" className="py-16 text-center text-[var(--muted)]">Loading the graph…</p>}>
+          <LibraryGraph
+            notes={activeNotes}
+            links={links}
+            matchingIds={matchingIds}
+            noteLabel={noteLabel}
+            theme={theme}
+            onOpenNote={onOpenNote}
+            onExplore={(note) => {
+              setFocusNoteId(note.id)
+              setMode('note')
+            }}
+          />
+        </Suspense>
+      </section>
+    )
+  }
+
   return (
     <section aria-labelledby="knowledge-graph-heading" className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -68,6 +120,7 @@ export function KnowledgeGraph({ notes, links, noteLabel, onOpenNote }: Knowledg
           <h2 id="knowledge-graph-heading" className="text-xl font-semibold">Relationship explorer</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">Explore direct links and backlinks between your saved notes.</p>
         </div>
+        {modeSwitch}
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="graph-focus-note" className="text-sm font-medium">Explore note</label>
           <select
@@ -76,7 +129,7 @@ export function KnowledgeGraph({ notes, links, noteLabel, onOpenNote }: Knowledg
             value={activeFocusNoteId}
             onChange={(event) => setFocusNoteId(event.target.value)}
           >
-            {activeNotes.map((note) => (
+            {choices.map((note) => (
               <option key={note.id} value={note.id}>{noteLabel(note)}</option>
             ))}
           </select>
