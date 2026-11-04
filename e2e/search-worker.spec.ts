@@ -32,4 +32,10 @@ test('searches a large library in a worker, with exact counts, filters, and edit
   await search.fill('quokka')
   await expect(count).toHaveText('1 note', { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Quokka sightings' })).toBeVisible()
+
+  // Date and has: filters work in the worker too: the seeded notes are from 2025.
+  await search.fill('after:today')
+  await expect(count).toHaveText('1 note', { timeout: 30_000 })
+  await search.fill('before:2026 -has:attachment')
+  await expect(count).toHaveText(`${library.notes} notes`, { timeout: 30_000 })
 })

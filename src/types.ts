@@ -50,11 +50,21 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 /** How the Markdown editor shows text: formatted outside the line being edited, or as typed. */
 export type EditorMode = 'live' | 'source'
 
+/** A search kept by name, shown in the sidebar and the command palette. */
+export interface SavedSearch {
+  id: string
+  name: string
+  /** The search as typed, operators and all. */
+  query: string
+}
+
 export interface AppSettings {
   id: 'preferences'
   theme: ThemePreference
   /** Absent in libraries from before live preview, which means 'live'. */
   editorMode?: EditorMode
+  /** Absent until a search is first saved. */
+  savedSearches?: SavedSearch[]
 }
 
 export interface NoteHistoryEntry {

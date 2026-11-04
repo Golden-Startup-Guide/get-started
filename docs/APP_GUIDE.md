@@ -137,10 +137,20 @@ Search operators narrow the results and can be combined:
 | `notebook:work` | Notes in a notebook whose name starts with "work"; also `shelf:` and `library:` |
 | `notebook:"health hand"` | Quotes for names with spaces |
 | `is:pinned`, `is:favorite` | Pinned or favorite notes |
-| `-tag:draft`, `-is:pinned` | Any filter with `-` in front excludes instead |
+| `has:attachment` | Notes with attached files (also `has:file`) |
+| `has:task` | Notes with a checklist item not yet ticked (also `has:todo`) |
+| `has:link` | Notes that link to another note with `[[…]]` |
+| `after:2026-11-01` | Notes last edited on or after that day |
+| `before:2026-11-01` | Notes last edited before that day |
+| `after:2026-11`, `before:2026` | A month or year: from its first day |
+| `after:today`, `after:yesterday`, `after:7d` | Relative dates: `d`ays, `w`eeks, `m`onths, or `y`ears ago |
+| `-tag:draft`, `-is:pinned`, `-has:task` | Any filter with `-` in front excludes instead |
 
-A word with an unknown operator, such as a time like `10:30` or a web address,
-is searched as plain text. The **?** button in the search field lists these and
+Dates are in your device's time zone, and `after:` includes the day given
+while `before:` stops just before it, so `after:2026-11-01 before:2026-11-08`
+is the first week of November. A word with an unknown operator or value, such
+as a time like `10:30`, a web address, or `has:pizza`, is searched as plain
+text. The **?** button in the search field lists these and
 adds an example to the search when selected; Escape closes it without clearing
 the search. Search runs locally against the browser's stored data.
 
@@ -151,6 +161,17 @@ keeps responding) and afterwards only the notes that change. While it is
 answering, the count beside the search box reads **Searching…** and the
 previous results stay on screen; results are the same as in smaller
 libraries, which are searched instantly on the page.
+
+**Saved searches.** With a search typed, the bookmark button in the search
+field saves it under a name (it suggests the search itself). Saved searches are
+listed under **Saved searches** in the sidebar and in the command palette;
+choosing one shows All Notes with that search filled in, since its own filters
+say where to look. While a saved search is in the box the button is filled in,
+and selecting it removes the saved search. Saving the same search again (spaces
+aside) renames it rather than adding a copy. Up to 50 can be saved. They are
+kept with your preferences and included in backups; importing a backup on a
+device with its own preferences keeps them and adds the backup's saved
+searches that it does not have yet.
 
 There is no remote index, model download, or semantic-search service.
 

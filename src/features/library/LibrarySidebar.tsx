@@ -10,6 +10,7 @@ import {
   Network,
   PanelLeftClose,
   Plus,
+  Search,
   Settings,
   Tag as TagIcon,
   Trash2,
@@ -23,6 +24,7 @@ import {
   moveNotebookToShelf,
   promptRename,
 } from '../../state/actions'
+import { sameSearch } from '../../lib/savedSearches'
 import { useLibraryStore } from '../../state/libraryStore'
 import { useWorkspaceStore, type View } from '../../state/workspaceStore'
 import type { Library } from '../../types'
@@ -36,6 +38,7 @@ export function LibrarySidebar({
   onNewNote,
   onOpenSettings,
   onOpenToday,
+  onRunSearch,
   onCloseNavigation,
   newNoteRef,
   closeButtonRef,
@@ -45,6 +48,8 @@ export function LibrarySidebar({
   onOpenSettings: () => void
   /** Opens (or starts) today's daily note. */
   onOpenToday: () => void
+  /** Runs a saved search. */
+  onRunSearch: (query: string) => void
   onCloseNavigation: () => void
   newNoteRef: RefObject<HTMLButtonElement>
   closeButtonRef: RefObject<HTMLButtonElement>
@@ -55,6 +60,8 @@ export function LibrarySidebar({
   const libraries = useLibraryStore((state) => state.libraries)
   const shelves = useLibraryStore((state) => state.shelves)
   const tags = useLibraryStore((state) => state.tags)
+  const savedSearches = useLibraryStore((state) => state.settings.savedSearches)
+  const query = useWorkspaceStore((state) => state.query)
   const counts = useNoteCounts()
   const view = useWorkspaceStore((state) => state.view)
   const sidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed)
@@ -139,6 +146,22 @@ export function LibrarySidebar({
           <CalendarDays size={16} aria-hidden="true" /><span className="min-w-0 flex-1 truncate">Today’s note</span>
         </button>
       </nav>
+      {savedSearches?.length ? (
+        <div className="mt-8">
+          <h2 className="section-label mb-2 px-2">Saved searches</h2>
+          <nav aria-label="Saved searches" className="space-y-1">
+            {savedSearches.map((search) => (
+              <NavButton
+                key={search.id}
+                active={view === 'all' && sameSearch(query, search.query)}
+                label={search.name}
+                onClick={() => onRunSearch(search.query)}
+                icon={<Search size={15} />}
+              />
+            ))}
+          </nav>
+        </div>
+      ) : null}
       <div className="library-tree mt-8 min-w-0">
         <div className="mb-2 flex items-center justify-between px-2">
           <h2 className="section-label">Your Library</h2>

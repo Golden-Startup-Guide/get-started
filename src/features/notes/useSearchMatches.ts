@@ -22,7 +22,7 @@ export interface SearchMatches {
   ready: boolean
 }
 
-const searchable = (note: Note): SearchableNote => ({
+const searchable = (note: Note, attached: ReadonlySet<string>): SearchableNote => ({
   id: note.id,
   title: note.title,
   content: note.content,
@@ -31,6 +31,7 @@ const searchable = (note: Note): SearchableNote => ({
   pinned: note.pinned,
   favorite: note.favorite,
   updatedAt: note.updatedAt,
+  attached: attached.has(note.id),
 })
 
 /**
@@ -48,24 +49,26 @@ export function useSearchMatches(
   notes: readonly Note[],
   query: SearchQuery,
   locations: Locations,
+  attached: ReadonlySet<string>,
   enabled: boolean,
   primed = false,
 ): SearchMatches {
   const workerRef = useRef<Worker>()
-  // What the worker has: each note's updatedAt, and the locations it was last sent.
+  // What the worker has: each note's updatedAt, which of them have attachments, and the locations.
   const sentRef = useRef(new Map<string, number>())
+  const sentAttachedRef = useRef(new Set<string>())
   const sentLocationsRef = useRef<Locations>()
   const latestQueryId = useRef(0)
   const queriesRef = useRef(new Map<number, SearchQuery>())
   // The library version the worker holds completely; queries wait for it to match `notes`.
-  const [synced, setSynced] = useState<{ notes: readonly Note[]; locations: Locations }>()
+  const [synced, setSynced] = useState<{ notes: readonly Note[]; locations: Locations; attached: ReadonlySet<string> }>()
   // The newest answer, with the query it answers: while it is for an older query, a search is pending.
   const [result, setResult] = useState<{ query: SearchQuery; ids: Set<string> }>()
   const [failed, setFailed] = useState(false)
   const available = enabled && !failed && typeof Worker !== 'undefined'
   const searching = available && !isEmptyQuery(query)
   const active = available && (primed || searching)
-  const ready = synced?.notes === notes && synced.locations === locations
+  const ready = synced?.notes === notes && synced.locations === locations && synced.attached === attached
 
   useEffect(() => () => workerRef.current?.terminate(), [])
 
@@ -86,15 +89,19 @@ export function useSearchMatches(
     }
     const target = worker
     const sent = sentRef.current
+    const sentAttached = sentAttachedRef.current
     const changed: Note[] = []
     const present = new Set<string>()
     for (const note of notes) {
       present.add(note.id)
-      if (sent.get(note.id) !== note.updatedAt) changed.push(note)
+      if (sent.get(note.id) !== note.updatedAt || sentAttached.has(note.id) !== attached.has(note.id)) changed.push(note)
     }
     const removals: string[] = []
     for (const id of sent.keys()) if (!present.has(id)) removals.push(id)
-    for (const id of removals) sent.delete(id)
+    for (const id of removals) {
+      sent.delete(id)
+      sentAttached.delete(id)
+    }
     const locationsChanged = sentLocationsRef.current !== locations
     if (removals.length || locationsChanged) {
       target.postMessage({ type: 'sync', upserts: [], removals, locations: locationsChanged ? locations : undefined } satisfies SearchWorkerRequest)
@@ -119,11 +126,15 @@ export function useSearchMatches(
       if (cancelled) return
       const batch = changed.slice(start, start + SYNC_BATCH_SIZE)
       if (batch.length) {
-        target.postMessage({ type: 'sync', upserts: batch.map(searchable), removals: [] } satisfies SearchWorkerRequest)
-        for (const note of batch) sent.set(note.id, note.updatedAt)
+        target.postMessage({ type: 'sync', upserts: batch.map((note) => searchable(note, attached)), removals: [] } satisfies SearchWorkerRequest)
+        for (const note of batch) {
+          sent.set(note.id, note.updatedAt)
+          if (attached.has(note.id)) sentAttached.add(note.id)
+          else sentAttached.delete(note.id)
+        }
       }
       if (start + SYNC_BATCH_SIZE < changed.length) whenIdle(() => sendFrom(start + SYNC_BATCH_SIZE))
-      else setSynced({ notes, locations })
+      else setSynced({ notes, locations, attached })
     }
     // A few changed notes (an edit) go at once; a whole library goes in idle steps.
     if (changed.length <= SYNC_BATCH_SIZE) sendFrom(0)
@@ -132,7 +143,7 @@ export function useSearchMatches(
       cancelled = true
       cancelNext()
     }
-  }, [active, notes, locations])
+  }, [active, notes, locations, attached])
 
   // Ask once the worker holds this version of the library.
   useEffect(() => {

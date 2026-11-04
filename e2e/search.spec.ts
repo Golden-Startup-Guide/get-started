@@ -56,3 +56,41 @@ test('searches with words in any order, phrases, exclusions, and tag and noteboo
   await expect(tips).toHaveCount(0)
   await expect(search).toHaveValue('basil -tomato')
 })
+
+test('filters by open tasks and edit date, and saves a search to run from the sidebar', async ({ page }) => {
+  await openWorkspace(page)
+  await createNote(page, 'Seed jobs', '- [x] order seeds\n- [ ] sow the basil')
+  await createNote(page, 'Basil harvest', '- [x] pick the basil')
+
+  const search = page.getByRole('searchbox', { name: /Search notes/ })
+  const count = page.locator('#note-count')
+  await search.fill('basil has:task')
+  await expect(count).toHaveText('1 note')
+  await expect(page.getByRole('heading', { name: 'Seed jobs' })).toBeVisible()
+  await search.fill('basil -has:task after:today')
+  await expect(count).toHaveText('1 note')
+  await expect(page.getByRole('heading', { name: 'Basil harvest' })).toBeVisible()
+  await search.fill('basil before:today')
+  await expect(count).toHaveText('0 notes')
+
+  await search.fill('basil has:task')
+  await page.getByRole('button', { name: 'Save this search' }).click()
+  const name = page.getByRole('textbox', { name: 'Name this search' })
+  await expect(name).toBeFocused()
+  await name.fill('Basil to do')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Remove saved search “Basil to do”' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Clear search' }).click()
+  await page.getByRole('navigation', { name: 'Saved searches' }).getByRole('button', { name: 'Basil to do' }).click()
+  await expect(search).toHaveValue('basil has:task')
+  await expect(count).toHaveText('1 note')
+
+  // Kept after a reload, and found in the command palette.
+  await page.reload()
+  await page.getByRole('button', { name: 'Open command palette' }).click()
+  await page.getByRole('combobox').fill('basil to do')
+  await page.keyboard.press('Enter')
+  await expect(search).toHaveValue('basil has:task')
+  await expect(count).toHaveText('1 note')
+})

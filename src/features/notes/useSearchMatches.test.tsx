@@ -16,18 +16,23 @@ class FakeWorker {
   held: Array<() => void> = []
   private notes = new Map<string, SearchableNote>()
   private locations: Locations = new Map()
+  private attached = new Set<string>()
   constructor() {
     FakeWorker.instances.push(this)
   }
   postMessage(message: SearchWorkerRequest) {
     this.messages.push(message)
     if (message.type === 'sync') {
-      for (const note of message.upserts) this.notes.set(note.id, note)
+      for (const note of message.upserts) {
+        this.notes.set(note.id, note)
+        if (note.attached) this.attached.add(note.id)
+        else this.attached.delete(note.id)
+      }
       for (const id of message.removals) this.notes.delete(id)
       if (message.locations) this.locations = message.locations
       return
     }
-    const ids = [...this.notes.values()].filter((note) => matchesQuery(note as Note, message.query, this.locations)).map((note) => note.id)
+    const ids = [...this.notes.values()].filter((note) => matchesQuery(note, message.query, this.locations, this.attached)).map((note) => note.id)
     const answer = () => this.onmessage?.({ data: { id: message.id, ids } } as MessageEvent)
     if (this.hold) this.held.push(answer)
     else setTimeout(answer, 0)
@@ -38,6 +43,7 @@ class FakeWorker {
 const note = (index: number, content = 'plain'): Note =>
   ({ id: `n${index}`, title: `Note ${index}`, content, createdAt: 1, updatedAt: 1, notebookId: 'nb' })
 const locations = buildLocations([], [], [])
+const noAttachments: ReadonlySet<string> = new Set()
 const library = Array.from({ length: SYNC_BATCH_SIZE * 2 + 500 }, (_, index) => note(index, index % 1000 === 0 ? 'rare word' : 'plain'))
 const upsertBatches = (worker: FakeWorker) => worker.messages.filter((message) => message.type === 'sync' && message.upserts.length).length
 const queries = (worker: FakeWorker) => worker.messages.filter((message) => message.type === 'query')
@@ -51,7 +57,7 @@ describe('useSearchMatches', () => {
 
   it('sends the library in batches when primed, and asks only once the worker has all of it', async () => {
     const empty = parseSearchQuery('')
-    const { result, rerender } = renderHook(({ query }) => useSearchMatches(library, query, locations, true, true), { initialProps: { query: empty } })
+    const { result, rerender } = renderHook(({ query }) => useSearchMatches(library, query, locations, noAttachments, true, true), { initialProps: { query: empty } })
     const worker = FakeWorker.instances[0]
     expect(worker).toBeDefined()
     // Two full batches and a part batch.
@@ -67,7 +73,7 @@ describe('useSearchMatches', () => {
 
   it('sends only the changed note after an edit, and finds its new text', async () => {
     const query = parseSearchQuery('quokka')
-    const { result, rerender } = renderHook(({ notes }) => useSearchMatches(notes, query, locations, true), { initialProps: { notes: library } })
+    const { result, rerender } = renderHook(({ notes }) => useSearchMatches(notes, query, locations, noAttachments, true), { initialProps: { notes: library } })
     const worker = FakeWorker.instances[0]
     await waitFor(() => expect(result.current.ids?.size).toBe(0))
     const before = worker.messages.length
@@ -79,9 +85,22 @@ describe('useSearchMatches', () => {
     expect(sync).toEqual([{ type: 'sync', upserts: [expect.objectContaining({ id: 'n7', content: 'a quokka' })], removals: [] }])
   })
 
+  it('sends a note again when it gains an attachment, so has:attachment finds it', async () => {
+    const query = parseSearchQuery('has:attachment')
+    const { result, rerender } = renderHook(({ attached }) => useSearchMatches(library, query, locations, attached, true), { initialProps: { attached: noAttachments } })
+    const worker = FakeWorker.instances[0]
+    await waitFor(() => expect(result.current.ids?.size).toBe(0))
+    const before = worker.messages.length
+
+    rerender({ attached: new Set(['n3']) })
+    await waitFor(() => expect(result.current.ids).toEqual(new Set(['n3'])))
+    const sync = worker.messages.slice(before).filter((message) => message.type === 'sync')
+    expect(sync).toEqual([{ type: 'sync', upserts: [expect.objectContaining({ id: 'n3', attached: true })], removals: [] }])
+  })
+
   it('shows only the newest query’s answer, even when an older one arrives later', async () => {
     const small = library.slice(0, 10)
-    const { result, rerender } = renderHook(({ query }) => useSearchMatches(small, query, locations, true), { initialProps: { query: parseSearchQuery('rare') } })
+    const { result, rerender } = renderHook(({ query }) => useSearchMatches(small, query, locations, noAttachments, true), { initialProps: { query: parseSearchQuery('rare') } })
     const worker = FakeWorker.instances[0]
     await waitFor(() => expect(result.current.ids?.size).toBe(1))
     worker.hold = true
@@ -96,10 +115,10 @@ describe('useSearchMatches', () => {
   })
 
   it('does nothing when disabled, and reports no worker when Workers are missing', () => {
-    renderHook(() => useSearchMatches(library, parseSearchQuery('rare'), locations, false))
+    renderHook(() => useSearchMatches(library, parseSearchQuery('rare'), locations, noAttachments, false))
     expect(FakeWorker.instances).toHaveLength(0)
     vi.stubGlobal('Worker', undefined)
-    const { result } = renderHook(() => useSearchMatches(library, parseSearchQuery('rare'), locations, true))
+    const { result } = renderHook(() => useSearchMatches(library, parseSearchQuery('rare'), locations, noAttachments, true))
     expect(result.current.available).toBe(false)
   })
 })

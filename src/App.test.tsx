@@ -580,4 +580,45 @@ describe('My Notes workspace', () => {
       window.requestAnimationFrame = realFrame
     }
   })
+
+  it('saves a search by name, runs it from the sidebar, and removes it', async () => {
+    const { default: App } = await import('./App')
+    const storage = await import('./lib/notes')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+    const search = screen.getByRole('searchbox')
+    expect(screen.queryByRole('button', { name: 'Save this search' })).not.toBeInTheDocument()
+
+    await user.type(search, 'has:task  -tag:someday')
+    await user.click(screen.getByRole('button', { name: 'Save this search' }))
+    const name = screen.getByRole('textbox', { name: 'Name this search' })
+    expect(name).toHaveValue('has:task  -tag:someday')
+    await user.clear(name)
+    await user.type(name, 'Open tasks{Enter}')
+    expect(await screen.findByRole('button', { name: 'Remove saved search “Open tasks”' })).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent('Saved the search “Open tasks”.')
+    await expect(storage.getSettings()).resolves.toEqual(expect.objectContaining({
+      savedSearches: [expect.objectContaining({ name: 'Open tasks', query: 'has:task  -tag:someday' })],
+    }))
+
+    // The same search with different spacing counts as saved.
+    await user.clear(search)
+    await user.type(search, 'has:task -tag:someday ')
+    expect(screen.getByRole('button', { name: 'Remove saved search “Open tasks”' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
+    await user.click(screen.getByRole('button', { name: /Favorites/ }))
+    const saved = within(screen.getByRole('navigation', { name: 'Saved searches' })).getByRole('button', { name: 'Open tasks' })
+    expect(saved).not.toHaveAttribute('aria-current')
+    await user.click(saved)
+    expect(await screen.findByRole('heading', { name: 'All Notes' })).toBeInTheDocument()
+    expect(search).toHaveValue('has:task  -tag:someday')
+    expect(saved).toHaveAttribute('aria-current', 'page')
+
+    await user.click(screen.getByRole('button', { name: 'Remove saved search “Open tasks”' }))
+    await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Saved searches' })).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Save this search' })).toBeInTheDocument()
+    await expect(storage.getSettings()).resolves.toEqual(expect.objectContaining({ savedSearches: [] }))
+  })
 })

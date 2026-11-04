@@ -7,6 +7,7 @@ import type {
   Library,
   Notebook,
   NoteHistoryEntry,
+  SavedSearch,
   Shelf,
   Tag,
   EditorMode,
@@ -18,6 +19,7 @@ import {
   MAX_NOTE_ATTACHMENT_BYTES,
   validateAttachmentDetails,
 } from '../features/notes/attachments'
+import { mergeSavedSearches, withSavedSearch } from './savedSearches'
 import { starterNotes } from './starterNotes'
 import {
   base64ToArrayBuffer,
@@ -400,6 +402,18 @@ export async function getNoteAttachments(noteId: string): Promise<NoteAttachment
     .sort(
     (a, b) => a.createdAt - b.createdAt,
   )
+}
+
+/** The IDs of notes with at least one attachment, read from the index without loading any files. */
+export async function getNoteIdsWithAttachments(): Promise<Set<string>> {
+  const db = await database
+  const ids = new Set<string>()
+  let cursor = await db.transaction('attachments').store.index('by-note').openKeyCursor(null, 'nextunique')
+  while (cursor) {
+    ids.add(cursor.key)
+    cursor = await cursor.continue()
+  }
+  return ids
 }
 
 export async function addNoteAttachment(
@@ -865,6 +879,37 @@ export async function saveEditorMode(editorMode: EditorMode): Promise<void> {
   await saveSettings({ editorMode })
 }
 
+/** Saves a search by name, or renames it if the same search is already saved. Returns them all. */
+export async function saveSearch(name: string, query: string): Promise<SavedSearch[]> {
+  const db = await database
+  const transaction = db.transaction('settings', 'readwrite')
+  const current = (await transaction.store.get('preferences')) ?? { id: 'preferences', theme: 'system' }
+  let savedSearches: SavedSearch[]
+  try {
+    savedSearches = withSavedSearch(current.savedSearches ?? [], name, query, crypto.randomUUID())
+  } catch (reason) {
+    transaction.abort()
+    await transaction.done.catch(() => undefined)
+    throw reason
+  }
+  await transaction.store.put({ ...current, savedSearches })
+  await transaction.done
+  announceChange()
+  return savedSearches
+}
+
+/** Removes a saved search. Returns those left. */
+export async function deleteSavedSearch(id: string): Promise<SavedSearch[]> {
+  const db = await database
+  const transaction = db.transaction('settings', 'readwrite')
+  const current = await transaction.store.get('preferences')
+  const savedSearches = (current?.savedSearches ?? []).filter((search) => search.id !== id)
+  if (current?.savedSearches) await transaction.store.put({ ...current, savedSearches })
+  await transaction.done
+  announceChange()
+  return savedSearches
+}
+
 export async function setNoteFlag(
   id: string,
   flag: 'pinned' | 'favorite',
@@ -1163,6 +1208,10 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   const settingsStore = transaction.objectStore('settings')
   const hasLocalSettings = await settingsStore.get('preferences')
   if (!hasLocalSettings) await settingsStore.put(backup.settings)
+  // This device keeps its own preferences, but gains the backup's saved searches.
+  else if (backup.settings.savedSearches?.length) {
+    await settingsStore.put({ ...hasLocalSettings, savedSearches: mergeSavedSearches(hasLocalSettings.savedSearches ?? [], backup.settings.savedSearches) })
+  }
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
   announceChange()
