@@ -557,4 +557,27 @@ describe('My Notes workspace', () => {
     await user.click(within(restoredCard!).getByRole('button', { name: 'Delete forever' }))
     await waitFor(() => expect(getTrash()).resolves.toEqual([]))
   }, 25000)
+  it('does not let a late focus restore pull focus out of a dialog opened meanwhile', async () => {
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+    await user.click(await screen.findByRole('button', { name: /^Open note Welcome to My Notes/ }))
+    await screen.findByRole('textbox', { name: 'Note title' })
+
+    // Hold back the frame in which closing the editor restores focus, as a slow browser might.
+    const frames: FrameRequestCallback[] = []
+    const realFrame = window.requestAnimationFrame
+    window.requestAnimationFrame = (callback) => frames.push(callback)
+    try {
+      await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
+      await user.keyboard('{Control>}k{/Control}')
+      const input = await screen.findByRole('combobox', { name: 'Search notes, places, and actions' })
+      expect(input).toHaveFocus()
+      for (const frame of frames.splice(0)) frame(performance.now())
+      expect(input).toHaveFocus()
+    } finally {
+      window.requestAnimationFrame = realFrame
+    }
+  })
 })
