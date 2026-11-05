@@ -19,6 +19,7 @@ import { QuickCapture } from './features/notes/QuickCapture'
 import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
+import { BackupReminder } from './features/backup/BackupReminder'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
@@ -41,6 +42,7 @@ import {
   startStorageSync,
   toggleNoteFlag,
 } from './state/actions'
+import { useBackupStore } from './state/backupStore'
 import { useEditorStore } from './state/editorStore'
 import { useLibraryStore } from './state/libraryStore'
 import { usePersistenceStore } from './state/persistenceStore'
@@ -124,6 +126,16 @@ function App() {
       stopSync()
     }
   }, [])
+
+  // Backups: once the library has loaded, and then every quarter of an hour while the app is open,
+  // make an automatic backup if one is due (or work out whether to remind).
+  useEffect(() => {
+    if (isLoading) return
+    const backups = useBackupStore.getState()
+    void (backups.loaded ? backups.check() : backups.load().then(() => useBackupStore.getState().check()))
+    const timer = window.setInterval(() => void useBackupStore.getState().check(), 15 * 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [isLoading])
 
   useEffect(() => {
     if (settings.theme !== 'system' || !window.matchMedia) return
@@ -578,6 +590,7 @@ function App() {
             </div>
           </header>
           {error && <div role="alert" className="notice notice-error mb-5">{error}<button onClick={() => showError(null)} aria-label="Dismiss error"><X size={15} /></button></div>}
+          <BackupReminder onOpenSettings={openSettings} />
           {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => showNotice(null)} aria-label="Dismiss notice"><X size={15} /></button></div>}
           {view.startsWith('shelf:') && (
             <form className="mb-5 flex max-w-xl gap-2" onSubmit={(event) => void addNotebookOnShelfPage(event)}>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { DATABASE_VERSION, getStorageSnapshot } from '../../lib/notes'
 import { formatBytes } from '../notes/noteDisplay'
+import { AutoBackupSettings } from '../backup/AutoBackupSettings'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { changeTheme, downloadBackup, requestPersistenceFromSettings, restoreBackup } from '../../state/actions'
 import { useLibraryStore } from '../../state/libraryStore'
@@ -118,6 +119,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </fieldset>
           <p className="mt-2 text-xs text-[var(--muted)]">Import adds notes without overwriting existing notes. JSON backups up to 40 MiB are supported; if a backup is too large, export it without attachments or history.</p>
         </section>
+        <AutoBackupSettings />
         <section className="mt-7">
           <h3 className="mb-3 text-sm font-semibold">Storage on this device</h3>
           <dl className="settings-stats">
