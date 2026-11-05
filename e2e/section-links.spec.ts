@@ -9,7 +9,7 @@ test('follows [[Note#Section]] links to the heading, suggests headings, and jump
   // Typing [[Garden plan# suggests its headings.
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Calendar')
-  const markdown = page.getByRole('textbox', { name: 'Markdown' })
+  const markdown = page.getByRole('textbox', { name: 'Note text' })
   await markdown.fill(`See [[#Notes]].\n\n${filler}\n\n## Notes\n\nPick on time: `)
   await markdown.press('ControlOrMeta+End')
   await page.keyboard.type('[[Garden plan#har')

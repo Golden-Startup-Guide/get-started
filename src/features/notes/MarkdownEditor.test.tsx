@@ -9,7 +9,7 @@ function Harness({ initial, onChange }: { initial: string; onChange?: (value: st
   const [value, setValue] = useState(initial)
   return (
     <>
-      <p id="label">Markdown</p>
+      <p id="label">Note text</p>
       <MarkdownEditor
         value={value}
         onChange={(next) => {
@@ -29,7 +29,7 @@ describe('MarkdownEditor', () => {
 
   it('is a multi-line text box named by its label', () => {
     render(<Harness initial="Hello" />)
-    const field = screen.getByRole('textbox', { name: 'Markdown' })
+    const field = screen.getByRole('textbox', { name: 'Note text' })
     expect(field).toHaveAttribute('aria-multiline', 'true')
     expect(getMarkdown(field)).toBe('Hello')
   })
@@ -43,7 +43,7 @@ describe('MarkdownEditor', () => {
 
   it('applies outside changes as a minimal edit, keeping the cursor', () => {
     render(<Harness initial={'- [ ] Water\nSecond line'} />)
-    const view = EditorView.findFromDOM(screen.getByRole('textbox', { name: 'Markdown' }))!
+    const view = EditorView.findFromDOM(screen.getByRole('textbox', { name: 'Note text' }))!
     view.dispatch({ selection: { anchor: view.state.doc.length } })
     fireEvent.click(screen.getByRole('button', { name: 'Tick first task' }))
     expect(getMarkdown()).toBe('- [x] Water\nSecond line')

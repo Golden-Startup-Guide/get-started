@@ -22,13 +22,15 @@ async function expectNoViolations(page: Page, screen: string) {
 
 for (const theme of ['light', 'dark'] as const) {
   test(`main screens have no WCAG 2.2 AA problems axe can find (${theme} theme)`, async ({ page }) => {
+    // Nine screens checked in turn; WebKit on Windows is the slowest.
+    test.setTimeout(120_000)
     await page.emulateMedia({ colorScheme: theme })
     await openWorkspace(page)
     await createNote(page, 'Accessible note', '# Heading\n\n- [ ] A task\n\nSee [[Welcome to My Notes]] and **bold** text.\n\n| A | B |\n|---|---|\n| 1 | 2 |')
     await expectNoViolations(page, 'the workspace')
 
     await page.getByRole('button', { name: 'Open note Accessible note' }).click()
-    await expect(page.getByRole('textbox', { name: 'Markdown' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Note text' })).toBeVisible()
     await expectNoViolations(page, 'the note editor')
     await page.getByRole('button', { name: 'Close editor' }).first().click()
 

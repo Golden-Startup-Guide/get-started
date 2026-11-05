@@ -10,12 +10,12 @@ test('highlights fenced code in the preview, loading the highlighter only when n
   await page.getByRole('textbox', { name: 'Note title' }).fill('Script')
   const preview = page.locator('.prose-notes')
 
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('Just text and `inline code`.')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('Just text and `inline code`.')
   await expectSaved(page)
   await expect(preview).toContainText('Just text')
   expect(highlighterRequests).toEqual([])
 
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('```js\nconst total = 1 // sum\n```')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('```js\nconst total = 1 // sum\n```')
   // On-demand downloads can be slow on a busy test machine.
   await expect(preview.locator('.hljs-keyword')).toHaveText('const', { timeout: 30_000 })
   await expect(preview.locator('.hljs-comment')).toHaveText('// sum')
@@ -33,12 +33,12 @@ test('typesets maths, downloading KaTeX only for notes that use it, and leaves p
   await page.getByRole('textbox', { name: 'Note title' }).fill('Budget')
   const preview = page.locator('.prose-notes')
 
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('Seeds cost $5 and compost $10.')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('Seeds cost $5 and compost $10.')
   await expectSaved(page)
   await expect(preview).toHaveText('Seeds cost $5 and compost $10.')
   expect(mathRequests).toEqual([])
 
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('Area: $$\\pi r^2$$\n\n$$\n\\frac{1}{3}\n$$')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('Area: $$\\pi r^2$$\n\n$$\n\\frac{1}{3}\n$$')
   await expect(preview.locator('.math-inline .katex')).toBeVisible({ timeout: 30_000 })
   await expect(preview.locator('.math-display .katex-display')).toBeVisible()
   // The fonts load too (under the app's Content Security Policy, checked by the test fixture).
@@ -55,12 +55,12 @@ test('draws Mermaid diagrams, downloading Mermaid only for notes that have one',
   await page.getByRole('textbox', { name: 'Note title' }).fill('Garden flow')
   const preview = page.locator('.prose-notes')
 
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('```text\nflowchart LR\n```')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('```text\nflowchart LR\n```')
   await expectSaved(page)
   await expect(preview.locator('pre code')).toHaveText('flowchart LR')
   expect(diagramRequests).toEqual([])
 
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('```mermaid\nflowchart LR\n  Seeds --> Sow --> Harvest\n```\n\n```mermaid\nflowchart LR\n  A -->\n```')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('```mermaid\nflowchart LR\n  Seeds --> Sow --> Harvest\n```\n\n```mermaid\nflowchart LR\n  A -->\n```')
   const drawing = preview.locator('.diagram-drawing svg')
   await expect(drawing).toHaveCount(1, { timeout: 30_000 })
   await expect(drawing).toContainText('Harvest')
@@ -73,7 +73,7 @@ test('lists a note’s headings and jumps to them, also from links in the note',
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Season plan')
   const filler = 'A paragraph of notes to make the note tall enough to scroll. '.repeat(30)
-  await page.getByRole('textbox', { name: 'Markdown' }).fill(
+  await page.getByRole('textbox', { name: 'Note text' }).fill(
     `# Spring\n\nJump to [the harvest](#heading-harvest).\n\n${filler}\n\n## Seeds\n\n${filler}\n\n## Planting\n\n${filler}\n\n## Harvest\n\nPick everything.`,
   )
   await expectSaved(page)

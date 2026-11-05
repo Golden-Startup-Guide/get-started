@@ -70,7 +70,7 @@ for (const size of sizes) {
     await waitForCount(page, 1)
     started = await now(page)
     await page.getByRole('button', { name: `Open note ${library.largeNoteTitle}` }).click()
-    const editor = page.getByRole('textbox', { name: 'Markdown' })
+    const editor = page.getByRole('textbox', { name: 'Note text' })
     await expect(editor).toBeVisible()
     const openLargeNoteMs = (await now(page)) - started
     await editor.click()

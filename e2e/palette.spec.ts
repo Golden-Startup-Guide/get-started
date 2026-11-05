@@ -39,7 +39,7 @@ test('switches notes from the palette inside the editor, saving the open note fi
   await createNote(page, 'Planting calendar')
 
   await page.getByRole('button', { name: 'Open note Planting calendar' }).click()
-  const editor = page.getByRole('textbox', { name: 'Markdown' })
+  const editor = page.getByRole('textbox', { name: 'Note text' })
   await editor.click()
   // Typed and switched away at once, before autosave would normally run.
   await page.keyboard.type('Sow beans in May')
@@ -70,5 +70,5 @@ test('switches notes from the palette inside the editor, saving the open note fi
   await page.getByRole('button', { name: 'Close editor' }).first().click()
   await page.reload()
   await page.getByRole('button', { name: 'Open note Planting calendar' }).click()
-  await expect(page.getByRole('textbox', { name: 'Markdown' })).toContainText('Sow beans in May')
+  await expect(page.getByRole('textbox', { name: 'Note text' })).toContainText('Sow beans in May')
 })

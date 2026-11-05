@@ -5,7 +5,7 @@ test('inserts Markdown from the slash menu with the keyboard', async ({ page }) 
   await createNote(page, 'Seed catalogue')
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Plan')
-  await page.getByRole('textbox', { name: 'Markdown' }).click()
+  await page.getByRole('textbox', { name: 'Note text' }).click()
   const menu = page.getByRole('listbox')
   // CodeMirror ignores Enter for 75 ms after a list appears, so fast typing never picks by mistake.
   const pick = async () => {

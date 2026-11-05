@@ -130,7 +130,7 @@ export default defineConfig({
         // and about 3.3 MB) are fetched when a note first uses them.
         globPatterns: [
           '*.{html,js,svg,png,ico,webmanifest}',
-          'assets/{index,NoteEditor,markdownPreview.worker,search.worker,highlighter}-*.{js,css}',
+          'assets/{index,NoteEditor,markdownPreview.worker,search.worker,highlighter,htmlToMarkdown}-*.{js,css}',
           // Loaded by the service worker registration in main.tsx, on every start.
           'assets/workbox-window*.js',
         ],

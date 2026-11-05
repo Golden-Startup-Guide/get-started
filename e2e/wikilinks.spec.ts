@@ -6,7 +6,7 @@ test('links notes by typing [[ and a suggested title, then follows the link and 
 
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Planting calendar')
-  const editor = page.getByRole('textbox', { name: 'Markdown' })
+  const editor = page.getByRole('textbox', { name: 'Note text' })
   await editor.click()
   await page.keyboard.type('Order from [[seed')
   const suggestions = page.getByRole('listbox')

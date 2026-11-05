@@ -27,7 +27,7 @@ test('does not offer to update links while another note still has the old title'
   await createNote(page, 'Journal', 'See [[Ideas]].')
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Ideas')
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('A second note titled Ideas')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('A second note titled Ideas')
   await expectSaved(page)
   await page.getByRole('button', { name: 'Close editor' }).first().click()
 
