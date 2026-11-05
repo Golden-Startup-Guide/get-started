@@ -115,6 +115,8 @@ const catalog: Catalog = {
   "Command palette ({PALETTE_SHORTCUT})": "Paleta de comandos ({PALETTE_SHORTCUT})",
   "Connected note graph": "Gráfico de notas conectadas",
   "Contents": "Contenido",
+  "Copied": "Copiado",
+  "Copy details": "Copiar detalles",
   "Could not save. Your changes are still here; try again.": "No se pudo guardar. Tus cambios siguen aquí; inténtalo de nuevo.",
   "Create a new note": "Crear una nota nueva",
   "Create a new note from navigation": "Crear una nota nueva desde la navegación",
@@ -253,8 +255,9 @@ const catalog: Catalog = {
   "My Notes checked your library and repaired it: {value}.": "My Notes revisó tu biblioteca y la reparó: {value}.",
   "My Notes home": "Inicio de My Notes",
   "My Notes is installed on this device. It opens in its own window and works offline.": "My Notes está instalada en este dispositivo. Se abre en su propia ventana y funciona sin conexión.",
+  "My Notes sends no error reports. Copy the details into a report if you want to; they include the version, the browser, and the error messages, which can name a note or notebook, so check them first.": "My Notes no envía informes de errores. Si quieres, copia los detalles en un informe; incluyen la versión, el navegador y los mensajes de error, que pueden nombrar una nota o un cuaderno, así que revísalos antes.",
   "My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved.": "My Notes se actualizó en otra pestaña. Recarga esta página para seguir trabajando; los cambios sin guardar aquí no se pueden guardar.",
-  "My Notes · IndexedDB schema": "My Notes · esquema de IndexedDB",
+  "My Notes {version} · Database version {schema} · Backup format 4 · Data stored locally": "My Notes {version} · Base de datos versión {schema} · Formato de copia 4 · Datos guardados localmente",
   "Name this search": "Nombre de esta búsqueda",
   "New library": "Biblioteca nueva",
   "New library name": "Nombre de la biblioteca nueva",
@@ -280,6 +283,7 @@ const catalog: Catalog = {
   "No notes link to this one yet.": "Ninguna nota enlaza a esta todavía.",
   "No notes were found in the chosen files. Check that they are the export this app makes.": "No se encontraron notas en los archivos elegidos. Comprueba que sean la exportación que hace esta aplicación.",
   "No other notes to link": "No hay otras notas para enlazar",
+  "No problems since My Notes opened.": "No ha habido problemas desde que se abrió My Notes.",
   "No shelves yet": "Aún no hay estantes",
   "Not now": "Ahora no",
   "Not on a shelf": "Sin estante",
@@ -357,6 +361,7 @@ const catalog: Catalog = {
   "Rename notebook": "Cambiar nombre del cuaderno",
   "Rename shelf": "Cambiar nombre del estante",
   "Rename {name}": "Cambiar nombre de {name}",
+  "Report a problem": "Informar de un problema",
   "Restore": "Restaurar",
   "Restore notes from Trash before linking them.": "Restaura las notas de la papelera antes de enlazarlas.",
   "Restore this saved version? Your current note will remain available in history.": "¿Restaurar esta versión guardada? Tu nota actual seguirá disponible en el historial.",
@@ -632,6 +637,11 @@ const catalog: Catalog = {
     "other": "{count} enlaces salientes",
     "many": "{count} enlaces salientes"
   },
+  "{count} problems since My Notes opened.": {
+    "one": "{count} problema desde que se abrió My Notes.",
+    "many": "{count} problemas desde que se abrió My Notes.",
+    "other": "{count} problemas desde que se abrió My Notes."
+  },
   "{count} results": {
     "one": "{count} resultado",
     "other": "{count} resultados",
@@ -670,7 +680,6 @@ const catalog: Catalog = {
   },
   "{notes}, {attachments}, {history}, and {links}": "{notes}, {attachments}, {history} y {links}",
   "{shown} of {total} notes": "{shown} de {total} notas",
-  "· Backup format 4 · Data stored locally": "· Formato de copia 4 · Datos guardados localmente",
   "“{title}” has no section “{section}”.": "«{title}» no tiene una sección «{section}».",
   "“{title}” was restored.": "Se restauró «{title}»."
 }

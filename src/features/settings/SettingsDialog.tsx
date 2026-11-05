@@ -10,6 +10,8 @@ import { DATABASE_VERSION, getStorageSnapshot } from '../../lib/notes'
 import { formatBytes } from '../notes/noteDisplay'
 import { AutoBackupSettings } from '../backup/AutoBackupSettings'
 import { TransferSettings } from '../transfer/TransferSettings'
+import { ProblemsLog } from './ProblemsLog'
+import { APP_VERSION } from '../../version'
 import { InstallSettings } from '../app/InstallSettings'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { changeTheme, downloadBackup, requestPersistenceFromSettings, restoreBackup } from '../../state/actions'
@@ -168,7 +170,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         <section className="mt-7 border-t border-[var(--border)] pt-5">
           <h3 className="text-sm font-semibold">{t("About My Notes")}</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">{t("An offline-first, private notes app. Your notes stay in this browser’s local storage; no account or network connection is required.")}</p>
-          <p className="mt-2 text-xs text-[var(--muted)]">{t("My Notes · IndexedDB schema")} {DATABASE_VERSION} {t("· Backup format 4 · Data stored locally")}</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">{t('My Notes {version} · Database version {schema} · Backup format 4 · Data stored locally', { version: APP_VERSION, schema: DATABASE_VERSION })}</p>
+          <ProblemsLog />
         </section>
       </section>
     </div>

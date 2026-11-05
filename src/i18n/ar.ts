@@ -115,6 +115,8 @@ const catalog: Catalog = {
   "Command palette ({PALETTE_SHORTCUT})": "لوحة الأوامر ({PALETTE_SHORTCUT})",
   "Connected note graph": "رسم الملاحظات المترابطة",
   "Contents": "المحتويات",
+  "Copied": "تم النسخ",
+  "Copy details": "نسخ التفاصيل",
   "Could not save. Your changes are still here; try again.": "تعذّر الحفظ. لا تزال تغييراتك هنا؛ حاول مرة أخرى.",
   "Create a new note": "إنشاء ملاحظة جديدة",
   "Create a new note from navigation": "إنشاء ملاحظة جديدة من التنقل",
@@ -259,8 +261,9 @@ const catalog: Catalog = {
   "My Notes checked your library and repaired it: {value}.": "فحص My Notes مكتبتك وأصلحها: {value}.",
   "My Notes home": "الصفحة الرئيسية لـ My Notes",
   "My Notes is installed on this device. It opens in its own window and works offline.": "My Notes مثبّت على هذا الجهاز. يفتح في نافذته الخاصة ويعمل دون اتصال.",
+  "My Notes sends no error reports. Copy the details into a report if you want to; they include the version, the browser, and the error messages, which can name a note or notebook, so check them first.": "لا يرسل My Notes تقارير أخطاء. انسخ التفاصيل إلى تقرير إن أردت؛ فهي تتضمن الإصدار والمتصفح ورسائل الخطأ، وقد تذكر اسم ملاحظة أو دفتر، لذا راجعها أولًا.",
   "My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved.": "تم تحديث My Notes في علامة تبويب أخرى. أعد تحميل هذه الصفحة لمتابعة العمل؛ لا يمكن حفظ التغييرات غير المحفوظة هنا.",
-  "My Notes · IndexedDB schema": "My Notes · مخطط IndexedDB",
+  "My Notes {version} · Database version {schema} · Backup format 4 · Data stored locally": "My Notes {version} · إصدار قاعدة البيانات {schema} · صيغة النسخ الاحتياطي 4 · البيانات مخزنة محليًا",
   "Name this search": "اسم هذا البحث",
   "New library": "مكتبة جديدة",
   "New library name": "اسم المكتبة الجديدة",
@@ -286,6 +289,7 @@ const catalog: Catalog = {
   "No notes link to this one yet.": "لا توجد ملاحظات ترتبط بهذه بعد.",
   "No notes were found in the chosen files. Check that they are the export this app makes.": "لم يُعثر على ملاحظات في الملفات المختارة. تأكد من أنها التصدير الذي ينشئه هذا التطبيق.",
   "No other notes to link": "لا توجد ملاحظات أخرى للربط",
+  "No problems since My Notes opened.": "لم تحدث مشكلات منذ فتح My Notes.",
   "No shelves yet": "لا توجد رفوف بعد",
   "Not now": "ليس الآن",
   "Not on a shelf": "خارج الرفوف",
@@ -363,6 +367,7 @@ const catalog: Catalog = {
   "Rename notebook": "إعادة تسمية الدفتر",
   "Rename shelf": "إعادة تسمية الرف",
   "Rename {name}": "إعادة تسمية {name}",
+  "Report a problem": "الإبلاغ عن مشكلة",
   "Restore": "استعادة",
   "Restore notes from Trash before linking them.": "استعد الملاحظات من سلة المهملات قبل ربطها.",
   "Restore this saved version? Your current note will remain available in history.": "استعادة هذه النسخة المحفوظة؟ ستبقى ملاحظتك الحالية متاحة في السجل.",
@@ -704,6 +709,14 @@ const catalog: Catalog = {
     "many": "{count} رابطًا صادرًا",
     "other": "{count} رابط صادر"
   },
+  "{count} problems since My Notes opened.": {
+    "zero": "لم تحدث مشكلات منذ فتح My Notes.",
+    "one": "مشكلة واحدة منذ فتح My Notes.",
+    "two": "مشكلتان منذ فتح My Notes.",
+    "few": "{count} مشكلات منذ فتح My Notes.",
+    "many": "{count} مشكلة منذ فتح My Notes.",
+    "other": "{count} مشكلة منذ فتح My Notes."
+  },
   "{count} results": {
     "zero": "لا نتائج",
     "one": "نتيجة واحدة",
@@ -763,7 +776,6 @@ const catalog: Catalog = {
   },
   "{notes}, {attachments}, {history}, and {links}": "{notes}، و{attachments}، و{history}، و{links}",
   "{shown} of {total} notes": "{shown} من {total} ملاحظة",
-  "· Backup format 4 · Data stored locally": "· صيغة النسخ الاحتياطي 4 · البيانات مخزنة محليًا",
   "“{title}” has no section “{section}”.": "لا يحتوي «{title}» على قسم «{section}».",
   "“{title}” was restored.": "تمت استعادة «{title}»."
 }
