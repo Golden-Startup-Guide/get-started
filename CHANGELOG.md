@@ -36,7 +36,7 @@ The first complete release: a private, offline-first notes app with no account o
 - Installable on computers and phones, and works offline. Updates are offered with a banner, never forced mid-edit (#59).
 - App shortcuts, sharing to the app on Android, and a web clipper bookmarklet (#60).
 - In English, Spanish, and Arabic, with a right-to-left layout; notes keep their own writing direction (#64).
-- Published at <https://golden-startup-guide.github.io/get-started/>, deployed from `main` once the build passes a smoke test where it is served; the app refuses to run inside other sites' frames (#66).
+- Published at <https://golden-startup-guide.github.io/get-started/>, deployed from `main` once the build passes a smoke test where it is served; the app refuses to run inside other sites' frames (#71).
 - Accessible: WCAG 2.2 AA checks on every main screen in CI (#61), keyboard use throughout, and screen-reader labels.
 
 ### Quality
