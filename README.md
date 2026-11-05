@@ -99,6 +99,8 @@ for storage, backup, migration, and feature details.
   numbers against targets, and the causes to fix first.
 - [Decisions](docs/DECISIONS.md) — storage, sync, editor, business model,
   platforms, and hosting, and why.
+- [Accessibility](docs/ACCESSIBILITY.md) — the WCAG 2.2 AA target, what is
+  checked automatically, and the manual checks.
 - [Privacy policy](PRIVACY.md) and [security policy](SECURITY.md).
 
 ## Development

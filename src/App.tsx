@@ -616,8 +616,10 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="palette-trigger" onClick={openPalette} aria-label="Open command palette" aria-keyshortcuts="Control+K Meta+K" title={`Command palette (${PALETTE_SHORTCUT})`}>
+              {/* Named by its content, so the shortcut people see is part of the name voice control hears. */}
+              <button className="palette-trigger" onClick={openPalette} aria-keyshortcuts="Control+K Meta+K" title={`Command palette (${PALETTE_SHORTCUT})`}>
                 <TextSearch size={16} aria-hidden="true" />
+                <span className="sr-only">Open command palette </span>
                 <kbd className="palette-kbd">{PALETTE_SHORTCUT}</kbd>
               </button>
               <button className="icon-button" onClick={openQuickCapture} aria-label="Quick note" aria-keyshortcuts="Alt+N" title={`Quick note (${QUICK_NOTE_SHORTCUT})`}><Zap size={18} /></button>
