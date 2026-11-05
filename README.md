@@ -11,6 +11,9 @@ AI-powered processing.
 
 *Illustrative view of the workspace and its main areas.*
 
+**Use it now:** <https://golden-startup-guide.github.io/get-started/>, nothing to
+install or sign up for. Install it from there to use it like an app, offline.
+
 ## What you can do
 
 - **Write comfortably:** Markdown with live preview, checklists, tables, maths,

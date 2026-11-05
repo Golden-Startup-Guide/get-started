@@ -834,6 +834,28 @@ npm run preview
   production PWA output in `dist/`.
 - `npm run preview` serves the production build locally after a build.
 
+### Hosting and deployment
+
+The app is published on GitHub Pages at
+<https://golden-startup-guide.github.io/get-started/>, over HTTPS. The **Deploy**
+workflow (`.github/workflows/deploy.yml`) runs on every push to `main`, which only
+receives pull requests that passed CI:
+
+1. It builds with `BASE_PATH=/get-started/`. Every path follows it: assets, the
+   manifest's start URL, scope, shortcuts and share target, and the service
+   worker's fallback. Locally and in tests the base is `/`.
+2. It smoke-tests that build where it will be served (`scripts/smokeTest.mjs`):
+   the app opens without console errors, the service worker takes control, it
+   opens again offline with the editor working, and it refuses to run in a frame.
+3. Only then is it published. Installed apps offer the new version with their
+   **Update available** banner.
+
+GitHub Pages cannot send HTTP security headers, so the Content Security Policy is
+a `<meta>` tag, and since that cannot forbid framing, the app checks for itself:
+inside another page's frame it shows only a link to open it in its own tab (see
+[DECISIONS.md](DECISIONS.md), decision 7). Releases are tagged separately (see
+[RELEASING.md](RELEASING.md)).
+
 ### Continuous integration
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`,

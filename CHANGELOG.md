@@ -36,6 +36,7 @@ The first complete release: a private, offline-first notes app with no account o
 - Installable on computers and phones, and works offline. Updates are offered with a banner, never forced mid-edit (#59).
 - App shortcuts, sharing to the app on Android, and a web clipper bookmarklet (#60).
 - In English, Spanish, and Arabic, with a right-to-left layout; notes keep their own writing direction (#64).
+- Published at <https://golden-startup-guide.github.io/get-started/>, deployed from `main` once the build passes a smoke test where it is served; the app refuses to run inside other sites' frames (#66).
 - Accessible: WCAG 2.2 AA checks on every main screen in CI (#61), keyboard use throughout, and screen-reader labels.
 
 ### Quality
@@ -43,3 +44,4 @@ The first complete release: a private, offline-first notes app with no account o
 - Fixed the editor dropping keystrokes typed in quick succession (#44), the link picker's slow opening (#22), and focus being taken from a newly opened dialog (#48).
 - CI checks lint, unit and end-to-end tests in three browsers, accessibility, size budgets, and Lighthouse scores (#18, #19, #61, #62).
 - Decisions recorded, MIT licence, privacy and security policies (#58), and the audit items closed (#11, #63).
+- A release process with this changelog, tagged releases, and weekly dependency updates, and a problems log in Settings that sends nothing (#65).

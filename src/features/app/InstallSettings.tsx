@@ -11,7 +11,7 @@ const IS_APPLE_MOBILE = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.t
 export function InstallSettings() {
   const prompt = useInstallStore((state) => state.prompt)
   const installed = useInstallStore((state) => state.installed)
-  const bookmarklet = useMemo(() => clipperBookmarklet(`${window.location.origin}${import.meta.env.BASE_URL}`), [])
+  const bookmarklet = useMemo(() => clipperBookmarklet(new URL(import.meta.env.BASE_URL, window.location.origin).href), [])
 
   return (
     <section className="mt-7" aria-labelledby="install-heading">
