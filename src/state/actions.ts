@@ -31,6 +31,7 @@ import { shelfForNewNotebook } from '../features/library/placement'
 import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemePreference } from '../types'
 import { readText } from '../features/backup/backupFolder'
 import { checkBackup, describeCheck } from '../lib/backupCheck'
+import type { ImportSource } from '../features/transfer/importSources'
 import { useBackupStore } from './backupStore'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
@@ -377,3 +378,42 @@ export async function removeSavedSearch(search: SavedSearch) {
     reportError(reason, 'The saved search could not be removed.')
   }
 }
+
+// --- Markdown export and imports from other apps -----------------------------------------
+
+const transfer = () => import('../features/transfer/transfer')
+
+export async function exportMarkdownZip() {
+  try {
+    const { zip, notes } = await (await transfer()).exportMarkdown()
+    const url = URL.createObjectURL(zip)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `my-notes-markdown-${new Date().toISOString().slice(0, 10)}.zip`
+    link.click()
+    URL.revokeObjectURL(url)
+    workspace().showNotice(`Exported ${notes} ${notes === 1 ? 'note' : 'notes'} as Markdown files in a .zip.`)
+  } catch (reason) {
+    reportError(reason, 'The Markdown export could not be created.')
+  }
+}
+
+/** Imports notes exported from another app. Returns whether it worked. */
+export async function importFromApp(source: ImportSource, files: readonly File[]): Promise<boolean> {
+  try {
+    const summary = await (await transfer()).importFromFiles(source, files)
+    await library().refresh()
+    const count = (value: number, one: string, many: string) => `${value} ${value === 1 ? one : many}`
+    workspace().showError(null)
+    workspace().showNotice(
+      `Imported ${count(summary.notes, 'note', 'notes')}${summary.notebooksCreated ? ` into ${count(summary.notebooksCreated, 'new notebook', 'new notebooks')}` : ''}`
+      + `${summary.attachments ? `, with ${count(summary.attachments, 'attachment', 'attachments')}` : ''}.`
+      + `${summary.attachmentsSkipped ? ` ${count(summary.attachmentsSkipped, 'attachment was', 'attachments were')} left out (over 5 MiB, or over a note’s 20 attachments or 20 MiB).` : ''}`,
+    )
+    return true
+  } catch (reason) {
+    reportError(reason, 'The notes could not be imported.')
+    return false
+  }
+}
+
