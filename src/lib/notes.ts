@@ -227,7 +227,8 @@ export async function openNotesDatabase(): Promise<IDBPDatabase<NotesDatabase>> 
   return database
 }
 
-function cleanTags(tags: string[]): string[] {
+/** Trimmed tags without blanks or repeats (ignoring capitals). */
+export function cleanTags(tags: string[]): string[] {
   const found = new Set<string>()
   return tags
     .map((tag) => tag.trim())
@@ -1029,6 +1030,162 @@ export async function exportBackup(options: BackupOptions = {}): Promise<NotesBa
 /** Builds and serializes a backup once, ready to download. */
 export async function exportBackupFile(options: BackupOptions = {}): Promise<Blob> {
   return new Blob([serializeBackup(await buildBackup(options))], { type: 'application/json' })
+}
+
+/** Problems the start-up check found (see lib/integrity.ts), to repair. */
+export interface LibraryProblems {
+  /** Stored links whose note at either end no longer exists. */
+  links: NoteLink[]
+  /** Notes in a notebook that no longer exists. */
+  notesWithoutNotebook: string[]
+  /** Notebooks on a shelf that no longer exists. */
+  notebooksWithoutShelf: string[]
+  /** Shelves in a library that no longer exists. */
+  shelvesWithoutLibrary: string[]
+  /** Attachments and history entries of notes that no longer exist. */
+  orphanAttachments: string[]
+  orphanHistory: string[]
+  /** The tag list does not match the tags on notes. */
+  tagsOutOfDate: boolean
+}
+
+export interface LibraryRepairs {
+  linksRemoved: number
+  notesMoved: number
+  notebooksMoved: number
+  shelvesMoved: number
+  attachmentsRemoved: number
+  historyRemoved: number
+  tagsRebuilt: boolean
+  /** Where moved items went, for the report. */
+  notebookName?: string
+  shelfName?: string
+  libraryName?: string
+}
+
+/**
+ * The attachments and history entries of notes that do not exist (in `noteIds`), read from the
+ * indexes without loading any contents: each note is visited once, and entry IDs are fetched
+ * only for notes that are missing.
+ */
+export async function findOrphans(noteIds: ReadonlySet<string>): Promise<{ attachments: string[]; history: string[] }> {
+  const db = await database
+  const transaction = db.transaction(['attachments', 'history'])
+  const collect = async (store: 'attachments' | 'history') => {
+    const index = transaction.objectStore(store).index('by-note')
+    const orphans: string[] = []
+    let cursor = await index.openKeyCursor(null, 'nextunique')
+    while (cursor) {
+      if (!noteIds.has(cursor.key)) orphans.push(...(await index.getAllKeys(cursor.key)))
+      cursor = await cursor.continue()
+    }
+    return orphans
+  }
+  const [attachments, history] = await Promise.all([collect('attachments'), collect('history')])
+  await transaction.done
+  return { attachments, history }
+}
+
+/**
+ * Repairs what the start-up check found, in one transaction. Each problem is checked again
+ * first, so nothing changed by another tab since is touched: links and orphans are removed only
+ * if their note is still missing, and items are moved only if what they belong to is still gone.
+ * Moved items go to the starter (or first) notebook, shelf, or library, created if none is left.
+ */
+export async function repairLibrary(problems: LibraryProblems): Promise<LibraryRepairs> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'notebooks', 'libraries', 'shelves', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
+  const notes = transaction.objectStore('notes')
+  const notebooks = transaction.objectStore('notebooks')
+  const shelves = transaction.objectStore('shelves')
+  const libraries = transaction.objectStore('libraries')
+  const now = Date.now()
+  const repairs: LibraryRepairs = {
+    linksRemoved: 0, notesMoved: 0, notebooksMoved: 0, shelvesMoved: 0, attachmentsRemoved: 0, historyRemoved: 0, tagsRebuilt: false,
+  }
+  const noteExists = async (id: string) => (await notes.count(id)) > 0
+
+  let fallbackLibrary: Library | undefined
+  const libraryToUse = async () => {
+    fallbackLibrary ??= (await libraries.get(DEFAULT_LIBRARY_ID)) ?? (await libraries.getAll())[0]
+    if (!fallbackLibrary) {
+      fallbackLibrary = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: now, updatedAt: now }
+      await libraries.put(fallbackLibrary)
+    }
+    return fallbackLibrary
+  }
+  for (const id of problems.shelvesWithoutLibrary) {
+    const shelf = await shelves.get(id)
+    if (!shelf || (await libraries.count(shelf.libraryId)) > 0) continue
+    const library = await libraryToUse()
+    await shelves.put({ ...shelf, libraryId: library.id, updatedAt: now })
+    repairs.shelvesMoved += 1
+    repairs.libraryName = library.name
+  }
+
+  let fallbackShelf: Shelf | undefined
+  const shelfToUse = async () => {
+    fallbackShelf ??= (await shelves.get(DEFAULT_SHELF_ID)) ?? (await shelves.getAll())[0]
+    if (!fallbackShelf) {
+      fallbackShelf = { id: DEFAULT_SHELF_ID, libraryId: (await libraryToUse()).id, name: 'General', createdAt: now, updatedAt: now }
+      await shelves.put(fallbackShelf)
+    }
+    return fallbackShelf
+  }
+  for (const id of problems.notebooksWithoutShelf) {
+    const notebook = await notebooks.get(id)
+    if (!notebook || (notebook.shelfId && (await shelves.count(notebook.shelfId)) > 0)) continue
+    const shelf = await shelfToUse()
+    await notebooks.put({ ...notebook, shelfId: shelf.id, updatedAt: now })
+    repairs.notebooksMoved += 1
+    repairs.shelfName = shelf.name
+  }
+
+  let fallbackNotebook: Notebook | undefined
+  const notebookToUse = async () => {
+    fallbackNotebook ??= (await notebooks.get('starter-personal')) ?? (await notebooks.getAll())[0]
+    if (!fallbackNotebook) {
+      fallbackNotebook = { id: crypto.randomUUID(), name: 'Recovered notes', shelfId: (await shelfToUse()).id, createdAt: now, updatedAt: now }
+      await notebooks.put(fallbackNotebook)
+    }
+    return fallbackNotebook
+  }
+  for (const id of problems.notesWithoutNotebook) {
+    const note = await notes.get(id)
+    if (!note || (note.notebookId && (await notebooks.count(note.notebookId)) > 0)) continue
+    const notebook = await notebookToUse()
+    // The note's edit time is kept: moving it is a repair, not an edit.
+    await notes.put({ ...note, notebookId: notebook.id })
+    repairs.notesMoved += 1
+    repairs.notebookName = notebook.name
+  }
+
+  const linkStore = transaction.objectStore('noteLinks')
+  for (const link of problems.links) {
+    if ((await noteExists(link.sourceNoteId)) && (await noteExists(link.targetNoteId))) continue
+    await linkStore.delete([link.sourceNoteId, link.targetNoteId])
+    repairs.linksRemoved += 1
+  }
+  for (const [store, ids, count] of [
+    ['attachments', problems.orphanAttachments, 'attachmentsRemoved'],
+    ['history', problems.orphanHistory, 'historyRemoved'],
+  ] as const) {
+    const objects = transaction.objectStore(store)
+    for (const id of ids) {
+      const item = await objects.get(id)
+      if (!item || (await noteExists(item.noteId))) continue
+      await objects.delete(id)
+      repairs[count] += 1
+    }
+  }
+
+  if (problems.tagsOutOfDate) {
+    await refreshTags(notes, transaction.objectStore('tags'))
+    repairs.tagsRebuilt = true
+  }
+  await transaction.done
+  if (Object.values(repairs).some((value) => value === true || (typeof value === 'number' && value > 0))) announceChange()
+  return repairs
 }
 
 export interface ImportSummary {

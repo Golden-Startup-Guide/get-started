@@ -43,6 +43,7 @@ import {
   toggleNoteFlag,
 } from './state/actions'
 import { useBackupStore } from './state/backupStore'
+import { runIntegrityCheck, useIntegrityStore } from './state/integrityStore'
 import { useEditorStore } from './state/editorStore'
 import { useLibraryStore } from './state/libraryStore'
 import { usePersistenceStore } from './state/persistenceStore'
@@ -126,6 +127,18 @@ function App() {
       stopSync()
     }
   }, [])
+
+  // Once the library has loaded, check it for damage (in idle time, so start-up never waits).
+  useEffect(() => {
+    if (isLoading || useIntegrityStore.getState().checkedAt) return
+    const run = () => void runIntegrityCheck()
+    if (window.requestIdleCallback) {
+      const handle = window.requestIdleCallback(run, { timeout: 5000 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const timer = window.setTimeout(run, 1000)
+    return () => window.clearTimeout(timer)
+  }, [isLoading])
 
   // Backups: once the library has loaded, and then every quarter of an hour while the app is open,
   // make an automatic backup if one is due (or work out whether to remind).
