@@ -17,6 +17,8 @@ type Options = Parameters<typeof htmlToMarkdown>[1]
 
 const BLOCK_TAGS = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'HR', 'TABLE', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'EN-NOTE', 'BODY'])
 
+const BLOCK_SELECTOR = 'p, div, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre, hr, table'
+
 const escapeText = (text: string) => text.replace(/([\\`*_[\]])/g, '\\$1')
 
 function blocks(element: Element, options: Options): string {
@@ -36,6 +38,13 @@ function blocks(element: Element, options: Options): string {
     if (!(node instanceof Element)) continue
     const tag = node.tagName.toUpperCase()
     if (!BLOCK_TAGS.has(tag)) {
+      // An inline element holding paragraphs or lists (Google Docs wraps everything it copies in
+      // a <b>) is read as a container, so its paragraphs and lists keep their shape.
+      if (node.querySelector(BLOCK_SELECTOR)) {
+        flush('\n\n')
+        output += blocks(node, options)
+        continue
+      }
       line += inline(node, options)
       continue
     }
@@ -100,7 +109,8 @@ function inline(element: Element, options: Options): string {
   }
   switch (tag) {
     case 'BR': return '\n'
-    case 'B': case 'STRONG': return wrap('**')
+    // Google Docs wraps everything it copies in <b style="font-weight:normal">.
+    case 'B': case 'STRONG': return /font-weight\s*:\s*(normal|[1-4]00)\b/i.test(element.getAttribute('style') ?? '') ? inner() : wrap('**')
     case 'I': case 'EM': return wrap('*')
     case 'S': case 'STRIKE': case 'DEL': return wrap('~~')
     case 'CODE': return `\`${element.textContent ?? ''}\``
@@ -122,6 +132,12 @@ function inline(element: Element, options: Options): string {
     case 'EN-TODO': case 'INPUT':
       return element.getAttribute('type') && element.getAttribute('type') !== 'checkbox' ? '' : element.getAttribute('checked') === 'true' || (tag === 'INPUT' && element.hasAttribute('checked')) ? '[x] ' : '[ ] '
     case 'SCRIPT': case 'STYLE': case 'HEAD': case 'TITLE': return ''
-    default: return inner()
+    default: {
+      // Word and Google Docs mark bold and italic with styles on <span>s.
+      const style = element.getAttribute('style') ?? ''
+      const bold = /font-weight\s*:\s*(bold|[6-9]00)\b/i.test(style)
+      const italic = /font-style\s*:\s*italic/i.test(style)
+      return bold && italic ? wrap('***') : bold ? wrap('**') : italic ? wrap('*') : inner()
+    }
   }
 }

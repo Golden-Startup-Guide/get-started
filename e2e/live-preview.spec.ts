@@ -4,12 +4,12 @@ test('formats Markdown as you write, ticks tasks in the editor, and remembers So
   await openWorkspace(page)
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Garden plan')
-  const editor = page.getByRole('textbox', { name: 'Markdown' })
+  const editor = page.getByRole('textbox', { name: 'Note text' })
   await editor.fill('# Spring\nBuy **compost** soon\n- [ ] Water the seedlings')
   await expectSaved(page)
 
   // Live is the default; leave the editor so no line is being edited.
-  await expect(page.getByRole('button', { name: 'Live' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Formatted' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('textbox', { name: 'Note title' }).click()
   const lines = page.locator('.cm-line')
   await expect(lines.nth(0)).toHaveText('Spring')
@@ -29,6 +29,6 @@ test('formats Markdown as you write, ticks tasks in the editor, and remembers So
   expect(await markdownText(page)).toBe('# Spring\nBuy **compost** soon\n- [x] Water the seedlings')
   await page.reload()
   await page.getByRole('button', { name: 'Open note Garden plan' }).click()
-  await expect(page.getByRole('button', { name: 'Source' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Plain text' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('.cm-line').nth(0)).toHaveText('# Spring')
 })

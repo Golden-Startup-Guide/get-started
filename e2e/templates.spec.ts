@@ -14,7 +14,7 @@ test('opens today’s note, creating it on the first visit and reopening it afte
   expect(await markdownText(page)).toContain('- [ ] Plan the day')
 
   // Nothing is saved until it is edited.
-  await page.getByRole('textbox', { name: 'Markdown' }).press('ControlOrMeta+End')
+  await page.getByRole('textbox', { name: 'Note text' }).press('ControlOrMeta+End')
   await page.keyboard.type('\nWatered the seedlings.')
   await expectSaved(page)
   await page.getByRole('button', { name: 'Close editor' }).first().click()

@@ -5,7 +5,7 @@ import { EditorView } from '@codemirror/view'
 // tests set and read its text through CodeMirror instead of fireEvent.change and .value.
 
 export function markdownField(): HTMLElement {
-  return screen.getByRole('textbox', { name: 'Markdown' })
+  return screen.getByRole('textbox', { name: 'Note text' })
 }
 
 function viewFor(element: HTMLElement): EditorView {

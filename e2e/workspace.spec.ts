@@ -38,7 +38,7 @@ test('keeps two tabs in sync through BroadcastChannel', async ({ context }) => {
   await second.getByRole('button', { name: 'Open note Shared note' }).click()
   await expect.poll(() => markdownText(second)).toBe('Written in the first tab')
   await first.getByRole('button', { name: 'Open note Shared note' }).click()
-  await first.getByRole('textbox', { name: 'Markdown' }).fill('Edited in the first tab')
+  await first.getByRole('textbox', { name: 'Note text' }).fill('Edited in the first tab')
   await expectSaved(first)
 
   // The second tab has no unsaved edits, so it shows the newer version on its own.

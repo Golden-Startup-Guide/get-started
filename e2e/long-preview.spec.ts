@@ -9,7 +9,7 @@ test('previews a long note from a worker and catches up after a pause in typing'
 
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Long garden log')
-  await page.getByRole('textbox', { name: 'Markdown' }).fill(`- [ ] Order seeds\n\n${body}`)
+  await page.getByRole('textbox', { name: 'Note text' }).fill(`- [ ] Order seeds\n\n${body}`)
   await expectSaved(page)
 
   const preview = page.locator('.prose-notes')
@@ -17,7 +17,7 @@ test('previews a long note from a worker and catches up after a pause in typing'
   await expect(preview.getByRole('checkbox', { name: 'Mark task Order seeds complete' })).toBeEnabled()
 
   // Typing makes the preview stale until a pause, then it shows the new text.
-  const editor = page.getByRole('textbox', { name: 'Markdown' })
+  const editor = page.getByRole('textbox', { name: 'Note text' })
   await editor.press('ControlOrMeta+End')
   await page.keyboard.type('\n\n## Harvest day')
   await expect(page.getByText('Long note: the preview updates when you pause typing')).toBeVisible()

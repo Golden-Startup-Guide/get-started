@@ -16,7 +16,7 @@ test('opens offline after the first visit', async ({ page, context, browserName 
     // The editor is a separate chunk; it must come from the service worker's cache as well.
     await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
     await page.getByRole('textbox', { name: 'Note title' }).fill('Written offline')
-    await expect(page.getByRole('textbox', { name: 'Markdown' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Note text' })).toBeVisible()
   } finally {
     await context.setOffline(false)
   }
@@ -30,7 +30,7 @@ test('keeps maths and diagrams working offline once a note has shown them', asyn
   // Neither is in the install download; showing them once online stores them for offline use.
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill('Circle')
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('Area: $$\\pi r^2$$\n\n```mermaid\nflowchart LR\n  Seeds --> Harvest\n```')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('Area: $$\\pi r^2$$\n\n```mermaid\nflowchart LR\n  Seeds --> Harvest\n```')
   await expect(page.locator('.prose-notes .katex')).toBeVisible()
   await expect(page.locator('.prose-notes .diagram-drawing svg')).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('.save-status')).toHaveText(/Saved/)

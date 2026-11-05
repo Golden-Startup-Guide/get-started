@@ -1705,3 +1705,54 @@ html[data-theme='dark'] .workspace {
   unicode-bidi: plaintext;
   text-align: start;
 }
+
+/* The formatting bar above the note text (FormattingBar.tsx). */
+.formatting-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface-alt);
+  padding: 2px;
+}
+
+.formatting-button {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.45rem;
+  color: var(--text);
+}
+
+.formatting-button:hover {
+  background: var(--surface);
+}
+
+.formatting-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.formatting-divider {
+  width: 1px;
+  height: 1.25rem;
+  margin: 0 0.25rem;
+  background: var(--border);
+}
+
+/* The first-use tip below the editor (EditorTip.tsx). */
+.editor-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  border-radius: 0.6rem;
+  background: var(--surface-alt);
+  padding: 0.5rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}

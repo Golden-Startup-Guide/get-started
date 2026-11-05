@@ -19,7 +19,7 @@ test('shows another note inside this one with ![[Note]], kept up to date', async
   await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Seed list')
 
   // Changing it changes what the embed shows.
-  await page.getByRole('textbox', { name: 'Markdown' }).fill('## Tomatoes\n\n- [ ] Sungold\n\n## Herbs\n\nBasil and mint')
+  await page.getByRole('textbox', { name: 'Note text' }).fill('## Tomatoes\n\n- [ ] Sungold\n\n## Herbs\n\nBasil and mint')
   await expectSaved(page)
   await page.getByRole('button', { name: 'Close editor' }).first().click()
   await page.getByRole('button', { name: 'Open note Spring plan' }).click()

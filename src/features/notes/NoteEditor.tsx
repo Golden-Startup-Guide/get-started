@@ -38,6 +38,7 @@ import { AttachmentCard } from './AttachmentCard'
 import { useDebouncedAutosave } from './useDebouncedAutosave'
 import { getChecklistProgress, toggleChecklistItem } from './checklists'
 import { MarkdownEditor } from './MarkdownEditor'
+import { EditorTip } from './EditorTip'
 import { changeEditorMode, updateLinksAfterRename } from '../../state/actions'
 import { useEditorStore } from '../../state/editorStore'
 import { useLibraryStore } from '../../state/libraryStore'
@@ -630,7 +631,7 @@ export function NoteEditor({
           }}>
             {notebooks.map((notebook) => <option value={notebook.id} key={notebook.id}>{notebook.name}</option>)}
           </select>
-          <button className="secondary-button ms-auto" onClick={() => setPreviewOnly((value) => !value)} aria-pressed={previewOnly}>{previewOnly ? t("Edit Markdown") : t("Preview only")}</button>
+          <button className="secondary-button ms-auto" onClick={() => setPreviewOnly((value) => !value)} aria-pressed={previewOnly}>{previewOnly ? t('Edit') : t("Preview only")}</button>
         </div>
         <div className="editor-body">
           <div className="editor-fields">
@@ -727,17 +728,18 @@ export function NoteEditor({
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p id="note-content-label" className="section-label">{t("Markdown")}</p>
+                  <p id="note-content-label" className="section-label">{t('Note text')}</p>
                   <div className="segmented" role="group" aria-label={t("Editor view")}>
-                    <button type="button" aria-pressed={editorMode === 'live'} onClick={() => void changeEditorMode('live')} title={t("Format Markdown outside the line you are editing")}>{t("Live")}</button>
-                    <button type="button" aria-pressed={editorMode === 'source'} onClick={() => void changeEditorMode('source')} title={t("Show all Markdown as typed")}>{t("Source")}</button>
+                    <button type="button" aria-pressed={editorMode === 'live'} onClick={() => void changeEditorMode('live')} title={t('Show formatting as you write')}>{t('Formatted')}</button>
+                    <button type="button" aria-pressed={editorMode === 'source'} onClick={() => void changeEditorMode('source')} title={t('Show the text exactly as typed, with its formatting marks')}>{t('Plain text')}</button>
                   </div>
                 </div>
-                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} getLinkHeadings={getLinkHeadings} mode={editorMode} reveal={reveal} placeholder={t("Write in Markdown…\n\n# A heading\n- [ ] A checklist item")} />
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} getLinkHeadings={getLinkHeadings} mode={editorMode} reveal={reveal} formattingBar placeholder={t('Write your note… Type / for headings, lists, checklists, and more.')} />
+                <EditorTip />
               </div>}
-              <article className="markdown-preview-pane" aria-label={t("Live Markdown preview")}>
+              <article className="markdown-preview-pane" aria-label={t('Preview of your note')}>
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="section-label">{t("Live preview")}</p>
+                  <p className="section-label">{t('Preview')}</p>
                   {previewStale && preview.delayed && <span className="text-xs text-[var(--muted)]">{t("Long note: the preview updates when you pause typing")}</span>}
                   {checklistProgress.total > 0 && <span className="checklist-progress" role="progressbar" aria-label={t("Checklist progress")} aria-valuemin={0} aria-valuemax={checklistProgress.total} aria-valuenow={checklistProgress.completed}>
                     {tp(checklistProgress.total, '{done} of {count} complete', '{done} of {count} complete', { done: checklistProgress.completed })}
@@ -810,7 +812,7 @@ export function NoteEditor({
               )}
             </section>
             {saveError && <p className="text-sm text-red-700" role="alert">{saveError}<button className="ms-2 underline" onClick={() => void saveRef.current()}>{t("Retry")}</button></p>}
-            <p className="text-xs text-[var(--muted)]">{t("Markdown is saved locally on this device. Raw HTML is not rendered.")}</p>
+            <p className="text-xs text-[var(--muted)]">{t('Your note is saved on this device as you type.')}</p>
           </div>
           {showHistory && <aside className="history-panel" aria-label={t("Note history")}>
             <div className="mb-3 flex items-center justify-between"><h3 className="font-semibold">{t("History")}</h3><button className="icon-button !h-8 !w-8" onClick={() => setShowHistory(false)} aria-label={t("Close history")}><X size={15} /></button></div>

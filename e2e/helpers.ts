@@ -37,9 +37,9 @@ export async function openWorkspace(page: Page) {
  * editor to Source view first; the setting changes only how text is shown, never the text.
  */
 export async function markdownText(page: Page): Promise<string> {
-  const source = page.getByRole('group', { name: 'Editor view' }).getByRole('button', { name: 'Source' })
+  const source = page.getByRole('group', { name: 'Editor view' }).getByRole('button', { name: 'Plain text' })
   if ((await source.getAttribute('aria-pressed')) !== 'true') await source.click()
-  return page.getByRole('textbox', { name: 'Markdown' }).innerText()
+  return page.getByRole('textbox', { name: 'Note text' }).innerText()
 }
 
 export async function expectSaved(page: Page) {
@@ -50,7 +50,7 @@ export async function expectSaved(page: Page) {
 export async function createNote(page: Page, title: string, content = '') {
   await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
   await page.getByRole('textbox', { name: 'Note title' }).fill(title)
-  if (content) await page.getByRole('textbox', { name: 'Markdown' }).fill(content)
+  if (content) await page.getByRole('textbox', { name: 'Note text' }).fill(content)
   await expectSaved(page)
   await page.getByRole('button', { name: 'Close editor' }).first().click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()

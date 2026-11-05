@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { Compartment, EditorState, type ChangeSpec, type Extension } from '@codemirror/state'
-import { EditorView, keymap, placeholder as placeholderExtension } from '@codemirror/view'
+import { EditorView, keymap, placeholder as placeholderExtension, type Command } from '@codemirror/view'
 import { autocompletion } from '@codemirror/autocomplete'
 import type { EditorMode } from '../../types'
 import { livePreview, markdownSyntax } from './livePreview'
 import { slashCommandCompletions } from './slashCommands'
+import { FormattingBar } from './FormattingBar'
+import { BOLD, ITALIC, pasteFormatted } from './formatting'
 import { wikilinkCompletions, type LinkTitle } from './wikilinkCompletion'
 
 const noTitles = (): readonly LinkTitle[] => []
@@ -47,6 +49,7 @@ export function MarkdownEditor({
   getLinkHeadings = noHeadings,
   mode = 'source',
   reveal,
+  formattingBar = false,
 }: {
   value: string
   onChange: (value: string) => void
@@ -61,6 +64,8 @@ export function MarkdownEditor({
   mode?: EditorMode
   /** Moves the cursor to the start of this 1-based line and scrolls it to the top; a new object each time. */
   reveal?: { line: number }
+  /** Show buttons for bold, lists, links, and the rest above the text. */
+  formattingBar?: boolean
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -92,7 +97,9 @@ export function MarkdownEditor({
           history(),
           // While suggestions are open, its own keymap (arrows, Enter, Escape) takes precedence.
           autocompletion({ override: [wikilinkCompletions(() => getLinkTitlesRef.current(), (title) => getLinkHeadingsRef.current(title)), slashCommandCompletions], icons: false }),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          // Ctrl+B and Ctrl+I (⌘ on a Mac), as in a word processor. (Ctrl+K stays the command palette.)
+          keymap.of([{ key: 'Mod-b', run: BOLD }, { key: 'Mod-i', run: ITALIC }, ...defaultKeymap, ...historyKeymap]),
+          EditorView.domEventHandlers({ paste: pasteFormatted }),
           EditorView.lineWrapping,
           modeCompartment.of(modeExtension(initial.mode)),
           placeholderExtension(initial.placeholder),
@@ -150,5 +157,17 @@ export function MarkdownEditor({
     if (current !== value) view.dispatch({ changes: diff(current, value) })
   }, [value])
 
-  return <div ref={hostRef} className="markdown-editor" />
+  const run = (command: Command) => {
+    const view = viewRef.current
+    if (!view) return
+    command(view)
+    view.focus()
+  }
+
+  return (
+    <>
+      {formattingBar && <FormattingBar run={run} />}
+      <div ref={hostRef} className="markdown-editor" />
+    </>
+  )
 }

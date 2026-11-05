@@ -48,10 +48,10 @@ describe('My Notes workspace', () => {
 
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
     const title = await screen.findByRole('textbox', { name: 'Note title' })
-    const content = screen.getByRole('textbox', { name: 'Markdown' })
+    const content = screen.getByRole('textbox', { name: 'Note text' })
     fireEvent.change(title, { target: { value: 'Garden notes' } })
     setMarkdown('**Water** the seedlings', content)
-    expect(screen.getByText('Live preview')).toBeInTheDocument()
+    expect(screen.getByText('Preview')).toBeInTheDocument()
     expect(screen.getByText('Water', { selector: 'strong' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
@@ -67,7 +67,7 @@ describe('My Notes workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Garden notes' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Open note Garden notes' }))
-    const markdownInput = screen.getByRole('textbox', { name: 'Markdown' })
+    const markdownInput = screen.getByRole('textbox', { name: 'Note text' })
     setMarkdown('**Water** the seedlings\n\n[unsafe](javascript:alert(1))\n\n<script>bad()</script>', markdownInput)
     setMarkdown('**Water** the seedlings and vegetables\n\n- [ ] Water plants\n- [x] Remove weeds\n\n[unsafe](javascript:alert(1))\n\n[Guide](https://example.com/garden) with a note[^1]\n\n[^1]: Footnote\n\n<script>bad()</script>', markdownInput)
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })

@@ -186,16 +186,34 @@ Supported
 content includes headings, paragraphs, emphasis, links, lists, task lists,
 blockquotes, code, and GitHub-Flavored Markdown features.
 
-The switch above the editor chooses how the Markdown is shown:
+**Formatting without knowing Markdown.** Nobody needs to learn Markdown: plain
+typing makes a note, and formatting works as in a word processor.
 
-- **Live** (the default) formats the text as you write, outside the line you are
+- The **formatting bar** above the note text has **Bold**, **Italic**,
+  **Heading**, **Bulleted list**, **Numbered list**, **Checklist**, **Quote**,
+  **Link to a web page** (it asks for the address; `example.com` gets
+  `https://` added), and **Link to a note** (it lists your notes to choose
+  from). Each applies to the selection, or to the lines it touches, and
+  pressing it again removes the formatting. **Ctrl+B** and **Ctrl+I** (⌘B and
+  ⌘I on a Mac) make text bold and italic; Ctrl+K stays the command palette.
+- Typing **/** opens a menu of everything else: headings, tables, code, maths,
+  diagrams, dates.
+- **Pasting** from a web page, Word, or Google Docs keeps headings, bold,
+  italic, links, lists, quotes, and tables. Plain text pastes as it is.
+- New users see a tip under the editor until they close it.
+
+Underneath, notes are still Markdown, so export, import, backups, and other
+Markdown apps work as before. The interface avoids the word: the editor is
+**Note text**, and the switch above it chooses how the text is shown:
+
+- **Formatted** (the default) formats the text as you write, outside the line you are
   editing: headings are larger, bold, italic, strikethrough, and code lose
   their markers, links and `[[wikilinks]]` show just their text, list bullets
   become dots, and task markers become checkboxes you can tick right in the
   editor. The line with the cursor, and every line in a selection, shows its
   Markdown so you can change it. Code blocks and inline code are never
   formatted, and tables stay as text.
-- **Source** shows all Markdown exactly as typed, in a monospace font.
+- **Plain text** shows the text exactly as typed, with its formatting marks, in a monospace font.
 
 Both show the same text; only its appearance changes. The choice is remembered
 on this device and included in backups.
@@ -271,7 +289,7 @@ blockquotes work like any other task.
 
 Very long notes (over 50,000 characters) update their preview once typing
 pauses for about 0.4 seconds instead of on every keystroke, so typing stays
-responsive. While the preview is catching up, a note beside **Live preview**
+responsive. While the preview is catching up, a note beside **Preview**
 says so and its checklist boxes are read-only. Their Markdown is parsed in a
 background worker and the result is drawn in small steps, so typing is never held
 up while the preview catches up; a long note's preview first shows
