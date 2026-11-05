@@ -12,6 +12,11 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     labels: [dependencies]
+    ignore:
+      # sigma 4 made the whole-library graph several times slower than sigma 3 at 20,000 notes
+      # (docs/PERFORMANCE.md, "Whole-library graph"); stay on 3 until that is fixed upstream.
+      - dependency-name: sigma
+        versions: ['>=4']
 
   - package-ecosystem: github-actions
     directory: /
