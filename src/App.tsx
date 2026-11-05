@@ -21,6 +21,7 @@ import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
 import { BackupReminder } from './features/backup/BackupReminder'
 import { UpdateBanner } from './features/app/UpdateBanner'
+import { readLaunchRequest } from './features/app/launchRequest'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
@@ -33,6 +34,7 @@ import {
   createNotebookOnShelf,
   createSampleTemplate,
   ensureNotebook,
+  saveClip,
   saveQuickNote,
   deleteForever,
   deleteOpenNote,
@@ -505,11 +507,31 @@ function App() {
   const openPaletteRef = useRef(openPalette)
   const closePaletteRef = useRef(closePalette)
   const openQuickCaptureRef = useRef(openQuickCapture)
+  const openNewNoteRef = useRef(openNewNote)
+  const openTodayNoteRef = useRef(openTodayNote)
   useLayoutEffect(() => {
     openPaletteRef.current = openPalette
     closePaletteRef.current = closePalette
     openQuickCaptureRef.current = openQuickCapture
+    openNewNoteRef.current = openNewNote
+    openTodayNoteRef.current = openTodayNote
   })
+
+  // Opened from an app shortcut, the web clipper, or Android's share menu: do what was asked
+  // once the library has loaded, then clear the request from the address so a reload does not
+  // repeat it.
+  const launchRef = useRef(true)
+  useEffect(() => {
+    if (isLoading || !launchRef.current) return
+    launchRef.current = false
+    const request = readLaunchRequest(window.location.search)
+    if (!request) return
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.hash}`)
+    if (request.kind === 'clip') void saveClip(request)
+    else if (request.kind === 'new') openNewNoteRef.current()
+    else if (request.kind === 'quick') openQuickCaptureRef.current()
+    else void openTodayNoteRef.current()
+  }, [isLoading])
 
   // Ctrl+K / ⌘K for the palette, also over the note editor, and Alt+N for a quick note when no
   // dialog is open. Other dialogs (Settings, a delete confirmation, the quick note) keep them off.

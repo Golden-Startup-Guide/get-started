@@ -1,0 +1,55 @@
+import { useMemo } from 'react'
+import { Bookmark, Download } from 'lucide-react'
+import { installApp, useInstallStore } from '../../state/installStore'
+import { useWorkspaceStore } from '../../state/workspaceStore'
+import { clipperBookmarklet } from './launchRequest'
+
+const IS_APPLE_MOBILE = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent)
+
+/** "Install and clip" in Settings: install the app, and the web clipper bookmarklet. */
+export function InstallSettings() {
+  const prompt = useInstallStore((state) => state.prompt)
+  const installed = useInstallStore((state) => state.installed)
+  const bookmarklet = useMemo(() => clipperBookmarklet(`${window.location.origin}${import.meta.env.BASE_URL}`), [])
+
+  return (
+    <section className="mt-7" aria-labelledby="install-heading">
+      <h3 id="install-heading" className="mb-3 text-sm font-semibold">Install and clip</h3>
+      {installed ? (
+        <p className="text-sm">My Notes is installed on this device. It opens in its own window and works offline.</p>
+      ) : prompt ? (
+        <>
+          <button type="button" className="secondary-button" onClick={() => void installApp()}>
+            <Download size={15} aria-hidden="true" /> Install My Notes
+          </button>
+          <p className="mt-2 text-xs text-[var(--muted)]">Installed, it opens in its own window, from the Start menu, Dock, or home screen, and works offline.</p>
+        </>
+      ) : (
+        <p className="text-sm">
+          {IS_APPLE_MOBILE
+            ? 'To install on this iPhone or iPad, tap Share, then Add to Home Screen.'
+            : 'To install, use your browser’s Install app or Add to Home Screen option (in Chrome and Edge, it is in the address bar or the menu). Installed, My Notes opens in its own window and works offline.'}
+        </p>
+      )}
+      <p className="mt-2 text-xs text-[var(--muted)]">Once installed, right-click (or long-press) its icon for New note, Quick note, and Today’s note. On Android, choose My Notes in another app’s Share menu to save a page or text to Inbox.</p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <a
+          className="secondary-button"
+          ref={(element) => element?.setAttribute('href', bookmarklet)}
+          // Running it here would do nothing useful; it is meant for the bookmarks bar.
+          onClick={(event) => {
+            event.preventDefault()
+            useWorkspaceStore.getState().showNotice('Drag “Clip to My Notes” to your bookmarks bar, then click it on any page.')
+          }}
+          draggable
+        >
+          <Bookmark size={15} aria-hidden="true" /> Clip to My Notes
+        </a>
+      </div>
+      <p className="mt-2 text-xs text-[var(--muted)]">
+        Web clipper: drag this button to your browser’s bookmarks bar. On any page, click the bookmark to save the page’s title and link, and any text you selected, as a note in Inbox.
+      </p>
+    </section>
+  )
+}

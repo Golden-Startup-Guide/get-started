@@ -699,6 +699,24 @@ and device where it was created. Opening the app at a different origin or in a
 different profile uses a separate database and can make existing notes appear
 missing. It does not automatically synchronize between browsers or devices.
 
+### Installing, shortcuts, and the web clipper
+
+My Notes installs as an app on computers and phones (**Settings → Install and
+clip**): with **Install My Notes** in Chrome, Edge, and on Android, from the
+browser's Install option, or on iPhone and iPad with Share → **Add to Home
+Screen**. Installed, it opens in its own window and works offline. Its icon's
+menu (right-click, or long-press on a phone) offers **New note**, **Quick
+note**, and **Today's note**. On Android, the installed app appears in other
+apps' **Share** menus: what is shared (a page's title and link, or text) is
+saved as a note in **Inbox**.
+
+The **web clipper** is a bookmarklet: drag **Clip to My Notes** from Settings
+to the bookmarks bar, then click it on any page. It opens My Notes with the
+page's title and link, and any text selected on the page (up to 4,000
+characters), and saves them as a note in **Inbox**: a link to the page, then
+the selection as a quote. Only `http` and `https` links are kept, and the
+request is removed from the address bar, so reloading does not save it twice.
+
 ### Multiple tabs
 
 Tabs and windows of the app in the same browser profile share one database.

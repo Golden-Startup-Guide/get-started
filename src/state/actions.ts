@@ -32,6 +32,7 @@ import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemePref
 import { readText } from '../features/backup/backupFolder'
 import { checkBackup, describeCheck } from '../lib/backupCheck'
 import type { ImportSource } from '../features/transfer/importSources'
+import { clipToNote, type LaunchRequest } from '../features/app/launchRequest'
 import { useBackupStore } from './backupStore'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
@@ -204,16 +205,15 @@ export function quickNoteTitle(text: string): string {
   return `${cut.slice(0, cut.lastIndexOf(' ') > 40 ? cut.lastIndexOf(' ') : 80).trimEnd()}…`
 }
 
-/** Saves a quick note to the Inbox notebook. Returns whether it was saved. */
-export async function saveQuickNote(text: string): Promise<boolean> {
-  if (!text.trim()) return false
+/** Saves a new note to the Inbox notebook. Returns whether it was saved. */
+async function saveToInbox(title: string, content: string, failure: string): Promise<boolean> {
   const notebook = await ensureNotebook(INBOX_NOTEBOOK)
   if (!notebook) return false
   const now = Date.now()
   const note: Note = {
     id: crypto.randomUUID(),
-    title: quickNoteTitle(text) || 'Quick note',
-    content: text.trimEnd(),
+    title,
+    content,
     notebookId: notebook.id,
     createdAt: now,
     updatedAt: now,
@@ -224,9 +224,21 @@ export async function saveQuickNote(text: string): Promise<boolean> {
   const saved = await refreshAfter(async () => {
     await saveNote(note)
     return note
-  }, 'Your quick note could not be saved. It is still in the quick note box.')
+  }, failure)
   if (saved) workspace().showNotice(`Saved “${saved.title}” to ${INBOX_NOTEBOOK}.`)
   return Boolean(saved)
+}
+
+/** Saves a quick note to the Inbox notebook. Returns whether it was saved. */
+export async function saveQuickNote(text: string): Promise<boolean> {
+  if (!text.trim()) return false
+  return saveToInbox(quickNoteTitle(text) || 'Quick note', text.trimEnd(), 'Your quick note could not be saved. It is still in the quick note box.')
+}
+
+/** Saves a page clipped with the bookmarklet, or shared to the app, to the Inbox notebook. */
+export async function saveClip(clip: Extract<LaunchRequest, { kind: 'clip' }>): Promise<boolean> {
+  const { title, content } = clipToNote(clip)
+  return saveToInbox(title, content, 'The clipped page could not be saved. Please try again.')
 }
 
 /** Creates (and saves) an example template in the Templates notebook, for people to adapt. */
