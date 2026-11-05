@@ -99,7 +99,7 @@ export function NoteGrid({
           key={row.key}
           data-index={row.index}
           ref={virtualizer.measureElement}
-          className="absolute left-0 top-0 grid w-full gap-4 pb-4 sm:grid-cols-2 xl:grid-cols-3"
+          className="absolute start-0 top-0 grid w-full gap-4 pb-4 sm:grid-cols-2 xl:grid-cols-3"
           style={{ transform: `translateY(${row.start - scrollMargin}px)` }}
         >
           {rows[row.index].map((note, column) => (

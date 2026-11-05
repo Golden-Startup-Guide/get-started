@@ -115,7 +115,7 @@ A plugin API is what made VS Code and Obsidian category leaders.
 - Comments.
 - **Publish a notebook as a static website** - cheap to build and a strong discovery channel.
 
-### J. Accessibility and languages
+### J. Accessibility and languages (**done**, November 2026: WCAG 2.2 AA checks in CI; English, Spanish, and Arabic with right-to-left layout)
 
 - WCAG 2.2 AA, with axe checks in CI and a screen-reader test matrix.
 - Translations (Lingui or FormatJS), right-to-left layouts, and language-aware search.

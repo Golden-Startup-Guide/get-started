@@ -1,5 +1,6 @@
 import type { Library, Note, Notebook, NoteLink, Shelf, Tag } from '../types'
 import { cleanTags, findOrphans, repairLibrary, type LibraryProblems, type LibraryRepairs } from './notes'
+import { t, tp } from '../i18n/i18n'
 
 /** What is checked: the library as loaded at start-up. */
 export interface LibrarySnapshot {
@@ -74,14 +75,13 @@ export async function checkAndRepairLibrary(library: LibrarySnapshot): Promise<L
 
 /** One phrase per kind of repair, for the report. */
 export function describeRepairs(repairs: LibraryRepairs): string[] {
-  const count = (value: number, one: string, many: string) => `${value} ${value === 1 ? one : many}`
   const phrases: string[] = []
-  if (repairs.linksRemoved) phrases.push(`removed ${count(repairs.linksRemoved, 'link', 'links')} to notes that no longer exist`)
-  if (repairs.attachmentsRemoved) phrases.push(`removed ${count(repairs.attachmentsRemoved, 'attachment', 'attachments')} left behind by deleted notes`)
-  if (repairs.historyRemoved) phrases.push(`removed ${count(repairs.historyRemoved, 'history entry', 'history entries')} left behind by deleted notes`)
-  if (repairs.notesMoved) phrases.push(`moved ${count(repairs.notesMoved, 'note', 'notes')} whose notebook was missing to “${repairs.notebookName}”`)
-  if (repairs.notebooksMoved) phrases.push(`moved ${count(repairs.notebooksMoved, 'notebook', 'notebooks')} whose shelf was missing to “${repairs.shelfName}”`)
-  if (repairs.shelvesMoved) phrases.push(`moved ${count(repairs.shelvesMoved, 'shelf', 'shelves')} whose library was missing to “${repairs.libraryName}”`)
-  if (repairs.tagsRebuilt) phrases.push('rebuilt the tag list')
+  if (repairs.linksRemoved) phrases.push(tp(repairs.linksRemoved, 'removed {count} link to notes that no longer exist', 'removed {count} links to notes that no longer exist'))
+  if (repairs.attachmentsRemoved) phrases.push(tp(repairs.attachmentsRemoved, 'removed {count} attachment left behind by deleted notes', 'removed {count} attachments left behind by deleted notes'))
+  if (repairs.historyRemoved) phrases.push(tp(repairs.historyRemoved, 'removed {count} history entry left behind by deleted notes', 'removed {count} history entries left behind by deleted notes'))
+  if (repairs.notesMoved) phrases.push(tp(repairs.notesMoved, 'moved {count} note whose notebook was missing to “{name}”', 'moved {count} notes whose notebook was missing to “{name}”', { name: repairs.notebookName ?? '' }))
+  if (repairs.notebooksMoved) phrases.push(tp(repairs.notebooksMoved, 'moved {count} notebook whose shelf was missing to “{name}”', 'moved {count} notebooks whose shelf was missing to “{name}”', { name: repairs.shelfName ?? '' }))
+  if (repairs.shelvesMoved) phrases.push(tp(repairs.shelvesMoved, 'moved {count} shelf whose library was missing to “{name}”', 'moved {count} shelves whose library was missing to “{name}”', { name: repairs.libraryName ?? '' }))
+  if (repairs.tagsRebuilt) phrases.push(t('rebuilt the tag list'))
   return phrases
 }

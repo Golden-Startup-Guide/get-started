@@ -3,6 +3,7 @@ import { ArrowDownLeft, ArrowUpRight, ExternalLink, Network } from 'lucide-react
 import type { Note, NoteLink } from '../../types'
 import { getGraphNeighbors, MAX_VISIBLE_GRAPH_NEIGHBORS } from './graphModel'
 import { canDrawLibraryGraph } from './libraryGraphData'
+import { t, tp } from '../../i18n/i18n'
 
 // WebGL drawing and the layout are fetched only when the whole-library graph is first shown.
 const LibraryGraph = lazy(() => import('./LibraryGraph'))
@@ -69,8 +70,8 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
     return (
       <section aria-labelledby="knowledge-graph-heading" className="empty-state">
         <span className="empty-icon"><Network size={24} aria-hidden="true" /></span>
-        <h2 id="knowledge-graph-heading" className="mt-4 text-lg font-semibold">Relationship explorer</h2>
-        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">Create a note and connect it to others to explore your knowledge graph.</p>
+        <h2 id="knowledge-graph-heading" className="mt-4 text-lg font-semibold">{t("Relationship explorer")}</h2>
+        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{t("Create a note and connect it to others to explore your knowledge graph.")}</p>
       </section>
     )
   }
@@ -79,9 +80,9 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
   const backlinks = neighbors.filter((neighbor) => neighbor.incoming)
 
   const modeSwitch = (
-    <div className="segmented" role="group" aria-label="Graph view">
-      <button type="button" aria-pressed={mode === 'library'} onClick={() => setMode('library')}>Whole library</button>
-      <button type="button" aria-pressed={mode === 'note'} onClick={() => setMode('note')}>Around a note</button>
+    <div className="segmented" role="group" aria-label={t("Graph view")}>
+      <button type="button" aria-pressed={mode === 'library'} onClick={() => setMode('library')}>{t("Whole library")}</button>
+      <button type="button" aria-pressed={mode === 'note'} onClick={() => setMode('note')}>{t("Around a note")}</button>
     </div>
   )
 
@@ -90,12 +91,12 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
       <section aria-labelledby="knowledge-graph-heading" className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 id="knowledge-graph-heading" className="text-xl font-semibold">Whole library</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">Every note and link. Point at a note to pick out its links; search to narrow the graph.</p>
+            <h2 id="knowledge-graph-heading" className="text-xl font-semibold">{t("Whole library")}</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">{t("Every note and link. Point at a note to pick out its links; search to narrow the graph.")}</p>
           </div>
           {modeSwitch}
         </div>
-        <Suspense fallback={<p role="status" className="py-16 text-center text-[var(--muted)]">Loading the graph…</p>}>
+        <Suspense fallback={<p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading the graph…")}</p>}>
           <LibraryGraph
             notes={activeNotes}
             links={links}
@@ -117,12 +118,12 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
     <section aria-labelledby="knowledge-graph-heading" className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 id="knowledge-graph-heading" className="text-xl font-semibold">Relationship explorer</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">Explore direct links and backlinks between your saved notes.</p>
+          <h2 id="knowledge-graph-heading" className="text-xl font-semibold">{t("Relationship explorer")}</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">{t("Explore direct links and backlinks between your saved notes.")}</p>
         </div>
         {modeSwitch}
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="graph-focus-note" className="text-sm font-medium">Explore note</label>
+          <label htmlFor="graph-focus-note" className="text-sm font-medium">{t("Explore note")}</label>
           <select
             id="graph-focus-note"
             className="small-input min-w-0 max-w-full sm:min-w-64"
@@ -140,23 +141,22 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
             <div className="min-w-0">
-              <p className="section-label">Focused note</p>
+              <p className="section-label">{t("Focused note")}</p>
               <p className="truncate font-medium">{label}</p>
             </div>
             <button className="secondary-button shrink-0" onClick={() => onOpenNote(focusNote)}>
-              <ExternalLink size={15} aria-hidden="true" /> Open in editor
+              <ExternalLink size={15} aria-hidden="true" /> {t("Open in editor")}
             </button>
           </div>
 
           <div
             role="group"
-            aria-label="Connected note graph"
+            aria-label={t("Connected note graph")}
             aria-describedby="graph-instructions"
             className="relative mx-auto aspect-[3/2] min-h-[280px] w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)]"
           >
             <p id="graph-instructions" className="sr-only">
-              The focused note is in the center. Select a connected note to explore its relationships.
-              Arrows point from the note that links to the note it links to.
+              {t("The focused note is in the center. Select a connected note to explore its relationships. Arrows point from the note that links to the note it links to.")}
             </p>
             <svg
               aria-hidden="true"
@@ -203,7 +203,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
             <button
               className="absolute z-10 flex min-h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border-2 border-[#d77762] bg-[var(--surface)] px-2 py-2 text-center text-xs font-semibold shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b45d4d]"
               style={{ left: `${(graphCenter.x / 600) * 100}%`, top: `${(graphCenter.y / 400) * 100}%` }}
-              aria-label={`Explore ${label}`}
+              aria-label={t("Explore {label}", { label })}
               aria-pressed="true"
               onClick={() => setFocusNoteId(focusNote.id)}
             >
@@ -214,7 +214,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
                 key={neighbor.note.id}
                 className="absolute z-10 flex min-h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-center text-xs shadow-sm hover:border-[#d77762] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b45d4d]"
                 style={{ left: `${(positions[index].x / 600) * 100}%`, top: `${(positions[index].y / 400) * 100}%` }}
-                aria-label={`Explore ${noteLabel(neighbor.note)}`}
+                aria-label={t("Explore {noteLabel}", { noteLabel: noteLabel(neighbor.note) })}
                 aria-pressed="false"
                 onClick={() => setFocusNoteId(neighbor.note.id)}
               >
@@ -224,35 +224,35 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
           </div>
 
           <p role="status" aria-live="polite" className="sr-only">
-            {label}: {outgoing.length} outgoing {outgoing.length === 1 ? 'link' : 'links'} and {backlinks.length} {backlinks.length === 1 ? 'backlink' : 'backlinks'}.
+            {label}: {tp(outgoing.length, '{count} outgoing link', '{count} outgoing links')}, {tp(backlinks.length, '{count} backlink', '{count} backlinks')}.
           </p>
           {neighbors.length > MAX_VISIBLE_GRAPH_NEIGHBORS && (
             <p className="text-xs text-[var(--muted)]">
-              The visual graph shows {MAX_VISIBLE_GRAPH_NEIGHBORS} of {neighbors.length} direct connections. All connections are listed below.
+              {tp(neighbors.length, 'The visual graph shows {shown} of {count} direct connection. All connections are listed below.', 'The visual graph shows {shown} of {count} direct connections. All connections are listed below.', { shown: MAX_VISIBLE_GRAPH_NEIGHBORS })}
             </p>
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <RelationshipList
-              title="Links from this note"
+              title={t("Links from this note")}
               icon={<ArrowUpRight size={15} aria-hidden="true" />}
               notes={outgoing}
-              emptyText="No links from this note yet."
+              emptyText={t("No links from this note yet.")}
               noteLabel={noteLabel}
               onExplore={(note) => setFocusNoteId(note.id)}
             />
             <RelationshipList
-              title="Backlinks to this note"
+              title={t("Backlinks to this note")}
               icon={<ArrowDownLeft size={15} aria-hidden="true" />}
               notes={backlinks}
-              emptyText="No notes link to this one yet."
+              emptyText={t("No notes link to this one yet.")}
               noteLabel={noteLabel}
               onExplore={(note) => setFocusNoteId(note.id)}
             />
           </div>
 
           <p className="text-xs text-[var(--muted)]">
-            Notes in Trash are hidden from the graph; restore them to include their relationships again.
+            {t("Notes in Trash are hidden from the graph; restore them to include their relationships again.")}
           </p>
         </>
       )}
@@ -285,7 +285,7 @@ function RelationshipList({
               <button
                 className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-[var(--surface-alt)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b45d4d]"
                 onClick={() => onExplore(note)}
-                aria-label={`Explore ${noteLabel(note)}`}
+                aria-label={t("Explore {noteLabel}", { noteLabel: noteLabel(note) })}
               >
                 {noteLabel(note)}
               </button>

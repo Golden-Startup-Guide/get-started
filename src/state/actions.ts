@@ -38,6 +38,7 @@ import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
 import { usePersistenceStore } from './persistenceStore'
 import { reportError, useWorkspaceStore, type View } from './workspaceStore'
+import { t, tp } from '../i18n/i18n'
 
 export type StructureItem =
   | { kind: 'notebook'; item: Notebook }
@@ -75,7 +76,7 @@ export async function loadLibrary() {
   try {
     await library().refresh()
   } catch {
-    workspace().showError('Your notes could not be loaded. Please try refreshing.')
+    workspace().showError(t("Your notes could not be loaded. Please try refreshing."))
   } finally {
     library().finishLoading()
   }
@@ -88,13 +89,13 @@ export function startStorageSync(): () => void {
       const activeId = useEditorStore.getState().activeNote?.id
       // Writes that change notes always list them; unlisted changes are organization only.
       if (activeId && event.noteIds.includes(activeId)) useEditorStore.getState().markChangedElsewhere()
-      library().refresh().catch(() => workspace().showError('Changes from another tab could not be loaded. Please refresh.'))
+      library().refresh().catch(() => workspace().showError(t("Changes from another tab could not be loaded. Please refresh.")))
     } else if (event.type === 'blocked') {
-      workspace().showError('Close other My Notes tabs or windows so this one can finish updating your notes.')
+      workspace().showError(t("Close other My Notes tabs or windows so this one can finish updating your notes."))
     } else if (event.type === 'version-change') {
-      workspace().showError('My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved.')
+      workspace().showError(t("My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved."))
     } else {
-      workspace().showError('The browser closed the connection to your notes. Reload this page to keep working.')
+      workspace().showError(t("The browser closed the connection to your notes. Reload this page to keep working."))
     }
   })
 }
@@ -118,7 +119,7 @@ export async function deleteOpenNote(note: Note): Promise<boolean> {
     await library().refresh()
     return true
   } catch {
-    workspace().showError('Your note could not be deleted. Please try again.')
+    workspace().showError(t("Your note could not be deleted. Please try again."))
     return false
   }
 }
@@ -128,7 +129,7 @@ export async function toggleNoteFlag(note: Note, flag: 'pinned' | 'favorite') {
     await setNoteFlag(note.id, flag, !note[flag])
     await library().refresh()
   } catch (reason) {
-    reportError(reason, 'The note could not be updated.')
+    reportError(reason, t("The note could not be updated."))
   }
 }
 
@@ -136,10 +137,10 @@ export async function restoreFromTrash(note: Note) {
   try {
     await restoreNote(note.id)
     await library().refresh()
-    workspace().showNotice(`“${note.title || 'Untitled note'}” was restored.`)
+    workspace().showNotice(t('“{title}” was restored.', { title: note.title || t('Untitled note') }))
     workspace().showError(null)
   } catch (reason) {
-    reportError(reason, 'The note could not be restored.')
+    reportError(reason, t("The note could not be restored."))
   }
 }
 
@@ -147,17 +148,17 @@ export async function deleteForever(note: Note) {
   try {
     await permanentlyDeleteNote(note.id)
     await library().refresh()
-    workspace().showNotice('The note was permanently deleted.')
+    workspace().showNotice(t("The note was permanently deleted."))
     workspace().showError(null)
   } catch {
-    workspace().showError('The note could not be permanently deleted. Please try again.')
+    workspace().showError(t("The note could not be permanently deleted. Please try again."))
   }
 }
 
 // --- Libraries, shelves, and notebooks --------------------------------------------------
 
 export const createNotebookOnShelf = (name: string, shelfId: string | undefined, onCreated?: (notebook: Notebook) => void) =>
-  refreshAfter(() => createNotebook(name, shelfId), 'The notebook could not be created.', onCreated)
+  refreshAfter(() => createNotebook(name, shelfId), t("The notebook could not be created."), onCreated)
 
 /**
  * The notebook with this name (ignoring case), created on the first shelf of the starter library
@@ -167,7 +168,7 @@ export async function ensureNotebook(name: string): Promise<Notebook | undefined
   const { notebooks, shelves } = library()
   const existing = findNotebook(notebooks, name)
   if (existing) return existing
-  return refreshAfter(() => createNotebook(name, shelfForNewNotebook('all', notebooks, shelves)), `The ${name} notebook could not be created.`)
+  return refreshAfter(() => createNotebook(name, shelfForNewNotebook('all', notebooks, shelves)), t("The {name} notebook could not be created.", { name }))
 }
 
 /**
@@ -184,9 +185,9 @@ export async function updateLinksAfterRename(oldTitle: string, newTitle: string,
   const count = await refreshAfter(async () => {
     for (const note of changed) await saveNote(note)
     return changed.length
-  }, 'Some links could not be updated. Try again.')
+  }, t("Some links could not be updated. Try again."))
   if (count !== undefined) {
-    workspace().showNotice(`Updated links in ${count} ${count === 1 ? 'note' : 'notes'} to “${newTitle.trim()}”.`)
+    workspace().showNotice(tp(count, 'Updated links in {count} note to “{title}”.', 'Updated links in {count} notes to “{title}”.', { title: newTitle.trim() }))
   }
   return count
 }
@@ -225,20 +226,20 @@ async function saveToInbox(title: string, content: string, failure: string): Pro
     await saveNote(note)
     return note
   }, failure)
-  if (saved) workspace().showNotice(`Saved “${saved.title}” to ${INBOX_NOTEBOOK}.`)
+  if (saved) workspace().showNotice(t("Saved “{title}” to {INBOX_NOTEBOOK}.", { title: saved.title, INBOX_NOTEBOOK }))
   return Boolean(saved)
 }
 
 /** Saves a quick note to the Inbox notebook. Returns whether it was saved. */
 export async function saveQuickNote(text: string): Promise<boolean> {
   if (!text.trim()) return false
-  return saveToInbox(quickNoteTitle(text) || 'Quick note', text.trimEnd(), 'Your quick note could not be saved. It is still in the quick note box.')
+  return saveToInbox(quickNoteTitle(text) || 'Quick note', text.trimEnd(), t("Your quick note could not be saved. It is still in the quick note box."))
 }
 
 /** Saves a page clipped with the bookmarklet, or shared to the app, to the Inbox notebook. */
 export async function saveClip(clip: Extract<LaunchRequest, { kind: 'clip' }>): Promise<boolean> {
   const { title, content } = clipToNote(clip)
-  return saveToInbox(title, content, 'The clipped page could not be saved. Please try again.')
+  return saveToInbox(title, content, t("The clipped page could not be saved. Please try again."))
 }
 
 /** Creates (and saves) an example template in the Templates notebook, for people to adapt. */
@@ -260,24 +261,28 @@ export async function createSampleTemplate(): Promise<Note | undefined> {
   return refreshAfter(async () => {
     await saveNote(template)
     return template
-  }, 'The template could not be created.')
+  }, t("The template could not be created."))
 }
 
 export const createNamedLibrary =(name: string, onCreated?: (library: Library) => void) =>
-  refreshAfter(() => createLibrary(name), 'The library could not be created.', onCreated)
+  refreshAfter(() => createLibrary(name), t("The library could not be created."), onCreated)
 
 export const createShelfInLibrary = (libraryId: string, name: string, onCreated?: (shelf: Shelf) => void) =>
-  refreshAfter(() => createShelf(libraryId, name), 'The shelf could not be created.', onCreated)
+  refreshAfter(() => createShelf(libraryId, name), t("The shelf could not be created."), onCreated)
 
 export const moveNotebookToShelf = (notebookId: string, shelfId: string) =>
-  refreshAfter(() => moveNotebook(notebookId, shelfId), 'The notebook could not be moved.')
+  refreshAfter(() => moveNotebook(notebookId, shelfId), t("The notebook could not be moved."))
 
 /** Prompts for a new name and renames the library, shelf, or notebook. */
 export async function promptRename(target: StructureItem) {
-  const name = window.prompt(`Rename ${target.kind}`, target.item.name)
+  const question = target.kind === 'library' ? t('Rename library') : target.kind === 'shelf' ? t('Rename shelf') : t('Rename notebook')
+  const name = window.prompt(question, target.item.name)
   if (name === null) return
   const rename = target.kind === 'library' ? renameLibrary : target.kind === 'shelf' ? renameShelf : renameNotebook
-  await refreshAfter(() => rename(target.item.id, name), `The ${target.kind} could not be renamed.`)
+  await refreshAfter(
+    () => rename(target.item.id, name),
+    target.kind === 'library' ? t('The library could not be renamed.') : target.kind === 'shelf' ? t('The shelf could not be renamed.') : t('The notebook could not be renamed.'),
+  )
 }
 
 /**
@@ -318,7 +323,7 @@ export async function changeTheme(theme: ThemePreference) {
     await saveTheme(theme)
     library().setTheme(theme)
   } catch {
-    workspace().showError('Your theme preference could not be saved.')
+    workspace().showError(t("Your theme preference could not be saved."))
   }
 }
 
@@ -328,7 +333,7 @@ export async function changeEditorMode(mode: EditorMode) {
   try {
     await saveEditorMode(mode)
   } catch {
-    workspace().showError('Your editor preference could not be saved.')
+    workspace().showError(t("Your editor preference could not be saved."))
   }
 }
 
@@ -341,17 +346,17 @@ export async function downloadBackup(options: BackupOptions) {
     link.download = `my-notes-backup-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     URL.revokeObjectURL(url)
-    workspace().showNotice('Your backup has been downloaded. Checking that it restores…')
+    workspace().showNotice(t("Your backup has been downloaded. Checking that it restores…"))
     // Prove the downloaded backup restores, from exactly what was downloaded.
     const check = await checkBackup(await readText(blob))
     await useBackupStore.getState().recordDownload(check)
-    if (check.ok) workspace().showNotice(`Your backup has been downloaded and checked: a test restore brought back ${describeCheck(check)}.`)
+    if (check.ok) workspace().showNotice(t("Your backup has been downloaded and checked: a test restore brought back {describeCheck}.", { describeCheck: describeCheck(check) }))
     else {
       workspace().showNotice(null)
-      workspace().showError(`Your backup was downloaded, but restoring it as a test failed: ${check.problem}. Keep your earlier backups, and try exporting again.`)
+      workspace().showError(t("Your backup was downloaded, but restoring it as a test failed: {problem}. Keep your earlier backups, and try exporting again.", { problem: check.problem }))
     }
   } catch (reason) {
-    reportError(reason, 'The backup could not be created.')
+    reportError(reason, t("The backup could not be created."))
   }
 }
 
@@ -360,18 +365,18 @@ export async function restoreBackup(file: File) {
     const result = await importBackupFile(file)
     await library().refresh()
     workspace().showNotice(
-      `Backup restored: ${result.librariesAdded} libraries, ${result.shelvesAdded} shelves, ${result.notebooksAdded} notebooks, ${result.notesAdded} notes, ${result.linksAdded} links, and ${result.attachmentsAdded} attachments added; ${result.notesSkipped} duplicate notes skipped.`,
+      t("Backup restored: {librariesAdded} libraries, {shelvesAdded} shelves, {notebooksAdded} notebooks, {notesAdded} notes, {linksAdded} links, and {attachmentsAdded} attachments added; {notesSkipped} duplicate notes skipped.", { librariesAdded: result.librariesAdded, shelvesAdded: result.shelvesAdded, notebooksAdded: result.notebooksAdded, notesAdded: result.notesAdded, linksAdded: result.linksAdded, attachmentsAdded: result.attachmentsAdded, notesSkipped: result.notesSkipped }),
     )
     workspace().showError(null)
   } catch (reason) {
-    reportError(reason, 'The backup could not be restored.')
+    reportError(reason, t("The backup could not be restored."))
   }
 }
 
 export async function requestPersistenceFromSettings() {
   const status = await usePersistenceStore.getState().requestNow()
   if (status !== 'persisted') {
-    workspace().showNotice('The browser did not grant persistent storage. Installing My Notes as an app, or bookmarking it, can help. Keep exporting backups.')
+    workspace().showNotice(t("The browser did not grant persistent storage. Installing My Notes as an app, or bookmarking it, can help. Keep exporting backups."))
   }
 }
 
@@ -385,9 +390,9 @@ export async function saveNamedSearch(name: string, query: string) {
 export async function removeSavedSearch(search: SavedSearch) {
   try {
     library().setSavedSearches(await deleteSavedSearch(search.id))
-    workspace().showNotice(`Removed the saved search “${search.name}”.`)
+    workspace().showNotice(t("Removed the saved search “{name}”.", { name: search.name }))
   } catch (reason) {
-    reportError(reason, 'The saved search could not be removed.')
+    reportError(reason, t("The saved search could not be removed."))
   }
 }
 
@@ -404,9 +409,9 @@ export async function exportMarkdownZip() {
     link.download = `my-notes-markdown-${new Date().toISOString().slice(0, 10)}.zip`
     link.click()
     URL.revokeObjectURL(url)
-    workspace().showNotice(`Exported ${notes} ${notes === 1 ? 'note' : 'notes'} as Markdown files in a .zip.`)
+    workspace().showNotice(tp(notes, 'Exported {count} note as Markdown files in a .zip.', 'Exported {count} notes as Markdown files in a .zip.'))
   } catch (reason) {
-    reportError(reason, 'The Markdown export could not be created.')
+    reportError(reason, t("The Markdown export could not be created."))
   }
 }
 
@@ -415,16 +420,20 @@ export async function importFromApp(source: ImportSource, files: readonly File[]
   try {
     const summary = await (await transfer()).importFromFiles(source, files)
     await library().refresh()
-    const count = (value: number, one: string, many: string) => `${value} ${value === 1 ? one : many}`
     workspace().showError(null)
     workspace().showNotice(
-      `Imported ${count(summary.notes, 'note', 'notes')}${summary.notebooksCreated ? ` into ${count(summary.notebooksCreated, 'new notebook', 'new notebooks')}` : ''}`
-      + `${summary.attachments ? `, with ${count(summary.attachments, 'attachment', 'attachments')}` : ''}.`
-      + `${summary.attachmentsSkipped ? ` ${count(summary.attachmentsSkipped, 'attachment was', 'attachments were')} left out (over 5 MiB, or over a note’s 20 attachments or 20 MiB).` : ''}`,
+      [
+        summary.notebooksCreated
+          ? t('Imported {notes} into {notebooks}', { notes: tp(summary.notes, '{count} note', '{count} notes'), notebooks: tp(summary.notebooksCreated, '{count} new notebook', '{count} new notebooks') })
+          : t('Imported {notes}', { notes: tp(summary.notes, '{count} note', '{count} notes') }),
+        summary.attachments ? t(', with {attachments}', { attachments: tp(summary.attachments, '{count} attachment', '{count} attachments') }) : '',
+        '.',
+        summary.attachmentsSkipped ? ` ${tp(summary.attachmentsSkipped, '{count} attachment was left out (over 5 MiB, or over a note’s 20 attachments or 20 MiB).', '{count} attachments were left out (over 5 MiB, or over a note’s 20 attachments or 20 MiB).')}` : '',
+      ].join(''),
     )
     return true
   } catch (reason) {
-    reportError(reason, 'The notes could not be imported.')
+    reportError(reason, t("The notes could not be imported."))
     return false
   }
 }

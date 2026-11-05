@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentProps } from 'react'
 import type { NoteEditor } from './NoteEditor'
 import { loadedNoteEditor, preloadNoteEditor } from './noteEditorChunk'
+import { t } from '../../i18n/i18n'
 
 /**
  * Renders the note editor once its code has loaded (see noteEditorChunk.ts), with a short
@@ -22,7 +23,7 @@ export function LazyNoteEditor(props: ComponentProps<typeof NoteEditor>) {
       (component) => { if (active) setEditor(() => component) },
       () => {
         if (!active) return
-        onError('The editor could not be loaded. Check your connection and try again.')
+        onError(t('The editor could not be loaded. Check your connection and try again.'))
         onClose()
       },
     )
@@ -34,7 +35,7 @@ export function LazyNoteEditor(props: ComponentProps<typeof NoteEditor>) {
   // when a note is opened at once after loading, say what is happening instead of showing nothing.
   return (
     <div className="modal-backdrop" role="presentation">
-      <p className="editor-loading" role="status">Opening note…</p>
+      <p className="editor-loading" role="status">{t("Opening note…")}</p>
     </div>
   )
 }

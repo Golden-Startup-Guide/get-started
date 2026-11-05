@@ -1,5 +1,6 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { Note } from '../../types'
+import { t, tp } from '../../i18n/i18n'
 
 /** Matches shown at once; typing narrows the rest. */
 export const MAX_LINK_PICKER_RESULTS = 50
@@ -43,7 +44,7 @@ export function NoteLinkPicker({
   const inUse = open || query !== ''
   const candidates = useMemo<Candidate[]>(() => inUse
     ? targets.map((note) => {
-      const label = labels.get(note.id) ?? (note.title || 'Untitled note')
+      const label = labels.get(note.id) ?? (note.title || t('Untitled note'))
       return { note, label, searchText: label.toLocaleLowerCase() }
     })
     : [], [inUse, labels, targets])
@@ -104,7 +105,7 @@ export function NoteLinkPicker({
         aria-controls={listId}
         aria-activedescendant={active ? optionId(active.note.id) : undefined}
         autoComplete="off"
-        placeholder={targets.length ? 'Type to find a note…' : 'No other notes to link'}
+        placeholder={targets.length ? t("Type to find a note…") : t("No other notes to link")}
         disabled={disabled || !targets.length}
         value={query}
         onChange={(event) => {
@@ -119,7 +120,7 @@ export function NoteLinkPicker({
         onKeyDown={onKeyDown}
       />
       {open && (
-        <ul id={listId} role="listbox" aria-label="Notes to link" className="link-picker-list">
+        <ul id={listId} role="listbox" aria-label={t("Notes to link")} className="link-picker-list">
           {results.map((candidate) => (
             <li
               key={candidate.note.id}
@@ -134,10 +135,10 @@ export function NoteLinkPicker({
               {candidate.label}
             </li>
           ))}
-          {results.length === 0 && <li role="presentation" className="link-picker-hint">No matching notes</li>}
+          {results.length === 0 && <li role="presentation" className="link-picker-hint">{t("No matching notes")}</li>}
           {total > results.length && (
             <li role="presentation" className="link-picker-hint">
-              {(total - results.length).toLocaleString()} more; keep typing to narrow the list
+              {tp(total - results.length, '{count} more; keep typing to narrow the list', '{count} more; keep typing to narrow the list')}
             </li>
           )}
         </ul>

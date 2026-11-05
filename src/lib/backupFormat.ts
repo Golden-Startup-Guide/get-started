@@ -17,6 +17,7 @@ import {
   MAX_NOTE_ATTACHMENT_BYTES,
 } from '../features/notes/attachments'
 import { MAX_SAVED_SEARCHES, validSavedSearch } from './savedSearches'
+import { t } from '../i18n/i18n'
 
 export const DEFAULT_LIBRARY_ID = 'starter-library'
 export const DEFAULT_SHELF_ID = 'starter-shelf'
@@ -302,7 +303,7 @@ function isNotesBackup(
 }
 
 export function validateBackup(value: unknown): NotesBackup {
-  if (!isNotesBackup(value)) throw new Error('This backup contains invalid, duplicate, or unsupported records.')
+  if (!isNotesBackup(value)) throw new Error(t("This backup contains invalid, duplicate, or unsupported records."))
   const defaultLibrary = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: value.exportedAt, updatedAt: value.exportedAt }
   const defaultShelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: value.exportedAt, updatedAt: value.exportedAt }
   const libraries = value.version === 4 ? value.libraries : [defaultLibrary]

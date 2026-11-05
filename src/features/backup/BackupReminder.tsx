@@ -3,6 +3,7 @@ import { downloadBackup } from '../../state/actions'
 import { backupReminder, newestChange, useBackupStore } from '../../state/backupStore'
 import { useLibraryStore } from '../../state/libraryStore'
 import { daysSince } from './backupSchedule'
+import { t, tp } from '../../i18n/i18n'
 
 /**
  * A banner when backups need attention: one is overdue (no backup folder, or a browser that
@@ -21,34 +22,34 @@ export function BackupReminder({ onOpenSettings }: { onOpenSettings: () => void 
   if (!reminder) return null
 
   const days = backup.lastBackupAt ? daysSince(backup.lastBackupAt, backup.checkedAt) : 0
-  const folderName = backup.folder?.name ?? 'your backup folder'
+  const folderName = backup.folder?.name ?? t('your backup folder')
   const message = reminder === 'permission'
-    ? `Automatic backups to “${folderName}” are paused until you allow access again.`
+    ? t('Automatic backups to “{folder}” are paused until you allow access again.', { folder: folderName })
     : reminder === 'failed'
-      ? `The automatic backup to “${folderName}” failed: ${backup.lastError}`
+      ? t('The automatic backup to “{folder}” failed: {error}', { folder: folderName, error: backup.lastError ?? '' })
       : backup.lastBackupAt
-        ? `Your last backup was ${days} ${days === 1 ? 'day' : 'days'} ago. Your notes live only in this browser, which can clear them; a backup keeps them safe.`
+        ? tp(days, 'Your last backup was {count} day ago. Your notes live only in this browser, which can clear them; a backup keeps them safe.', 'Your last backup was {count} days ago. Your notes live only in this browser, which can clear them; a backup keeps them safe.')
         : 'You haven’t backed up your notes yet. They live only in this browser, which can clear them; a backup keeps them safe.'
 
   return (
-    <div role="region" aria-label="Backup reminder" className="notice backup-reminder mb-5">
+    <div role="region" aria-label={t("Backup reminder")} className="notice backup-reminder mb-5">
       <p className="min-w-0 flex-1">{message}</p>
       <div className="flex flex-wrap gap-2">
         {reminder === 'permission' && (
-          <button type="button" className="secondary-button" onClick={() => void backup.allowFolder()}>Allow access</button>
+          <button type="button" className="secondary-button" onClick={() => void backup.allowFolder()}>{t("Allow access")}</button>
         )}
         {reminder === 'failed' && (
-          <button type="button" className="secondary-button" disabled={backup.running} onClick={() => void backup.backUpNow()}>Try again</button>
+          <button type="button" className="secondary-button" disabled={backup.running} onClick={() => void backup.backUpNow()}>{t("Try again")}</button>
         )}
         {reminder === 'overdue' && (
           <>
-            <button type="button" className="secondary-button" onClick={() => void downloadBackup({ attachments: true, history: true })}>Download a backup</button>
+            <button type="button" className="secondary-button" onClick={() => void downloadBackup({ attachments: true, history: true })}>{t("Download a backup")}</button>
             <button type="button" className="secondary-button" onClick={onOpenSettings}>
-              {backup.supported ? 'Back up automatically…' : 'Backup settings…'}
+              {backup.supported ? t("Back up automatically…") : t("Backup settings…")}
             </button>
           </>
         )}
-        <button type="button" className="secondary-button" onClick={() => void backup.snooze()}>Later</button>
+        <button type="button" className="secondary-button" onClick={() => void backup.snooze()}>{t("Later")}</button>
       </div>
     </div>
   )

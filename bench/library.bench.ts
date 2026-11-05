@@ -22,7 +22,8 @@ const round = (value: number) => Math.round(value * 10) / 10
 async function waitForCount(page: Page, count: number) {
   await page.waitForFunction(
     (expected) => document.getElementById('note-count')?.textContent?.trim() === expected,
-    `${count} ${count === 1 ? 'note' : 'notes'}`,
+    // Counts are shown with thousands separators (10,000 notes).
+    `${count.toLocaleString('en-US')} ${count === 1 ? 'note' : 'notes'}`,
     { polling: 'raf', timeout: 10 * 60_000 },
   )
 }
@@ -32,7 +33,7 @@ for (const size of sizes) {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
     // Wait for the first load (a new library has starter notes); seeding replaces every note.
-    await expect(page.locator('#note-count')).toHaveText(/^\d+ notes?$/)
+    await expect(page.locator('#note-count')).toHaveText(/^[\d,]+ notes?$/)
 
     const seedStarted = Date.now()
     const library = await page.evaluate(seedLibrary, { notes: size, largeNoteBytes: 1_000_000 })

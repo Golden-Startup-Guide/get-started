@@ -46,6 +46,7 @@ import {
   toggleNoteFlag,
 } from './state/actions'
 import { useBackupStore } from './state/backupStore'
+import { useLanguageStore } from './state/languageStore'
 import { runIntegrityCheck, useIntegrityStore } from './state/integrityStore'
 import { useEditorStore } from './state/editorStore'
 import { useLibraryStore } from './state/libraryStore'
@@ -57,6 +58,7 @@ import { DAILY_NOTEBOOK, dailyNoteContent, fillTemplate, findDailyNote, isoDate 
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
 import type { Note, NoteLink } from './types'
 import './workspace.css'
+import { t, tp } from './i18n/i18n'
 
 const NO_LINKS: NoteLink[] = []
 // Both Ctrl+K and ⌘K work everywhere; the hint shows the one this platform uses.
@@ -68,7 +70,7 @@ const QUICK_NOTE_SHORTCUT = IS_APPLE ? '⌥N' : 'Alt N'
 const flagNote = (note: Note, flag: 'pinned' | 'favorite') => void toggleNoteFlag(note, flag)
 const restoreNoteFromTrash = (note: Note) => void restoreFromTrash(note)
 function confirmPermanentDelete(note: Note) {
-  if (!window.confirm(`Permanently delete “${note.title || 'Untitled note'}”? This cannot be undone.`)) return
+  if (!window.confirm(t('Permanently delete “{title}”? This cannot be undone.', { title: note.title || t('Untitled note') }))) return
   void deleteForever(note)
 }
 
@@ -99,7 +101,12 @@ function App() {
   const changedElsewhere = useEditorStore((state) => state.changedElsewhere)
   const loadLatest = useEditorStore((state) => state.loadLatest)
   const keepMine = useEditorStore((state) => state.keepMine)
-  const [showSettings, setShowSettings] = useState(false)
+  // Open again after a language change from Settings, which draws the app afresh.
+  const [showSettings, setShowSettings] = useState(() => {
+    const reopen = useLanguageStore.getState().reopenSettings
+    if (reopen) useLanguageStore.setState({ reopenSettings: false })
+    return reopen
+  })
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
   // Kept while the quick note box is closed, until it is saved or cleared.
@@ -192,7 +199,7 @@ function App() {
   const notebookName = useCallback((note: Note) => notebookNames.get(note.notebookId ?? '') ?? 'Personal', [notebookNames])
   const graphNotes = useMemo(() => [...notes, ...trash], [notes, trash])
   const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
-  const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || 'Untitled note'), [linkLabels])
+  const noteLabel = useCallback((note: Note) => linkLabels.get(note.id) ?? (note.title || t('Untitled note')), [linkLabels])
   // [[Wikilinks]] are read from every note's text, so they are only worked out while the editor or
   // the graph is showing; start-up and the note list never pay for it. Deferred, so opening a note
   // shows the editor first and fills in text backlinks in a follow-up render.
@@ -285,20 +292,20 @@ function App() {
   }, [notes, trash])
 
   const viewLabel = view === 'all'
-    ? 'All Notes'
+    ? t('All Notes')
     : view === 'favorites'
-      ? 'Favorites'
+      ? t('Favorites')
       : view === 'trash'
-        ? 'Trash'
+        ? t('Trash')
       : view === 'graph'
-        ? 'Knowledge Graph'
+        ? t('Knowledge Graph')
       : view.startsWith('library:')
-        ? libraries.find((item) => item.id === view.slice(8))?.name ?? 'Library'
+        ? libraries.find((item) => item.id === view.slice(8))?.name ?? t('Library')
       : view.startsWith('shelf:')
-        ? shelves.find((item) => item.id === view.slice(6))?.name ?? 'Shelf'
+        ? shelves.find((item) => item.id === view.slice(6))?.name ?? t('Shelf')
       : view.startsWith('notebook:')
-        ? notebooks.find((item) => item.id === view.slice(9))?.name ?? 'Notebook'
-        : tags.find((item) => item.id === view.slice(4))?.label ?? 'Tag'
+        ? notebooks.find((item) => item.id === view.slice(9))?.name ?? t('Notebook')
+        : tags.find((item) => item.id === view.slice(4))?.label ?? t('Tag')
   const activeLibrary = view.startsWith('library:')
     ? libraries.find((library) => library.id === view.slice(8))
     : undefined
@@ -312,10 +319,10 @@ function App() {
     ? shelves.find((shelf) => shelf.id === activeNotebook.shelfId)
     : undefined
   const breadcrumbItems: Array<{ label: string; view: View }> = activeLibrary
-    ? [{ label: 'Knowledge Library', view: 'all' }]
+    ? [{ label: t('Knowledge Library'), view: 'all' }]
     : activeShelf
       ? [
-          { label: 'Knowledge Library', view: 'all' },
+          { label: t('Knowledge Library'), view: 'all' },
           {
             label: libraries.find((library) => library.id === activeShelf.libraryId)?.name ?? 'Library',
             view: `library:${activeShelf.libraryId}`,
@@ -323,7 +330,7 @@ function App() {
         ]
       : activeNotebook
         ? [
-            { label: 'Knowledge Library', view: 'all' },
+            { label: t('Knowledge Library'), view: 'all' },
             ...(activeNotebookShelf
               ? [
                   {
@@ -568,7 +575,7 @@ function App() {
   return (
     <div className="workspace" data-theme={theme} data-navigation-open={navigationOpen && isCompactNavigation}>
       {isCompactNavigation && navigationOpen && (
-        <button className="navigation-backdrop" onClick={closeNavigation} aria-label="Close navigation" tabIndex={-1} />
+        <button className="navigation-backdrop" onClick={closeNavigation} aria-label={t("Close navigation")} tabIndex={-1} />
       )}
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
         <LibrarySidebar
@@ -591,7 +598,7 @@ function App() {
                   ref={navigationToggleRef}
                   className="icon-button navigation-toggle shrink-0"
                   onClick={openNavigation}
-                  aria-label={isCompactNavigation ? 'Open navigation' : 'Expand sidebar'}
+                  aria-label={isCompactNavigation ? t("Open navigation") : t("Expand sidebar")}
                   aria-expanded={false}
                   aria-controls="workspace-navigation"
                 >
@@ -599,9 +606,9 @@ function App() {
                 </button>
               )}
               <div className="min-w-0">
-                <p className="section-label mb-1">Personal Knowledge Library</p>
+                <p className="section-label mb-1">{t("Personal Knowledge Library")}</p>
                 {breadcrumbItems.length > 0 && (
-                  <nav className="workspace-breadcrumb mb-1" aria-label="Breadcrumb">
+                  <nav className="workspace-breadcrumb mb-1" aria-label={t("Breadcrumb")}>
                     <ol>
                       {breadcrumbItems.map((item, index) => (
                         <li key={`${item.label}-${index}`}>
@@ -617,37 +624,37 @@ function App() {
             </div>
             <div className="flex items-center gap-2">
               {/* Named by its content, so the shortcut people see is part of the name voice control hears. */}
-              <button className="palette-trigger" onClick={openPalette} aria-keyshortcuts="Control+K Meta+K" title={`Command palette (${PALETTE_SHORTCUT})`}>
+              <button className="palette-trigger" onClick={openPalette} aria-keyshortcuts="Control+K Meta+K" title={t("Command palette ({PALETTE_SHORTCUT})", { PALETTE_SHORTCUT })}>
                 <TextSearch size={16} aria-hidden="true" />
-                <span className="sr-only">Open command palette </span>
+                <span className="sr-only">{t("Open command palette")} </span>
                 <kbd className="palette-kbd">{PALETTE_SHORTCUT}</kbd>
               </button>
-              <button className="icon-button" onClick={openQuickCapture} aria-label="Quick note" aria-keyshortcuts="Alt+N" title={`Quick note (${QUICK_NOTE_SHORTCUT})`}><Zap size={18} /></button>
-              <button className="icon-button" onClick={openSettings} aria-label="Open settings"><Settings size={18} /></button>
-              <button className="primary-button flex items-center gap-2" onClick={openNewNote} aria-label="Create a new note"><Plus size={17} /><span className="new-note-label">New note</span></button>
+              <button className="icon-button" onClick={openQuickCapture} aria-label={t("Quick note")} aria-keyshortcuts="Alt+N" title={t("Quick note ({QUICK_NOTE_SHORTCUT})", { QUICK_NOTE_SHORTCUT })}><Zap size={18} /></button>
+              <button className="icon-button" onClick={openSettings} aria-label={t("Open settings")}><Settings size={18} /></button>
+              <button className="primary-button flex items-center gap-2" onClick={openNewNote} aria-label={t("Create a new note")}><Plus size={17} /><span className="new-note-label">{t("New note")}</span></button>
             </div>
           </header>
-          {error && <div role="alert" className="notice notice-error mb-5">{error}<button onClick={() => showError(null)} aria-label="Dismiss error"><X size={15} /></button></div>}
+          {error && <div role="alert" className="notice notice-error mb-5">{error}<button onClick={() => showError(null)} aria-label={t("Dismiss error")}><X size={15} /></button></div>}
           <UpdateBanner />
           <BackupReminder onOpenSettings={openSettings} />
-          {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => showNotice(null)} aria-label="Dismiss notice"><X size={15} /></button></div>}
+          {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => showNotice(null)} aria-label={t("Dismiss notice")}><X size={15} /></button></div>}
           {view.startsWith('shelf:') && (
             <form className="mb-5 flex max-w-xl gap-2" onSubmit={(event) => void addNotebookOnShelfPage(event)}>
-              <label className="sr-only" htmlFor="shelf-new-notebook">New notebook in {viewLabel}</label>
-              <input id="shelf-new-notebook" className="small-input min-w-0 flex-1" value={shelfNotebookName} onChange={(event) => setShelfNotebookName(event.target.value)} placeholder={`New notebook in ${viewLabel}`} />
-              <button className="secondary-button" type="submit"><Plus size={15} /> Add notebook</button>
+              <label className="sr-only" htmlFor="shelf-new-notebook">{t('New notebook in {name}', { name: viewLabel })}</label>
+              <input id="shelf-new-notebook" className="small-input min-w-0 flex-1" value={shelfNotebookName} onChange={(event) => setShelfNotebookName(event.target.value)} placeholder={t("New notebook in {viewLabel}", { viewLabel })} />
+              <button className="secondary-button" type="submit"><Plus size={15} /> {t("Add notebook")}</button>
             </form>
           )}
           {view.startsWith('notebook:') && (
             <div className="mb-5 max-w-xl md:hidden">
-              <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mobile-notebook-shelf">Move notebook to shelf</label>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mobile-notebook-shelf">{t("Move notebook to shelf")}</label>
               <select
                 id="mobile-notebook-shelf"
                 className="small-input w-full"
                 value={activeNotebook?.shelfId ?? ''}
                 onChange={(event) => void moveNotebookToShelf(view.slice(9), event.target.value)}
               >
-                {shelves.map((shelf) => <option key={shelf.id} value={shelf.id}>{libraries.find((library) => library.id === shelf.libraryId)?.name ?? 'Library'} · {shelf.name}</option>)}
+                {shelves.map((shelf) => <option key={shelf.id} value={shelf.id}>{libraries.find((library) => library.id === shelf.libraryId)?.name ?? t("Library")} · {shelf.name}</option>)}
               </select>
             </div>
           )}
@@ -656,9 +663,9 @@ function App() {
               <>
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
-                  <label htmlFor="note-search" className="sr-only">Search notes, libraries, shelves, notebooks, and tags</label>
-                  <input ref={searchInputRef} id="note-search" type="search" value={query} onFocus={() => setSearchPrimed(true)} onChange={(event) => setQuery(event.target.value)} placeholder={'Search notes — try tag:health, notebook:work, "a phrase", -word'} />
-                  {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label="Clear search"><X size={15} /></button>}
+                  <label htmlFor="note-search" className="sr-only">{t("Search notes, libraries, shelves, notebooks, and tags")}</label>
+                  <input ref={searchInputRef} id="note-search" type="search" value={query} onFocus={() => setSearchPrimed(true)} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search notes — try tag:health, notebook:work, \"a phrase\", -word")} />
+                  {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label={t("Clear search")}><X size={15} /></button>}
                   {query.trim() && <SaveSearchButton query={query} saved={findSavedSearch(settings.savedSearches, query)} />}
                   <SearchTips onAdd={(example) => {
                     setQuery(query.trim() ? `${query.trimEnd()} ${example}` : example)
@@ -666,13 +673,13 @@ function App() {
                   }} />
                 </div>
                 <p id="note-count" className="whitespace-nowrap text-xs text-[var(--muted)] sm:text-sm" aria-live="polite">
-                  {useWorkerResults && workerSearch.pending ? 'Searching…' : `${filteredNotes.length} ${filteredNotes.length === 1 ? 'note' : 'notes'}`}
+                  {useWorkerResults && workerSearch.pending ? t("Searching…") : tp(filteredNotes.length, '{count} note', '{count} notes')}
                 </p>
               </>
             )}
           </div>
           {isLoading ? (
-            <p role="status" className="py-16 text-center text-[var(--muted)]">Loading your notes…</p>
+            <p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading your notes…")}</p>
           ) : view.startsWith('library:') ? (
             <LibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
           ) : view === 'graph' ? (
@@ -699,14 +706,14 @@ function App() {
           ) : (
             <div className="empty-state">
               <span className="empty-icon"><FileText size={24} /></span>
-              <h2 className="mt-4 text-lg font-semibold">{query ? 'No matching notes' : view === 'favorites' ? 'No favorites yet' : view === 'trash' ? 'Trash is empty' : 'A little space to think.'}</h2>
-              <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{query ? 'Try another search term or clear your filters.' : view === 'trash' ? 'Notes you move to Trash can be restored or permanently deleted here.' : 'Capture an idea, a reminder, or anything you want to remember.'}</p>
-              {!query && view !== 'favorites' && view !== 'trash' && <button className="primary-button mt-5" onClick={openNewNote}><Plus size={16} /> Create a note</button>}
+              <h2 className="mt-4 text-lg font-semibold">{query ? t("No matching notes") : view === 'favorites' ? t("No favorites yet") : view === 'trash' ? t("Trash is empty") : t("A little space to think.")}</h2>
+              <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{query ? t("Try another search term or clear your filters.") : view === 'trash' ? t("Notes you move to Trash can be restored or permanently deleted here.") : t("Capture an idea, a reminder, or anything you want to remember.")}</p>
+              {!query && view !== 'favorites' && view !== 'trash' && <button className="primary-button mt-5" onClick={openNewNote}><Plus size={16} /> {t("Create a note")}</button>}
             </div>
           )}
           <div className="mt-8 flex items-center justify-between md:hidden">
-            <span className="text-xs text-[var(--muted)]">{notebooks.length} notebooks · {tags.length} tags</span>
-            <button className="nav-button flex items-center gap-2" onClick={openSettings}><Settings size={15} /> Settings</button>
+            <span className="text-xs text-[var(--muted)]">{tp(notebooks.length, '{count} notebook', '{count} notebooks')} · {tp(tags.length, '{count} tag', '{count} tags')}</span>
+            <button className="nav-button flex items-center gap-2" onClick={openSettings}><Settings size={15} /> {t("Settings")}</button>
           </div>
         </main>
       </div>

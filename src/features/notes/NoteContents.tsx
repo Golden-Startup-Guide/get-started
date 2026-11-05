@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { ListTree } from 'lucide-react'
 import { MAX_CONTENTS_ITEMS, MIN_CONTENTS_HEADINGS, type Heading } from './noteHeadings'
+import { t, tp } from '../../i18n/i18n'
 
 /**
  * A collapsible table of contents above the preview. Selecting a heading scrolls the preview to
@@ -22,9 +23,9 @@ export function NoteContents({ headings }: { headings: Heading[] }) {
   }
 
   return (
-    <nav className="note-contents" aria-label="Contents">
+    <nav className="note-contents" aria-label={t("Contents")}>
       <button type="button" className="note-contents-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((current) => !current)}>
-        <ListTree size={15} aria-hidden="true" /> Contents <span className="note-contents-count">{headings.length}</span>
+        <ListTree size={15} aria-hidden="true" /> {t("Contents")} <span className="note-contents-count">{headings.length}</span>
       </button>
       {open && (
         <ol id={listId} className="note-contents-list">
@@ -37,12 +38,12 @@ export function NoteContents({ headings }: { headings: Heading[] }) {
                   jumpTo(heading.id)
                 }}
               >
-                {heading.text || 'Untitled section'}
+                {heading.text || t("Untitled section")}
               </a>
             </li>
           ))}
           {headings.length > shown.length && (
-            <li className="note-contents-more">and {(headings.length - shown.length).toLocaleString()} more headings</li>
+            <li className="note-contents-more">{tp(headings.length - shown.length, 'and {count} more heading', 'and {count} more headings')}</li>
           )}
         </ol>
       )}

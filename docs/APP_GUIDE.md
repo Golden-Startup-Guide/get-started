@@ -481,6 +481,13 @@ Settings also provides backup import and export, storage estimates and
 category counts, and About information. Storage estimates are informational
 and depend on browser reporting.
 
+
+**Language.** Settings → Appearance → **Language** switches the app between
+English, Spanish (Español), and Arabic (العربية), or follows the device's
+language (**Same as this device**). Arabic turns the whole layout right to
+left. Notes are never translated, and each paragraph of a note reads in the
+direction of its own text in any language. See [TRANSLATING.md](TRANSLATING.md).
+
 ## 3. Backups and data portability
 
 ### Export

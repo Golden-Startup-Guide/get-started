@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { checkAndRepairLibrary, describeRepairs } from '../lib/integrity'
 import { useLibraryStore } from './libraryStore'
 import { useWorkspaceStore } from './workspaceStore'
+import { t } from '../i18n/i18n'
 
 interface IntegrityState {
   /** When this session's check finished. */
@@ -26,11 +27,11 @@ export async function runIntegrityCheck() {
     useIntegrityStore.setState({ checkedAt: Date.now(), repaired, failed: undefined })
     if (!repairs) return
     await useLibraryStore.getState().refresh()
-    const worthTelling = repaired.filter((phrase) => phrase !== 'rebuilt the tag list')
+    const worthTelling = repaired.filter((phrase) => phrase !== t('rebuilt the tag list'))
     if (worthTelling.length) {
-      useWorkspaceStore.getState().showNotice(`My Notes checked your library and repaired it: ${worthTelling.join('; ')}.`)
+      useWorkspaceStore.getState().showNotice(t("My Notes checked your library and repaired it: {value}.", { value: worthTelling.join('; ') }))
     }
   } catch (reason) {
-    useIntegrityStore.setState({ checkedAt: Date.now(), failed: reason instanceof Error ? reason.message : 'The check could not run.' })
+    useIntegrityStore.setState({ checkedAt: Date.now(), failed: reason instanceof Error ? reason.message : t('The check could not run.') })
   }
 }

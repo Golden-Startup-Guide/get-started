@@ -2,6 +2,7 @@ import type {
   Note,
   Notebook,
 } from '../../types'
+import { t } from '../../i18n/i18n'
 
 export function sortNotes(notes: Note[]): Note[] {
   return [...notes].sort(
@@ -95,7 +96,7 @@ export function buildNoteLinkLabels(records: Note[], notebooks: Notebook[]): Map
       for (const note of unresolved) suffixes.set(note.id, note.id.slice(-maxIdLength))
     }
     for (const note of group) {
-      const title = note.title || 'Untitled note'
+      const title = note.title || t('Untitled note')
       const notebook = notebookNames.get(note.notebookId ?? '') ?? 'Personal'
       const suffix = suffixes.get(note.id)
       labels.set(note.id, `${title} — ${notebook}${suffix === undefined ? '' : ` · ${suffix}`}`)

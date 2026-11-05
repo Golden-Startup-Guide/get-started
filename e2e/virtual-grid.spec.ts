@@ -7,7 +7,7 @@ test('renders only the visible part of a large note grid', async ({ page }) => {
   await openWorkspace(page)
   const library = await page.evaluate(seedLibrary, { notes: 600 })
   await page.reload()
-  await expect(page.locator('#note-count')).toHaveText(`${library.notes} notes`)
+  await expect(page.locator('#note-count')).toHaveText(`${(library.notes).toLocaleString('en-US')} notes`)
 
   const feed = page.getByRole('feed', { name: 'All Notes notes' })
   const cards = feed.locator('article')
@@ -35,6 +35,6 @@ test('renders only the visible part of a large note grid', async ({ page }) => {
   // Search still reaches notes that were never rendered.
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.getByRole('searchbox', { name: /Search notes/ }).fill(library.searchTerm)
-  await expect(page.locator('#note-count')).toHaveText(`${library.searchMatches} notes`)
+  await expect(page.locator('#note-count')).toHaveText(`${(library.searchMatches).toLocaleString('en-US')} notes`)
   await expect(page.getByRole('feed').locator('article').first()).toBeVisible()
 })
