@@ -39,7 +39,7 @@
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "sigma": "^3.0.3",
+    "sigma": "^4.0.4",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.2.0",
     "zustand": "^5.0.16"
