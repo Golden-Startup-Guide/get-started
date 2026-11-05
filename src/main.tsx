@@ -4,11 +4,13 @@ import { registerSW } from 'virtual:pwa-register'
 import Root from './Root'
 import { applyLanguageChoice, savedLanguageChoice } from './i18n/i18n'
 import { listenForInstall } from './state/installStore'
+import { listenForProblems } from './state/problemStore'
 import { useLanguageStore } from './state/languageStore'
 import { updateReady } from './state/updateStore'
 import './index.css'
 
 listenForInstall()
+listenForProblems()
 
 // The language's text is loaded before the first draw, so the app never flashes in English.
 const choice = savedLanguageChoice()

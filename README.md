@@ -105,6 +105,7 @@ for storage, backup, migration, and feature details.
 - [Accessibility](docs/ACCESSIBILITY.md) — the WCAG 2.2 AA target, what is
   checked automatically, and the manual checks.
 - [Privacy policy](PRIVACY.md) and [security policy](SECURITY.md).
+- [Changelog](CHANGELOG.md) and [how releases are made](docs/RELEASING.md).
 
 ## Development
 

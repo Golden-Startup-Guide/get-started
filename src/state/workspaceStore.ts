@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { StructureItem } from './actions'
+import { recordProblem } from './problemStore'
 
 export type View =
   | 'all'
@@ -71,7 +72,10 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
     set((state) => ({ isCompactNavigation, navigationOpen: isCompactNavigation && state.navigationOpen })),
   toggleLibrary: (libraryId) => set((state) => ({ collapsedLibraries: toggle(state.collapsedLibraries, libraryId) })),
   toggleShelf: (shelfId) => set((state) => ({ collapsedShelves: toggle(state.collapsedShelves, shelfId) })),
-  showError: (error) => set({ error }),
+  showError: (error) => {
+    if (error) recordProblem(error, 'shown')
+    set({ error })
+  },
   showNotice: (notice) => set({ notice }),
   askToDelete: (structureToDelete) => set({ structureToDelete }),
 }))

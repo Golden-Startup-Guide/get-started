@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { version } from './package.json'
 
 // Production only: the dev server injects an inline script (React refresh) that this
 // policy would block. Remote https images are allowed because the preview loads them on
@@ -45,6 +46,8 @@ function workerSafeEntityDecoder(): Plugin {
 }
 
 export default defineConfig({
+  // The version shown in Settings and in problem reports (from package.json).
+  define: { __APP_VERSION__: JSON.stringify(version) },
   build: {
     // Never inline fonts as data: URLs (Vite inlines small files by default): the Content Security
     // Policy only allows fonts from the app itself. KaTeX ships several fonts under 4 KB.
