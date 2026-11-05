@@ -11,3 +11,6 @@ blob-report/
 
 # Benchmark output
 bench/results/
+
+# Past versions' source, checked out to capture database fixtures
+.fixture-worktrees/

@@ -1,0 +1,257 @@
+{
+ "description": "Made by the storage code of commit 241f369, the first release of database version 2.",
+ "name": "my-notes",
+ "version": 2,
+ "stores": [
+  {
+   "name": "history",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-note",
+     "keyPath": "noteId",
+     "unique": false,
+     "multiEntry": false
+    },
+    {
+     "name": "by-saved-at",
+     "keyPath": "savedAt",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "74cca54a-29ed-45cf-94fc-0eef6f4041f9",
+     "value": {
+      "id": "74cca54a-29ed-45cf-94fc-0eef6f4041f9",
+      "noteId": "fixture-garden",
+      "savedAt": 1768471320000,
+      "snapshot": {
+       "id": "fixture-garden",
+       "title": "Garden plan",
+       "content": "# Garden\n\n- [ ] Sow basil\n- [x] Order seeds\n\nCafé ✓ — **bold** and `code`",
+       "createdAt": 1768471260000,
+       "updatedAt": 1768471260000,
+       "notebookId": "0b0c0b01-60f6-4f11-86b3-46c9189acf76",
+       "tags": [
+        "Garden",
+        "Plans"
+       ],
+       "pinned": true,
+       "favorite": false
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "notebooks",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-name",
+     "keyPath": "name",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "0b0c0b01-60f6-4f11-86b3-46c9189acf76",
+     "value": {
+      "id": "0b0c0b01-60f6-4f11-86b3-46c9189acf76",
+      "name": "Fixture notebook",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-health",
+     "value": {
+      "id": "starter-health",
+      "name": "Health Handbook",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-ideas",
+     "value": {
+      "id": "starter-ideas",
+      "name": "Ideas",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-personal",
+     "value": {
+      "id": "starter-personal",
+      "name": "Personal",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-research",
+     "value": {
+      "id": "starter-research",
+      "name": "Research",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-work",
+     "value": {
+      "id": "starter-work",
+      "name": "Work",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    }
+   ]
+  },
+  {
+   "name": "notes",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-notebook",
+     "keyPath": "notebookId",
+     "unique": false,
+     "multiEntry": false
+    },
+    {
+     "name": "by-tags",
+     "keyPath": "tags",
+     "unique": false,
+     "multiEntry": true
+    },
+    {
+     "name": "by-updated",
+     "keyPath": "updatedAt",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "fixture-garden",
+     "value": {
+      "id": "fixture-garden",
+      "title": "Garden plan",
+      "content": "# Garden\n\n- [ ] Sow basil\n- [x] Order seeds\n\nCafé ✓ — **bold** and `code`\n\nA later edit",
+      "createdAt": 1768471260000,
+      "updatedAt": 1768471320000,
+      "notebookId": "0b0c0b01-60f6-4f11-86b3-46c9189acf76",
+      "tags": [
+       "Garden",
+       "Plans"
+      ],
+      "pinned": true,
+      "favorite": false
+     }
+    },
+    {
+     "key": "fixture-old",
+     "value": {
+      "id": "fixture-old",
+      "title": "Old list",
+      "content": "Done with this",
+      "createdAt": 1768471440000,
+      "updatedAt": 1768471440000,
+      "notebookId": "0b0c0b01-60f6-4f11-86b3-46c9189acf76",
+      "tags": [
+       "Archive"
+      ],
+      "pinned": false,
+      "favorite": false
+     }
+    },
+    {
+     "key": "fixture-recipes",
+     "value": {
+      "id": "fixture-recipes",
+      "title": "Recipes",
+      "content": "Pesto: basil, garlic, pine nuts",
+      "createdAt": 1768471380000,
+      "updatedAt": 1768471380000,
+      "notebookId": "0b0c0b01-60f6-4f11-86b3-46c9189acf76",
+      "tags": [
+       "Recipes"
+      ],
+      "favorite": true,
+      "pinned": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "settings",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [],
+   "records": [
+    {
+     "key": "preferences",
+     "value": {
+      "id": "preferences",
+      "theme": "dark"
+     }
+    }
+   ]
+  },
+  {
+   "name": "tags",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-label",
+     "keyPath": "label",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "archive",
+     "value": {
+      "id": "archive",
+      "label": "Archive",
+      "count": 1
+     }
+    },
+    {
+     "key": "garden",
+     "value": {
+      "id": "garden",
+      "label": "Garden",
+      "count": 1
+     }
+    },
+    {
+     "key": "plans",
+     "value": {
+      "id": "plans",
+      "label": "Plans",
+      "count": 1
+     }
+    },
+    {
+     "key": "recipes",
+     "value": {
+      "id": "recipes",
+      "label": "Recipes",
+      "count": 1
+     }
+    }
+   ]
+  }
+ ]
+}

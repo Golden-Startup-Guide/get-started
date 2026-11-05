@@ -1,0 +1,52 @@
+{
+ "description": "Made by the storage code of commit f931a8f, the first release of database version 1.",
+ "name": "my-notes",
+ "version": 1,
+ "stores": [
+  {
+   "name": "notes",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-updated",
+     "keyPath": "updatedAt",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "fixture-garden",
+     "value": {
+      "id": "fixture-garden",
+      "title": "Garden plan",
+      "content": "# Garden\n\n- [ ] Sow basil\n- [x] Order seeds\n\nCafé ✓ — **bold** and `code`\n\nA later edit",
+      "createdAt": 1768471260000,
+      "updatedAt": 1768471320000
+     }
+    },
+    {
+     "key": "fixture-old",
+     "value": {
+      "id": "fixture-old",
+      "title": "Old list",
+      "content": "Done with this",
+      "createdAt": 1768471440000,
+      "updatedAt": 1768471440000
+     }
+    },
+    {
+     "key": "fixture-recipes",
+     "value": {
+      "id": "fixture-recipes",
+      "title": "Recipes",
+      "content": "Pesto: basil, garlic, pine nuts",
+      "createdAt": 1768471380000,
+      "updatedAt": 1768471380000
+     }
+    }
+   ]
+  }
+ ]
+}
