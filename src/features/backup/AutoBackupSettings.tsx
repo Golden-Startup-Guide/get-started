@@ -8,7 +8,7 @@ const formatTime = (time: number) =>
 /** The "Automatic backups" part of Settings. */
 export function AutoBackupSettings() {
   const backup = useBackupStore()
-  const { folder, permission, frequency, lastBackupAt, lastBackupFile, lastBackupOmitted, lastError, running, supported } = backup
+  const { folder, permission, frequency, lastBackupAt, lastBackupFile, lastBackupOmitted, lastCheck, lastError, running, supported } = backup
 
   const last = lastBackupAt
     ? `Last backup: ${formatTime(lastBackupAt)}${lastBackupFile === 'download' ? ' (downloaded)' : lastBackupFile ? ` (${lastBackupFile})` : ''}.`
@@ -42,7 +42,7 @@ export function AutoBackupSettings() {
         {folder && (
           <>
             <button type="button" className="secondary-button" disabled={running} onClick={() => void backup.backUpNow()}>
-              {running ? 'Backing up…' : 'Back up now'}
+              {running ? 'Backing up and checking…' : 'Back up now'}
             </button>
             <button type="button" className="secondary-button" onClick={() => void backup.stopFolder()}>Stop using this folder</button>
           </>
@@ -59,6 +59,8 @@ export function AutoBackupSettings() {
       <p className="mt-2 text-xs text-[var(--muted)]" aria-live="polite">
         {last}
         {lastBackupOmitted && ` It left out ${lastBackupOmitted} to stay under 40 MiB.`}
+        {lastCheck?.ok && ` Checked ${formatTime(lastCheck.at)}: a test restore brought back ${lastCheck.summary}.`}
+        {lastCheck && !lastCheck.ok && ` The last backup failed its test restore (${lastCheck.summary}).`}
         {folder && permission === 'prompt' && ' The browser needs your permission again to use this folder; select Back up now to give it.'}
         {folder && permission === 'denied' && ' The browser has refused access to this folder; choose it again.'}
         {lastError && ` The last automatic backup failed: ${lastError}`}

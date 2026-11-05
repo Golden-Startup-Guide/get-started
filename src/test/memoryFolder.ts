@@ -21,6 +21,11 @@ export class MemoryFolder implements BackupFolder {
         },
         close: async () => undefined,
       }),
+      getFile: async () => {
+        const text = this.files.get(name)
+        if (text === undefined) throw new DOMException('Not found', 'NotFoundError')
+        return new Blob([text], { type: 'application/json' })
+      },
     }
   }
   async removeEntry(name: string) {

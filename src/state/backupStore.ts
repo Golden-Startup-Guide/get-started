@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import { canBackUpToFolder, chooseBackupFolder, folderPermission, writeBackupToFolder, type BackupFolder } from '../features/backup/backupFolder'
+import { canBackUpToFolder, chooseBackupFolder, folderPermission, readBackupFromFolder, writeBackupToFolder, type BackupFolder } from '../features/backup/backupFolder'
 import { isBackupDue, SNOOZE_MS, type BackupFrequency } from '../features/backup/backupSchedule'
+import { checkBackup, describeCheck, type BackupCheck } from '../lib/backupCheck'
 import { readDeviceValue, writeDeviceValue } from '../lib/deviceStore'
 import { exportBackupFile } from '../lib/notes'
 import { useLibraryStore } from './libraryStore'
@@ -14,6 +15,8 @@ interface BackupRecord {
   lastBackupFile?: string
   /** What the last automatic backup had to leave out to fit, if anything. */
   lastBackupOmitted?: 'history' | 'attachments and history'
+  /** The last backup's test restore: what came back, or what went wrong. */
+  lastCheck?: { at: number; ok: boolean; summary: string }
   snoozedUntil?: number
 }
 
@@ -39,8 +42,8 @@ interface BackupState extends BackupRecord {
   stopFolder: () => Promise<void>
   backUpNow: () => Promise<void>
   setFrequency: (frequency: BackupFrequency) => Promise<void>
-  /** A backup was exported by hand. */
-  recordDownload: () => Promise<void>
+  /** A backup was exported by hand, and restored as a test with this result. */
+  recordDownload: (check: BackupCheck) => Promise<void>
   snooze: () => Promise<void>
 }
 
@@ -53,8 +56,12 @@ const record = (state: BackupRecord): BackupRecord => ({
   lastBackupAt: state.lastBackupAt,
   lastBackupFile: state.lastBackupFile,
   lastBackupOmitted: state.lastBackupOmitted,
+  lastCheck: state.lastCheck,
   snoozedUntil: state.snoozedUntil,
 })
+
+const checkRecord = (check: BackupCheck): NonNullable<BackupRecord['lastCheck']> =>
+  ({ at: Date.now(), ok: check.ok, summary: check.ok ? describeCheck(check) : check.problem })
 
 type Dated = ReadonlyArray<{ updatedAt: number; deletedAt?: number }>
 
@@ -98,7 +105,13 @@ export const useBackupStore = create<BackupState>()((set, get) => {
       const { blob, omitted } = await buildBackup()
       const now = Date.now()
       const file = await writeBackupToFolder(folder, blob, now)
-      set({ lastBackupAt: now, lastBackupFile: file, lastBackupOmitted: omitted, lastError: undefined, snoozedUntil: undefined })
+      // Only a backup proven by restoring it, as saved, counts; otherwise keep trying.
+      const check = await checkBackup(await readBackupFromFolder(folder, file))
+      if (check.ok) {
+        set({ lastBackupAt: now, lastBackupFile: file, lastBackupOmitted: omitted, lastCheck: checkRecord(check), lastError: undefined, snoozedUntil: undefined })
+      } else {
+        set({ lastCheck: checkRecord(check), lastError: `${file} was saved, but restoring it as a test failed: ${check.problem}.` })
+      }
       await save()
     } catch (reason) {
       set({ lastError: reason instanceof Error ? reason.message : 'The backup could not be written.' })
@@ -165,8 +178,10 @@ export const useBackupStore = create<BackupState>()((set, get) => {
       set({ frequency })
       await save()
     },
-    recordDownload: async () => {
-      set({ lastBackupAt: Date.now(), lastBackupFile: 'download', lastBackupOmitted: undefined, snoozedUntil: undefined, checkedAt: Date.now() })
+    recordDownload: async (check) => {
+      set(check.ok
+        ? { lastBackupAt: Date.now(), lastBackupFile: 'download', lastBackupOmitted: undefined, lastCheck: checkRecord(check), snoozedUntil: undefined, checkedAt: Date.now() }
+        : { lastCheck: checkRecord(check), checkedAt: Date.now() })
       await save()
     },
     snooze: async () => {

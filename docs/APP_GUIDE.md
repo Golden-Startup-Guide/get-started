@@ -520,7 +520,20 @@ Automatic backups** keeps copies elsewhere:
   backup, a banner offers **Download a backup**. **Later** hides it for a day,
   and **never** in Settings turns reminders off.
 
-Exporting a backup by hand counts as a backup for reminders. The backup folder
+**Every backup is checked by restoring it.** After a backup is written to the
+folder, My Notes reads the file back as saved and restores it, with the same
+code as **Import**, into an empty test database laid out like a new device's.
+It then checks that every note came back with its text unchanged, along with
+every attachment at its full size, every history entry, link, notebook, shelf,
+and library. The test database is then deleted; your library is never
+touched. Settings shows the result ("a test restore brought back 128 notes, 3
+attachments, …"). A backup that fails this check does not count: a banner
+reports the problem, and the backup is tried again. A backup exported by hand
+is checked the same way, from exactly the data downloaded; the notice says what
+came back, or an error says why the file should not be relied on.
+
+Exporting a backup by hand counts as a backup for reminders (once it passes
+its check). The backup folder
 and the times of backups belong to this device: they are kept in a small
 database of their own (`my-notes-device`) and are not part of backups.
 
