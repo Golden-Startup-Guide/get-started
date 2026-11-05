@@ -3,6 +3,7 @@ import { type EditorState, type Extension, type Range } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from '@codemirror/view'
 import { GFM, parser } from '@lezer/markdown'
 import { WIKILINK_PATTERN } from '../../lib/wikilinks'
+import { t } from '../../i18n/i18n'
 
 /**
  * Live preview for the Markdown editor, in the style of Obsidian: Markdown stays the text being
@@ -50,7 +51,7 @@ class CheckboxWidget extends WidgetType {
     box.className = 'cm-lp-checkbox'
     box.checked = this.checked
     box.tabIndex = -1
-    box.setAttribute('aria-label', this.checked ? 'Mark task incomplete' : 'Mark task complete')
+    box.setAttribute('aria-label', this.checked ? t('Mark task incomplete') : t('Mark task complete'))
     // Toggle by editing the text, so undo, autosave, and the preview all see a normal change.
     box.addEventListener('mousedown', (event) => event.preventDefault())
     box.addEventListener('click', (event) => {

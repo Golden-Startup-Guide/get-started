@@ -1,6 +1,7 @@
 import { startCompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 import type { EditorView } from '@codemirror/view'
 import { isoDate } from '../../lib/templates'
+import { msg, t } from '../../i18n/i18n'
 
 /** Marks where the cursor goes after inserting; with SELECTION_END, the text between is selected. */
 const CURSOR = '\u0000'
@@ -22,21 +23,21 @@ interface SlashCommand {
 const pad = (value: number) => String(value).padStart(2, '0')
 
 export const SLASH_COMMANDS: SlashCommand[] = [
-  { label: 'Heading 1', detail: '#', keywords: 'title h1', block: true, text: () => `# ${CURSOR}` },
-  { label: 'Heading 2', detail: '##', keywords: 'subtitle h2', block: true, text: () => `## ${CURSOR}` },
-  { label: 'Heading 3', detail: '###', keywords: 'h3', block: true, text: () => `### ${CURSOR}` },
-  { label: 'Checklist', detail: '- [ ]', keywords: 'todo task checkbox', block: true, text: () => `- [ ] ${CURSOR}` },
-  { label: 'Bullet list', detail: '-', keywords: 'unordered list', block: true, text: () => `- ${CURSOR}` },
-  { label: 'Numbered list', detail: '1.', keywords: 'ordered list', block: true, text: () => `1. ${CURSOR}` },
-  { label: 'Quote', detail: '>', keywords: 'blockquote citation', block: true, text: () => `> ${CURSOR}` },
-  { label: 'Code block', detail: '```', keywords: 'snippet programming', block: true, text: () => `\`\`\`\n${CURSOR}\n\`\`\`` },
-  { label: 'Table', detail: '| |', keywords: 'grid columns rows', block: true, text: () => `| ${CURSOR}Column${SELECTION_END} | Column |\n|---|---|\n|  |  |` },
-  { label: 'Divider', detail: '---', keywords: 'horizontal rule line separator', block: true, text: () => `---\n${CURSOR}` },
-  { label: 'Maths block', detail: '$$', keywords: 'math formula equation latex tex', block: true, text: () => `$$\n${CURSOR}\n$$` },
-  { label: 'Diagram', detail: 'mermaid', keywords: 'flowchart chart graph mermaid', block: true, text: () => `\`\`\`mermaid\nflowchart LR\n  ${CURSOR}A --> B${SELECTION_END}\n\`\`\`` },
-  { label: 'Link to note', detail: '[[ ]]', keywords: 'wikilink reference', block: false, suggestAfter: true, text: () => `[[${CURSOR}` },
-  { label: 'Today’s date', detail: 'YYYY-MM-DD', keywords: 'date day now', block: false, text: () => `${isoDate(new Date())}${CURSOR}` },
-  { label: 'Current time', detail: 'HH:MM', keywords: 'time clock now', block: false, text: () => { const now = new Date(); return `${pad(now.getHours())}:${pad(now.getMinutes())}${CURSOR}` } },
+  { label: msg('Heading 1'), detail: '#', keywords: 'title h1', block: true, text: () => `# ${CURSOR}` },
+  { label: msg('Heading 2'), detail: '##', keywords: 'subtitle h2', block: true, text: () => `## ${CURSOR}` },
+  { label: msg('Heading 3'), detail: '###', keywords: 'h3', block: true, text: () => `### ${CURSOR}` },
+  { label: msg('Checklist'), detail: '- [ ]', keywords: 'todo task checkbox', block: true, text: () => `- [ ] ${CURSOR}` },
+  { label: msg('Bullet list'), detail: '-', keywords: 'unordered list', block: true, text: () => `- ${CURSOR}` },
+  { label: msg('Numbered list'), detail: '1.', keywords: 'ordered list', block: true, text: () => `1. ${CURSOR}` },
+  { label: msg('Quote'), detail: '>', keywords: 'blockquote citation', block: true, text: () => `> ${CURSOR}` },
+  { label: msg('Code block'), detail: '```', keywords: 'snippet programming', block: true, text: () => `\`\`\`\n${CURSOR}\n\`\`\`` },
+  { label: msg('Table'), detail: '| |', keywords: 'grid columns rows', block: true, text: () => `| ${CURSOR}Column${SELECTION_END} | Column |\n|---|---|\n|  |  |` },
+  { label: msg('Divider'), detail: '---', keywords: 'horizontal rule line separator', block: true, text: () => `---\n${CURSOR}` },
+  { label: msg('Maths block'), detail: '$$', keywords: 'math formula equation latex tex', block: true, text: () => `$$\n${CURSOR}\n$$` },
+  { label: msg('Diagram'), detail: 'mermaid', keywords: 'flowchart chart graph mermaid', block: true, text: () => `\`\`\`mermaid\nflowchart LR\n  ${CURSOR}A --> B${SELECTION_END}\n\`\`\`` },
+  { label: msg('Link to note'), detail: '[[ ]]', keywords: 'wikilink reference', block: false, suggestAfter: true, text: () => `[[${CURSOR}` },
+  { label: msg('Today’s date'), detail: 'YYYY-MM-DD', keywords: 'date day now', block: false, text: () => `${isoDate(new Date())}${CURSOR}` },
+  { label: msg('Current time'), detail: 'HH:MM', keywords: 'time clock now', block: false, text: () => { const now = new Date(); return `${pad(now.getHours())}:${pad(now.getMinutes())}${CURSOR}` } },
 ]
 
 function insert(view: EditorView, command: SlashCommand, slashAt: number, to: number) {
@@ -75,12 +76,12 @@ export function slashCommandCompletions(context: CompletionContext): CompletionR
   const starts: SlashCommand[] = []
   const contains: SlashCommand[] = []
   for (const command of SLASH_COMMANDS) {
-    const label = command.label.toLocaleLowerCase()
+    const label = t(command.label).toLocaleLowerCase()
     if (label.startsWith(query) || label.split(' ').some((word) => word.startsWith(query))) starts.push(command)
     else if (label.includes(query) || command.keywords?.includes(query)) contains.push(command)
   }
   const options: Completion[] = [...starts, ...contains].map((command) => ({
-    label: command.label,
+    label: t(command.label),
     detail: command.detail,
     apply: (view, _completion, _from, to) => insert(view, command, slashAt, to),
   }))

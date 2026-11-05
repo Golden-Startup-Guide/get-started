@@ -4,6 +4,7 @@ import { MAX_SAVED_SEARCH_NAME } from '../../lib/savedSearches'
 import { removeSavedSearch, saveNamedSearch } from '../../state/actions'
 import { useWorkspaceStore } from '../../state/workspaceStore'
 import type { SavedSearch } from '../../types'
+import { t } from '../../i18n/i18n'
 
 /**
  * A button beside the search box that saves the current search by name, or removes it when it
@@ -58,15 +59,15 @@ export function SaveSearchButton({ query, saved }: { query: string; saved: Saved
       await saveNamedSearch(name, query)
       setOpen(false)
       buttonRef.current?.focus()
-      useWorkspaceStore.getState().showNotice(`Saved the search “${name.trim()}”. Find it in the sidebar or the command palette.`)
+      useWorkspaceStore.getState().showNotice(t("Saved the search “{value}”. Find it in the sidebar or the command palette.", { value: name.trim() }))
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'The search could not be saved.')
+      setError(reason instanceof Error ? reason.message : t('The search could not be saved.'))
     } finally {
       setSaving(false)
     }
   }
 
-  const label = saved ? `Remove saved search “${saved.name}”` : 'Save this search'
+  const label = saved ? t('Remove saved search “{name}”', { name: saved.name }) : t('Save this search')
   return (
     <div ref={rootRef} className="search-tips">
       <button
@@ -82,8 +83,8 @@ export function SaveSearchButton({ query, saved }: { query: string; saved: Saved
         {saved ? <BookmarkCheck size={16} aria-hidden="true" className="text-[var(--accent)]" /> : <BookmarkPlus size={16} aria-hidden="true" />}
       </button>
       {open && !saved && (
-        <form id={panelId} className="search-tips-panel save-search-form" aria-label="Save this search" onSubmit={(event) => void save(event)}>
-          <label htmlFor={`${panelId}-name`}>Name this search</label>
+        <form id={panelId} className="search-tips-panel save-search-form" aria-label={t("Save this search")} onSubmit={(event) => void save(event)}>
+          <label htmlFor={`${panelId}-name`}>{t("Name this search")}</label>
           <input
             id={`${panelId}-name`}
             className="small-input"
@@ -95,8 +96,8 @@ export function SaveSearchButton({ query, saved }: { query: string; saved: Saved
           />
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
           <div className="flex justify-end gap-2">
-            <button type="button" className="secondary-button" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="submit" className="primary-button" disabled={saving}>Save search</button>
+            <button type="button" className="secondary-button" onClick={() => setOpen(false)}>{t("Cancel")}</button>
+            <button type="submit" className="primary-button" disabled={saving}>{t("Save search")}</button>
           </div>
         </form>
       )}

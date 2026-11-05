@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../../i18n/i18n'
 
 type RenderDiagram = (source: string, theme: 'light' | 'dark') => Promise<{ svg: string } | { error: string }>
 
@@ -63,7 +64,7 @@ export function DiagramBlock({ source }: { source: string }) {
       ) : (
         <pre className="diagram-source"><code>{source}</code></pre>
       )}
-      {current && 'error' in current && <figcaption className="diagram-error" role="note">Diagram error: {current.error}</figcaption>}
+      {current && 'error' in current && <figcaption className="diagram-error" role="note">{t("Diagram error:")} {current.error}</figcaption>}
     </figure>
   )
 }

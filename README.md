@@ -30,6 +30,7 @@ AI-powered processing.
 - **Move your notes freely:** export as Markdown files, and import from
   Obsidian, Notion, Evernote, Google Keep, Apple Notes, and Markdown folders.
 - **Use it anywhere:** install it on a computer or phone; it works offline.
+- **In your language:** English, Spanish, and Arabic (right to left).
 
 ## Get started
 
@@ -99,6 +100,8 @@ for storage, backup, migration, and feature details.
   numbers against targets, and the causes to fix first.
 - [Decisions](docs/DECISIONS.md) — storage, sync, editor, business model,
   platforms, and hosting, and why.
+- [Translating](docs/TRANSLATING.md) — the languages, right-to-left support,
+  and how to add a language.
 - [Accessibility](docs/ACCESSIBILITY.md) — the WCAG 2.2 AA target, what is
   checked automatically, and the manual checks.
 - [Privacy policy](PRIVACY.md) and [security policy](SECURITY.md).

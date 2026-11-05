@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { getNote } from '../lib/notes'
 import type { Note } from '../types'
 import { useWorkspaceStore } from './workspaceStore'
+import { t } from '../i18n/i18n'
 
 interface EditorState {
   /** The note open in the editor, or null when the editor is closed. */
@@ -47,12 +48,12 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       const latest = await getNote(id)
       if (!latest) {
         set({ activeNote: null, isCreating: false })
-        useWorkspaceStore.getState().showNotice('The note you were editing was permanently deleted in another tab.')
+        useWorkspaceStore.getState().showNotice(t("The note you were editing was permanently deleted in another tab."))
         return
       }
       set((state) => ({ activeNote: latest, isCreating: false, revision: state.revision + 1 }))
     } catch {
-      useWorkspaceStore.getState().showError('The latest version of this note could not be loaded. Please refresh.')
+      useWorkspaceStore.getState().showError(t("The latest version of this note could not be loaded. Please refresh."))
     }
   },
 }))

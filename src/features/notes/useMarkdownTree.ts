@@ -1,6 +1,7 @@
 import type { Root } from 'hast'
 import { startTransition, useEffect, useState } from 'react'
 import { markdownToHast } from './markdownToHast'
+import { t } from '../../i18n/i18n'
 
 export interface ParsedPreview {
   tree: Root
@@ -22,7 +23,7 @@ function startWorker(): Worker {
   }
   created.onerror = () => {
     // A worker that failed to start or crashed: answer everything still waiting with an error.
-    for (const [, reply] of waiting) reply({ error: 'The preview worker stopped.' })
+    for (const [, reply] of waiting) reply({ error: t('The preview worker stopped.') })
     waiting.clear()
     busyWith = undefined
     worker = undefined

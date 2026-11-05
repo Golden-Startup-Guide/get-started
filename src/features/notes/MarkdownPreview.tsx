@@ -12,6 +12,7 @@ import { MathFormula } from './MathFormula'
 import { markdownToHast } from './markdownToHast'
 import { NoteContents } from './NoteContents'
 import { collectHeadings } from './noteHeadings'
+import { t } from '../../i18n/i18n'
 
 interface ChecklistContextValue {
   /** A task's text by source line, for its checkbox's label (see createTaskTextLookup). */
@@ -44,7 +45,7 @@ function TaskCheckbox({ node: _node, checked, ...props }: ComponentProps<'input'
       type="checkbox"
       checked={Boolean(checked)}
       disabled={!lineNumber || !onToggleTask}
-      aria-label={taskText ? `Mark task ${taskText} ${checked ? 'incomplete' : 'complete'}` : 'Toggle checklist task'}
+      aria-label={taskText ? (checked ? t('Mark task {taskText} incomplete', { taskText }) : t('Mark task {taskText} complete', { taskText })) : t("Toggle checklist task")}
       onChange={() => lineNumber && onToggleTask?.(lineNumber)}
     />
   )
@@ -69,14 +70,14 @@ function Wikilink({ title, children }: { title: string; children: ReactNode }) {
   const { resolve, open } = useContext(WikilinkContext)
   const resolved = resolve?.(title)
   if (!resolved || !open) {
-    return <span className="wikilink wikilink-missing" title={`No note titled “${targetTitle(title).trim()}” yet`}>{children}</span>
+    return <span className="wikilink wikilink-missing" title={t("No note titled “{value}” yet", { value: targetTitle(title).trim() })}>{children}</span>
   }
   const target = { ...resolved, section: sectionOf(title) }
   return (
     <a
       href="#"
       className="wikilink"
-      title={`Open note ${target.title || 'Untitled note'}${target.section ? ` at “${target.section}”` : ''}`}
+      title={target.section ? t('Open note {title} at “{section}”', { title: target.title || t('Untitled note'), section: target.section }) : t('Open note {title}', { title: target.title || t('Untitled note') })}
       onClick={(event) => {
         event.preventDefault()
         open(target)
@@ -113,7 +114,7 @@ function MarkdownImage({ node: _node, ...props }: ComponentProps<'img'> & ExtraP
   if (!host || loaded) return <img {...props} />
   return (
     <button type="button" className="secondary-button" onClick={() => setLoaded(true)}>
-      Load image{props.alt ? ` “${props.alt}”` : ''} from {host}
+      {props.alt ? t('Load image “{alt}” from {host}', { alt: props.alt, host }) : t('Load image from {host}', { host })}
     </button>
   )
 }
@@ -209,7 +210,7 @@ function EmbeddedBody({ text }: { text: string }) {
   return (
     <div className="note-embed-body">
       <RenderedMarkdown tree={tree} />
-      {text.length > MAX_EMBED_LENGTH && <p className="note-embed-message">Open the note to read the rest.</p>}
+      {text.length > MAX_EMBED_LENGTH && <p className="note-embed-message">{t("Open the note to read the rest.")}</p>}
     </div>
   )
 }
@@ -221,16 +222,16 @@ function NoteEmbed({ target }: { target: string }) {
   const note = resolve?.(target)
   const section = sectionOf(target)
   const text = !note ? undefined : section ? extractSection(note.content, section) : note.content
-  const label = note ? `${note.title || 'Untitled note'}${section ? ` › ${section}` : ''}` : targetTitle(target).trim()
+  const label = note ? `${note.title || t('Untitled note')}${section ? ` › ${section}` : ''}` : targetTitle(target).trim()
 
   let problem: string | undefined
-  if (!note) problem = `No note titled “${label}” to show here.`
+  if (!note) problem = t('No note titled “{title}” to show here.', { title: label })
   else if (ancestors.includes(note.id)) problem = `“${label}” is already shown above, so it is not repeated here.`
-  else if (ancestors.length > MAX_EMBED_DEPTH) problem = 'Too many notes inside notes to show this one here.'
-  else if (text === undefined) problem = `“${note.title || 'Untitled note'}” has no section “${section}”.`
+  else if (ancestors.length > MAX_EMBED_DEPTH) problem = t('Too many notes inside notes to show this one here.')
+  else if (text === undefined) problem = t('“{title}” has no section “{section}”.', { title: note.title || t('Untitled note'), section: section ?? '' })
 
   return (
-    <section className={problem ? 'note-embed note-embed-problem' : 'note-embed'} aria-label={`Embedded: ${label}`}>
+    <section className={problem ? 'note-embed note-embed-problem' : 'note-embed'} aria-label={t("Embedded: {label}", { label })}>
       <header className="note-embed-header">
         {note && open
           ? <a href="#" className="wikilink" onClick={(event) => { event.preventDefault(); open({ id: note.id, title: note.title, section }) }}>{label}</a>

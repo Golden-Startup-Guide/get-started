@@ -2,8 +2,9 @@ import { useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
 import { Search } from 'lucide-react'
 import { buildPaletteItems, type PaletteHandlers, type PaletteSources } from './paletteItems'
 import { searchPalette, type PaletteItem } from './paletteSearch'
+import { msg, t, tp } from '../../i18n/i18n'
 
-const GROUP_NAMES: Record<PaletteItem['group'], string> = { Actions: 'Action', Places: 'Go to', Notes: 'Note' }
+const GROUP_NAMES: Record<PaletteItem['group'], string> = { Actions: msg('Action'), Places: msg('Go to'), Notes: msg('Note') }
 
 /**
  * Ctrl+K / ⌘K: jump to any note or place, or run an action, from the keyboard.
@@ -69,7 +70,7 @@ export function CommandPalette({
     <div className="modal-backdrop palette-backdrop" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div className="palette" role="dialog" aria-modal="true" aria-label={t("Command palette")}>
         <div className="palette-input-row">
           <Search size={17} aria-hidden="true" />
           <input
@@ -78,14 +79,14 @@ export function CommandPalette({
             className="palette-input"
             type="text"
             role="combobox"
-            aria-label="Search notes, places, and actions"
+            aria-label={t("Search notes, places, and actions")}
             aria-autocomplete="list"
             aria-expanded="true"
             aria-controls={listId}
             aria-activedescendant={active ? optionId(active) : undefined}
             autoComplete="off"
             spellCheck={false}
-            placeholder="Search notes, places, and actions…"
+            placeholder={t("Search notes, places, and actions…")}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value)
@@ -93,11 +94,11 @@ export function CommandPalette({
             }}
             onKeyDown={onKeyDown}
           />
-          <kbd className="palette-kbd">Esc</kbd>
+          <kbd className="palette-kbd">{t("Esc")}</kbd>
         </div>
-        <ul id={listId} role="listbox" aria-label="Results" className="palette-list">
+        <ul id={listId} role="listbox" aria-label={t("Results")} className="palette-list">
           {results.map((item, index) => [
-            item === firstRecent && <li key="recent-heading" role="presentation" className="palette-heading">Recent notes</li>,
+            item === firstRecent && <li key="recent-heading" role="presentation" className="palette-heading">{t("Recent notes")}</li>,
             <li
               key={item.id}
               id={optionId(item)}
@@ -114,14 +115,14 @@ export function CommandPalette({
                   {item.label}
                   {item.detail && <span className="palette-detail"> — {item.detail}</span>}
                 </span>
-                <span className="palette-group">{GROUP_NAMES[item.group]}</span>
+                <span className="palette-group">{t(GROUP_NAMES[item.group])}</span>
               </span>
             </li>,
           ])}
-          {results.length === 0 && <li role="presentation" className="palette-empty">No matches. Try another word.</li>}
+          {results.length === 0 && <li role="presentation" className="palette-empty">{t("No matches. Try another word.")}</li>}
         </ul>
         <p className="sr-only" role="status" aria-live="polite">
-          {query.trim() ? `${results.length} ${results.length === 1 ? 'result' : 'results'}` : ''}
+          {query.trim() ? tp(results.length, '{count} result', '{count} results') : ''}
         </p>
       </div>
     </div>

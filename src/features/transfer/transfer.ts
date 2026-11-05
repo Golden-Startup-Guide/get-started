@@ -3,6 +3,7 @@ import { convert } from './importers'
 import type { ImportSource } from './importSources'
 import { readInputFiles } from './inputFiles'
 import { buildMarkdownZip } from './markdownExport'
+import { t } from '../../i18n/i18n'
 
 /**
  * Moving notes in and out, loaded only when used (the zip library and the importers stay out of
@@ -16,6 +17,6 @@ export async function exportMarkdown(): Promise<{ zip: Blob; notes: number }> {
 
 export async function importFromFiles(source: ImportSource, files: readonly File[]): Promise<NotesImportSummary> {
   const notes = convert(source, await readInputFiles(files))
-  if (!notes.length) throw new Error('No notes were found in the chosen files. Check that they are the export this app makes.')
+  if (!notes.length) throw new Error(t("No notes were found in the chosen files. Check that they are the export this app makes."))
   return importNotes(notes)
 }

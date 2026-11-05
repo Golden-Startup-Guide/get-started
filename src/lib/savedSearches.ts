@@ -1,4 +1,5 @@
 import type { SavedSearch } from '../types'
+import { t } from '../i18n/i18n'
 
 export const MAX_SAVED_SEARCHES = 50
 export const MAX_SAVED_SEARCH_NAME = 80
@@ -27,13 +28,13 @@ export function validSavedSearch(value: unknown): value is SavedSearch {
  */
 export function withSavedSearch(saved: readonly SavedSearch[], name: string, query: string, id: string): SavedSearch[] {
   const search = { id, name: name.trim().replace(/\s+/g, ' '), query: query.trim() }
-  if (!search.query) throw new Error('Type a search before saving it.')
-  if (!search.name) throw new Error('Give the saved search a name.')
-  if (search.name.length > MAX_SAVED_SEARCH_NAME) throw new Error(`Saved search names can be at most ${MAX_SAVED_SEARCH_NAME} characters.`)
-  if (search.query.length > MAX_SAVED_SEARCH_QUERY) throw new Error(`Saved searches can be at most ${MAX_SAVED_SEARCH_QUERY} characters.`)
+  if (!search.query) throw new Error(t("Type a search before saving it."))
+  if (!search.name) throw new Error(t("Give the saved search a name."))
+  if (search.name.length > MAX_SAVED_SEARCH_NAME) throw new Error(t("Saved search names can be at most {MAX_SAVED_SEARCH_NAME} characters.", { MAX_SAVED_SEARCH_NAME }))
+  if (search.query.length > MAX_SAVED_SEARCH_QUERY) throw new Error(t("Saved searches can be at most {MAX_SAVED_SEARCH_QUERY} characters.", { MAX_SAVED_SEARCH_QUERY }))
   const existing = findSavedSearch(saved, search.query)
   if (existing) return saved.map((item) => (item === existing ? { ...existing, name: search.name } : item))
-  if (saved.length >= MAX_SAVED_SEARCHES) throw new Error(`You can save up to ${MAX_SAVED_SEARCHES} searches. Remove one first.`)
+  if (saved.length >= MAX_SAVED_SEARCHES) throw new Error(t("You can save up to {MAX_SAVED_SEARCHES} searches. Remove one first.", { MAX_SAVED_SEARCHES }))
   return [...saved, search]
 }
 

@@ -1,6 +1,7 @@
 import { useId, useState, type KeyboardEvent } from 'react'
 import { Zap } from 'lucide-react'
 import { keepFocusInDialog } from '../../components/dialogFocus'
+import { t } from '../../i18n/i18n'
 
 /**
  * A small box for jotting a note without leaving the current page. The text is saved to the Inbox
@@ -57,14 +58,14 @@ export function QuickCapture({
         aria-labelledby={headingId}
         onKeyDown={(event) => keepFocusInDialog(event, onClose)}
       >
-        <h2 id={headingId} className="quick-capture-heading"><Zap size={16} aria-hidden="true" /> Quick note</h2>
+        <h2 id={headingId} className="quick-capture-heading"><Zap size={16} aria-hidden="true" /> {t("Quick note")}</h2>
         <textarea
           // Opened to be typed into straight away.
           autoFocus
           className="quick-capture-input"
           aria-labelledby={headingId}
           aria-describedby={hintId}
-          placeholder="What’s on your mind? The first line becomes the title."
+          placeholder={t("What’s on your mind? The first line becomes the title.")}
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={onKeyDown}
@@ -72,12 +73,12 @@ export function QuickCapture({
         />
         <div className="quick-capture-footer">
           <p id={hintId} className="quick-capture-hint">
-            Saved to Inbox. <kbd className="palette-kbd">{saveShortcut}</kbd> saves, <kbd className="palette-kbd">Esc</kbd> keeps it for later. {shortcut} opens this box.
+            {t("Saved to Inbox.")} <kbd className="palette-kbd">{saveShortcut}</kbd> {t("saves,")} <kbd className="palette-kbd">{t("Esc")}</kbd> {t("keeps it for later.")} {shortcut} {t("opens this box.")}
           </p>
           <div className="flex gap-2">
-            {draft && <button type="button" className="secondary-button" onClick={() => onDraftChange('')}>Clear</button>}
+            {draft && <button type="button" className="secondary-button" onClick={() => onDraftChange('')}>{t("Clear")}</button>}
             <button type="button" className="primary-button" disabled={!draft.trim() || saving} onClick={() => void save()}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t("Saving…") : t("Save")}
             </button>
           </div>
         </div>

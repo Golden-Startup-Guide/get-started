@@ -48,6 +48,7 @@ import { toLinkTitles, type LinkTitle } from './wikilinkCompletion'
 import { usePreviewSource } from './usePreviewSource'
 import { useMarkdownTree } from './useMarkdownTree'
 import { MAX_ATTACHMENT_SIZE_BYTES } from './attachments'
+import { t, tp } from '../../i18n/i18n'
 
 type SaveState = 'saved' | 'unsaved' | 'saving'
 
@@ -170,7 +171,7 @@ export function NoteEditor({
         setBaseline({ title: draft.title, content: draft.content, tags: draft.noteTags, notebookId: draft.notebookId, pinned: draft.pinned, favorite: draft.favorite })
         return true
       } catch {
-        setSaveError('Could not save. Your changes are still here; try again.')
+        setSaveError(t('Could not save. Your changes are still here; try again.'))
         return false
       } finally {
         setIsSaving(false)
@@ -189,7 +190,7 @@ export function NoteEditor({
         if (active) setAttachments(saved)
       })
       .catch(() => {
-        if (active) setAttachmentError('Attachments could not be loaded.')
+        if (active) setAttachmentError(t("Attachments could not be loaded."))
       })
     return () => {
       active = false
@@ -209,7 +210,7 @@ export function NoteEditor({
         if (active) setLinks(saved)
       })
       .catch(() => {
-        if (active) setLinkError('Note links could not be loaded.')
+        if (active) setLinkError(t('Note links could not be loaded.'))
       })
     return () => {
       active = false
@@ -240,11 +241,11 @@ export function NoteEditor({
   async function addAttachment(file: File) {
     setAttachmentError(null)
     if (isCreating && !latest.current.title.trim() && !latest.current.content.trim()) {
-      setAttachmentError('Add a title or note text before attaching files.')
+      setAttachmentError(t("Add a title or note text before attaching files."))
       return
     }
     if (!(await flush())) {
-      setAttachmentError('Save this note before adding attachments.')
+      setAttachmentError(t("Save this note before adding attachments."))
       return
     }
     setIsAddingAttachment(true)
@@ -253,7 +254,7 @@ export function NoteEditor({
       setAttachments((current) => [...current, added])
       await onRefresh()
     } catch (reason) {
-      setAttachmentError(reason instanceof Error ? reason.message : 'The attachment could not be saved.')
+      setAttachmentError(reason instanceof Error ? reason.message : t('The attachment could not be saved.'))
     } finally {
       setIsAddingAttachment(false)
     }
@@ -273,15 +274,15 @@ export function NoteEditor({
     }
     setAttachmentError(null)
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setAttachmentError('Audio recording is not supported by this browser. You can attach an audio file instead.')
+      setAttachmentError(t("Audio recording is not supported by this browser. You can attach an audio file instead."))
       return
     }
     if (isCreating && !latest.current.title.trim() && !latest.current.content.trim()) {
-      setAttachmentError('Add a title or note text before recording audio.')
+      setAttachmentError(t("Add a title or note text before recording audio."))
       return
     }
     if (!(await flush())) {
-      setAttachmentError('Save this note before recording audio.')
+      setAttachmentError(t("Save this note before recording audio."))
       return
     }
     let stream: MediaStream | undefined
@@ -300,13 +301,13 @@ export function NoteEditor({
         const total = recording.chunks.reduce((sum, chunk) => sum + chunk.size, 0)
         if (total > MAX_ATTACHMENT_SIZE_BYTES) {
           recording.exceeded = true
-          setAttachmentError('The recording reached the 5 MiB limit and was discarded.')
+          setAttachmentError(t("The recording reached the 5 MiB limit and was discarded."))
           if (recorder.state !== 'inactive') recorder.stop()
         }
       }
       recorder.onerror = () => {
         recording.exceeded = true
-        setAttachmentError('Audio recording failed. Check microphone permissions and try again.')
+        setAttachmentError(t("Audio recording failed. Check microphone permissions and try again."))
         if (recorder.state !== 'inactive') recorder.stop()
       }
       recorder.onstop = () => {
@@ -326,19 +327,19 @@ export function NoteEditor({
       recordingRef.current = null
       setIsRecording(false)
       stream?.getTracks().forEach((track) => track.stop())
-      setAttachmentError(reason instanceof Error ? reason.message : 'Microphone access was denied or unavailable.')
+      setAttachmentError(reason instanceof Error ? reason.message : t('Microphone access was denied or unavailable.'))
     }
   }
 
   async function removeAttachment(attachment: NoteAttachment) {
-    if (!window.confirm(`Remove “${attachment.name}” from this note?`)) return
+    if (!window.confirm(t("Remove “{name}” from this note?", { name: attachment.name }))) return
     try {
       await deleteNoteAttachment(attachment.id)
       setAttachments((current) => current.filter((item) => item.id !== attachment.id))
       await onRefresh()
       setAttachmentError(null)
     } catch (reason) {
-      setAttachmentError(reason instanceof Error ? reason.message : 'The attachment could not be removed.')
+      setAttachmentError(reason instanceof Error ? reason.message : t('The attachment could not be removed.'))
     }
   }
 
@@ -363,7 +364,7 @@ export function NoteEditor({
     if (!linkTargetId || !(await flush())) return
     try {
       if (!notes.some((item) => item.id === note.id)) {
-        setLinkError('Save this note and restore it from Trash before adding links.')
+        setLinkError(t('Save this note and restore it from Trash before adding links.'))
         return
       }
       await linkNotes(note.id, linkTargetId)
@@ -371,7 +372,7 @@ export function NoteEditor({
       setLinkTargetId('')
       setLinkError(null)
     } catch (reason) {
-      setLinkError(reason instanceof Error ? reason.message : 'The note could not be linked.')
+      setLinkError(reason instanceof Error ? reason.message : t('The note could not be linked.'))
     }
   }
 
@@ -382,7 +383,7 @@ export function NoteEditor({
       setLinks(await getNoteLinks(note.id))
       setLinkError(null)
     } catch (reason) {
-      setLinkError(reason instanceof Error ? reason.message : 'The link could not be removed.')
+      setLinkError(reason instanceof Error ? reason.message : t('The link could not be removed.'))
     }
   }
 
@@ -397,8 +398,8 @@ export function NoteEditor({
 
   async function deleteSafely() {
     const message = note.deletedAt === undefined
-      ? `Move “${title.trim() || 'Untitled note'}” to Trash? You can restore it later.`
-      : `Permanently delete “${title.trim() || 'Untitled note'}”? This cannot be undone.`
+      ? t('Move “{title}” to Trash? You can restore it later.', { title: title.trim() || t('Untitled note') })
+      : t('Permanently delete “{title}”? This cannot be undone.', { title: title.trim() || t('Untitled note') })
     if (!window.confirm(message)) return
     if (note.deletedAt === undefined) {
       if (!(await flush())) return
@@ -440,12 +441,12 @@ export function NoteEditor({
       setHistory(await getNoteHistory(note.id))
       setShowHistory(true)
     } catch {
-      onError('Note history could not be loaded.')
+      onError(t('Note history could not be loaded.'))
     }
   }
 
   async function restore(revision: NoteHistoryEntry) {
-    if (!window.confirm('Restore this saved version? Your current note will remain available in history.')) return
+    if (!window.confirm(t("Restore this saved version? Your current note will remain available in history."))) return
     // Save the draft first so the restore records it as a revision instead of discarding it.
     if (!(await flush())) return
     try {
@@ -457,7 +458,7 @@ export function NoteEditor({
       setHistory(await getNoteHistory(note.id))
       setShowHistory(false)
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : 'The revision could not be restored.')
+      onError(reason instanceof Error ? reason.message : t('The revision could not be restored.'))
     }
   }
 
@@ -474,7 +475,7 @@ export function NoteEditor({
   // Everything below depends only on the library and this note's links, not on the draft, so
   // typing never recomputes it.
   const noteById = useMemo(() => new Map([...notes, ...trash].map((item) => [item.id, item])), [notes, trash])
-  const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || 'Untitled note')
+  const labelOf = (item: Note) => linkLabels.get(item.id) ?? (item.title || t('Untitled note'))
   const titleIndex = useMemo(() => buildTitleIndex(notes), [notes])
   // Notes whose [[links]] still name this note's old title, once typing the new title pauses.
   const [settledTitle, setSettledTitle] = useState(title)
@@ -606,54 +607,53 @@ export function NoteEditor({
       <section className="editor-card" role="dialog" aria-modal="true" aria-labelledby="editor-heading" onKeyDown={(event) => keepFocusInDialog(event, () => void closeSafely())}>
         <header className="editor-header">
           <div className="flex min-w-0 items-center gap-3">
-            <button className="icon-button" onClick={() => void closeSafely()} aria-label="Close editor"><ArrowLeft size={18} /></button>
+            <button className="icon-button" onClick={() => void closeSafely()} aria-label={t("Close editor")}><ArrowLeft size={18} /></button>
             <div className="min-w-0">
-              <p className="section-label">Note editor</p>
-              <h2 id="editor-heading" className="truncate text-sm font-semibold">{isCreating ? 'New note' : note.title || 'Untitled note'}</h2>
+              <p className="section-label">{t("Note editor")}</p>
+              <h2 id="editor-heading" className="truncate text-sm font-semibold">{isCreating ? t("New note") : note.title || t("Untitled note")}</h2>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="save-status" role="status" aria-live="polite">
-              {saveState === 'saving' ? 'Saving…' : saveState === 'unsaved' ? 'Unsaved changes' : <><Check size={14} /> Saved</>}
+              {saveState === 'saving' ? t("Saving…") : saveState === 'unsaved' ? t("Unsaved changes") : <><Check size={14} /> {t("Saved")}</>}
             </span>
-            <button className={`icon-button ${pinned ? 'is-selected' : ''}`} onClick={() => setPinned((value) => !value)} aria-label={pinned ? 'Unpin note' : 'Pin note'} aria-pressed={pinned}><Pin size={17} /></button>
-            <button className={`icon-button ${favorite ? 'is-favorite' : ''}`} onClick={() => setFavorite((value) => !value)} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={favorite}><Heart size={17} fill={favorite ? 'currentColor' : 'none'} /></button>
-            <button className="icon-button" onClick={() => void toggleHistory()} aria-label="Show note history"><Clock3 size={17} /></button>
-            <button className="icon-button" onClick={() => void closeSafely()} aria-label="Close editor"><X size={17} /></button>
+            <button className={`icon-button ${pinned ? 'is-selected' : ''}`} onClick={() => setPinned((value) => !value)} aria-label={pinned ? t("Unpin note") : t("Pin note")} aria-pressed={pinned}><Pin size={17} /></button>
+            <button className={`icon-button ${favorite ? 'is-favorite' : ''}`} onClick={() => setFavorite((value) => !value)} aria-label={favorite ? t("Remove from favorites") : t("Add to favorites")} aria-pressed={favorite}><Heart size={17} fill={favorite ? 'currentColor' : 'none'} /></button>
+            <button className="icon-button" onClick={() => void toggleHistory()} aria-label={t("Show note history")}><Clock3 size={17} /></button>
+            <button className="icon-button" onClick={() => void closeSafely()} aria-label={t("Close editor")}><X size={17} /></button>
           </div>
         </header>
         <div className="editor-toolbar">
-          <label className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]" htmlFor="note-notebook">Notebook</label>
+          <label className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]" htmlFor="note-notebook">{t("Notebook")}</label>
           <select id="note-notebook" className="small-input max-w-48" value={notebookId} onChange={(event) => {
             setNotebookId(event.target.value)
           }}>
             {notebooks.map((notebook) => <option value={notebook.id} key={notebook.id}>{notebook.name}</option>)}
           </select>
-          <button className="secondary-button ml-auto" onClick={() => setPreviewOnly((value) => !value)} aria-pressed={previewOnly}>{previewOnly ? 'Edit Markdown' : 'Preview only'}</button>
+          <button className="secondary-button ms-auto" onClick={() => setPreviewOnly((value) => !value)} aria-pressed={previewOnly}>{previewOnly ? t("Edit Markdown") : t("Preview only")}</button>
         </div>
         <div className="editor-body">
           <div className="editor-fields">
             {changedElsewhere && (dirty || saveState !== 'saved') && (
               <div role="alert" className="notice notice-error flex-wrap">
-                <span>This note was changed in another tab. Autosave is paused so neither version is lost.</span>
+                <span>{t("This note was changed in another tab. Autosave is paused so neither version is lost.")}</span>
                 <span className="flex flex-wrap gap-2">
-                  <button className="secondary-button" onClick={onKeepMine}>Keep my version</button>
-                  <button className="secondary-button" onClick={loadLatest}>Load the other version</button>
+                  <button className="secondary-button" onClick={onKeepMine}>{t("Keep my version")}</button>
+                  <button className="secondary-button" onClick={loadLatest}>{t("Load the other version")}</button>
                 </span>
               </div>
             )}
-            <label htmlFor="note-title" className="sr-only">Note title</label>
-            <input ref={titleRef} id="note-title" className="title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Untitled note" />
+            <label htmlFor="note-title" className="sr-only">{t("Note title")}</label>
+            <input ref={titleRef} id="note-title" className="title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder={t("Untitled note")} />
             {linksToOldTitle.length > 0 && (
               <div className="rename-links" role="status">
                 <span>
-                  {linksToOldTitle.length} {linksToOldTitle.length === 1 ? 'note links' : 'notes link'} to “{linkedTitle}”.
-                  Update {linksToOldTitle.length === 1 ? 'it' : 'them'} to “{title.trim()}”?
+                  {tp(linksToOldTitle.length, '{count} note links to “{old}”. Update it to “{new}”?', '{count} notes link to “{old}”. Update them to “{new}”?', { old: linkedTitle, new: title.trim() })}
                 </span>
                 <span className="flex gap-2">
-                  <button type="button" className="secondary-button" onClick={() => setLinkedTitle(title.trim())}>Not now</button>
+                  <button type="button" className="secondary-button" onClick={() => setLinkedTitle(title.trim())}>{t("Not now")}</button>
                   <button type="button" className="primary-button" disabled={updatingLinks} onClick={() => void updateLinks()}>
-                    {updatingLinks ? 'Updating…' : 'Update links'}
+                    {updatingLinks ? t("Updating…") : t("Update links")}
                   </button>
                 </span>
               </div>
@@ -662,18 +662,18 @@ export function NoteEditor({
               <TagIcon size={15} aria-hidden="true" />
               <div className="flex flex-wrap items-center gap-1.5">
                 {noteTags.map((tag) => (
-                  <span className="tag-chip" key={tag}>{tag}<button onClick={() => setNoteTags((current) => current.filter((item) => item !== tag))} aria-label={`Remove tag ${tag}`}><X size={12} /></button></span>
+                  <span className="tag-chip" key={tag}>{tag}<button onClick={() => setNoteTags((current) => current.filter((item) => item !== tag))} aria-label={t("Remove tag {tag}", { tag })}><X size={12} /></button></span>
                 ))}
-                <label className="sr-only" htmlFor="tag-input">Add tags</label>
-                <input id="tag-input" className="tag-input" value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={tagKeyDown} onBlur={() => tagInput.trim() && addTag()} placeholder="Add a tag…" />
+                <label className="sr-only" htmlFor="tag-input">{t("Add tags")}</label>
+                <input id="tag-input" className="tag-input" value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={tagKeyDown} onBlur={() => tagInput.trim() && addTag()} placeholder={t("Add a tag…")} />
               </div>
-              {tagInput && suggestions.length > 0 && <div className="suggestion-list" role="listbox" aria-label="Tag suggestions">{suggestions.map((tag) => <button key={tag.id} role="option" aria-selected={false} onMouseDown={(event) => event.preventDefault()} onClick={() => addTag(tag.label)}>{tag.label}</button>)}</div>}
+              {tagInput && suggestions.length > 0 && <div className="suggestion-list" role="listbox" aria-label={t("Tag suggestions")}>{suggestions.map((tag) => <button key={tag.id} role="option" aria-selected={false} onMouseDown={(event) => event.preventDefault()} onClick={() => addTag(tag.label)}>{tag.label}</button>)}</div>}
             </div>
             <section className="note-links" aria-labelledby="note-links-heading">
-              <h3 id="note-links-heading" className="mb-2 flex items-center gap-2 text-sm font-semibold"><Link2 size={15} aria-hidden="true" /> Linked notes</h3>
+              <h3 id="note-links-heading" className="mb-2 flex items-center gap-2 text-sm font-semibold"><Link2 size={15} aria-hidden="true" /> {t("Linked notes")}</h3>
               {canEditLinks && (
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <label className="sr-only" htmlFor="link-note-target">Choose a note to link</label>
+                  <label className="sr-only" htmlFor="link-note-target">{t("Choose a note to link")}</label>
                   <NoteLinkPicker
                     // Remounting after a link is added or removed clears the search.
                     key={links.outgoing.length}
@@ -683,69 +683,69 @@ export function NoteEditor({
                     selectedId={linkTargetId}
                     onSelect={setLinkTargetId}
                   />
-                  <button className="secondary-button" onClick={() => void addLink()} disabled={!linkTargetId}>Add link</button>
+                  <button className="secondary-button" onClick={() => void addLink()} disabled={!linkTargetId}>{t("Add link")}</button>
                 </div>
               )}
               {linkError && <p className="mb-2 text-sm text-red-700" role="alert">{linkError}</p>}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <h4 className="text-xs font-medium text-[var(--muted)]">Links from this note</h4>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">{t("Links from this note")}</h4>
                   {outgoingNotes.length ? (
-                    <ul className="note-link-list" aria-label="Links from this note">
+                    <ul className="note-link-list" aria-label={t("Links from this note")}>
                       {outgoingNotes.map((related) => (
                         <li key={related.id}>
                           {related.deletedAt === undefined ? (
                             <>
                               <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{labelOf(related)}</button>
-                              {canEditLinks && storedTargetIds.has(related.id) && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={`Remove link to ${labelOf(related)}`}>Remove</button>}
-                              {textTargetIds.has(related.id) && !storedTargetIds.has(related.id) && <span className="note-link-source" title="Linked with [[…]] in the text; remove it there">in text</span>}
+                              {canEditLinks && storedTargetIds.has(related.id) && <button className="note-link-remove" onClick={() => void removeLink(related.id)} aria-label={t("Remove link to {labelOf}", { labelOf: labelOf(related) })}>{t("Remove")}</button>}
+                              {textTargetIds.has(related.id) && !storedTargetIds.has(related.id) && <span className="note-link-source" title={t("Linked with [[…]] in the text; remove it there")}>{t("in text")}</span>}
                             </>
-                          ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                          ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">{t("(in Trash; link retained)")}</span></span>}
                         </li>
                       ))}
                     </ul>
-                  ) : <p className="mt-1 text-xs text-[var(--muted)]">No linked notes yet.</p>}
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">{t("No linked notes yet.")}</p>}
                 </div>
                 <div>
-                  <h4 className="text-xs font-medium text-[var(--muted)]">Backlinks</h4>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">{t("Backlinks")}</h4>
                   {backlinkNotes.length ? (
-                    <ul className="note-link-list" aria-label="Backlinks">
+                    <ul className="note-link-list" aria-label={t("Backlinks")}>
                       {backlinkNotes.map((related) => (
                         <li key={related.id}>
                           {related.deletedAt === undefined ? (
                             <button className="note-link-open" onClick={() => void openRelatedNote(related)}>{labelOf(related)}</button>
-                          ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">(in Trash; link retained)</span></span>}
+                          ) : <span>{labelOf(related)} <span className="text-[var(--muted)]">{t("(in Trash; link retained)")}</span></span>}
                         </li>
                       ))}
                     </ul>
-                  ) : <p className="mt-1 text-xs text-[var(--muted)]">No backlinks yet.</p>}
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">{t("No backlinks yet.")}</p>}
                 </div>
               </div>
-              {!canEditLinks && !note.deletedAt && <p className="mt-2 text-xs text-[var(--muted)]">Save this note before linking it.</p>}
-              {note.deletedAt !== undefined && <p className="mt-2 text-xs text-[var(--muted)]">Links are preserved while this note is in Trash.</p>}
+              {!canEditLinks && !note.deletedAt && <p className="mt-2 text-xs text-[var(--muted)]">{t("Save this note before linking it.")}</p>}
+              {note.deletedAt !== undefined && <p className="mt-2 text-xs text-[var(--muted)]">{t("Links are preserved while this note is in Trash.")}</p>}
             </section>
             <div className={`markdown-workspace ${previewOnly ? 'markdown-workspace-preview' : ''}`}>
               {!previewOnly && <div className="markdown-editor-pane">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p id="note-content-label" className="section-label">Markdown</p>
-                  <div className="segmented" role="group" aria-label="Editor view">
-                    <button type="button" aria-pressed={editorMode === 'live'} onClick={() => void changeEditorMode('live')} title="Format Markdown outside the line you are editing">Live</button>
-                    <button type="button" aria-pressed={editorMode === 'source'} onClick={() => void changeEditorMode('source')} title="Show all Markdown as typed">Source</button>
+                  <p id="note-content-label" className="section-label">{t("Markdown")}</p>
+                  <div className="segmented" role="group" aria-label={t("Editor view")}>
+                    <button type="button" aria-pressed={editorMode === 'live'} onClick={() => void changeEditorMode('live')} title={t("Format Markdown outside the line you are editing")}>{t("Live")}</button>
+                    <button type="button" aria-pressed={editorMode === 'source'} onClick={() => void changeEditorMode('source')} title={t("Show all Markdown as typed")}>{t("Source")}</button>
                   </div>
                 </div>
-                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} getLinkHeadings={getLinkHeadings} mode={editorMode} reveal={reveal} placeholder={'Write in Markdown…\n\n# A heading\n- [ ] A checklist item'} />
+                <MarkdownEditor value={content} onChange={setContent} labelledBy="note-content-label" getLinkTitles={getLinkTitles} getLinkHeadings={getLinkHeadings} mode={editorMode} reveal={reveal} placeholder={t("Write in Markdown…\n\n# A heading\n- [ ] A checklist item")} />
               </div>}
-              <article className="markdown-preview-pane" aria-label="Live Markdown preview">
+              <article className="markdown-preview-pane" aria-label={t("Live Markdown preview")}>
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="section-label">Live preview</p>
-                  {previewStale && preview.delayed && <span className="text-xs text-[var(--muted)]">Long note: the preview updates when you pause typing</span>}
-                  {checklistProgress.total > 0 && <span className="checklist-progress" role="progressbar" aria-label="Checklist progress" aria-valuemin={0} aria-valuemax={checklistProgress.total} aria-valuenow={checklistProgress.completed}>
-                    {checklistProgress.completed} of {checklistProgress.total} complete
+                  <p className="section-label">{t("Live preview")}</p>
+                  {previewStale && preview.delayed && <span className="text-xs text-[var(--muted)]">{t("Long note: the preview updates when you pause typing")}</span>}
+                  {checklistProgress.total > 0 && <span className="checklist-progress" role="progressbar" aria-label={t("Checklist progress")} aria-valuemin={0} aria-valuemax={checklistProgress.total} aria-valuenow={checklistProgress.completed}>
+                    {tp(checklistProgress.total, '{done} of {count} complete', '{done} of {count} complete', { done: checklistProgress.completed })}
                   </span>}
                 </div>
                 <div className="prose-notes">
                   {shownSource === undefined ? (
-                    <p className="text-sm text-[var(--muted)]" role="status">Preparing the preview…</p>
+                    <p className="text-sm text-[var(--muted)]" role="status">{t("Preparing the preview…")}</p>
                   ) : (
                     <MarkdownPreview
                       markdown={shownSource}
@@ -764,8 +764,8 @@ export function NoteEditor({
             <section className="attachments-section" aria-labelledby="attachments-heading">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 id="attachments-heading" className="text-sm font-semibold">Attachments</h3>
-                  <p className="mt-1 text-xs text-[var(--muted)]">Stored on this device. Each file is limited to 5 MiB; 20 MiB per note.</p>
+                  <h3 id="attachments-heading" className="text-sm font-semibold">{t("Attachments")}</h3>
+                  <p className="mt-1 text-xs text-[var(--muted)]">{t("Stored on this device. Each file is limited to 5 MiB; 20 MiB per note.")}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <input
@@ -774,11 +774,11 @@ export function NoteEditor({
                     type="file"
                     multiple
                     className="sr-only"
-                    aria-label="Choose files to attach"
+                    aria-label={t("Choose files to attach")}
                     onChange={handleAttachmentFiles}
                   />
                   <button className="secondary-button" disabled={isAddingAttachment} onClick={() => attachmentFileRef.current?.click()}>
-                    <Paperclip size={15} /> Attach files
+                    <Paperclip size={15} /> {t("Attach files")}
                   </button>
                   <button
                     className="secondary-button"
@@ -787,16 +787,16 @@ export function NoteEditor({
                     aria-pressed={isRecording}
                   >
                     {isRecording ? <Square size={15} /> : <Mic size={15} />}
-                    {isRecording ? 'Stop recording' : 'Record audio'}
+                    {isRecording ? t("Stop recording") : t("Record audio")}
                   </button>
                 </div>
               </div>
-              {!audioRecordingSupported && <p className="mb-2 text-xs text-[var(--muted)]">Audio recording is unavailable here; attach an audio file to play it in the note.</p>}
-              {isRecording && <p className="mb-2 text-sm text-[var(--muted)]" role="status">Recording audio…</p>}
-              {isAddingAttachment && <p className="mb-2 text-sm text-[var(--muted)]" role="status">Saving attachment…</p>}
+              {!audioRecordingSupported && <p className="mb-2 text-xs text-[var(--muted)]">{t("Audio recording is unavailable here; attach an audio file to play it in the note.")}</p>}
+              {isRecording && <p className="mb-2 text-sm text-[var(--muted)]" role="status">{t("Recording audio…")}</p>}
+              {isAddingAttachment && <p className="mb-2 text-sm text-[var(--muted)]" role="status">{t("Saving attachment…")}</p>}
               {attachmentError && <p className="mb-2 text-sm text-red-700" role="alert">{attachmentError}</p>}
               {attachments.length ? (
-                <ul className="attachment-list" aria-label="Note attachments">
+                <ul className="attachment-list" aria-label={t("Note attachments")}>
                   {attachments.map((attachment) => (
                     <AttachmentCard
                       key={attachment.id}
@@ -806,21 +806,21 @@ export function NoteEditor({
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-[var(--muted)]">No attachments yet.</p>
+                <p className="text-sm text-[var(--muted)]">{t("No attachments yet.")}</p>
               )}
             </section>
-            {saveError && <p className="text-sm text-red-700" role="alert">{saveError}<button className="ml-2 underline" onClick={() => void saveRef.current()}>Retry</button></p>}
-            <p className="text-xs text-[var(--muted)]">Markdown is saved locally on this device. Raw HTML is not rendered.</p>
+            {saveError && <p className="text-sm text-red-700" role="alert">{saveError}<button className="ms-2 underline" onClick={() => void saveRef.current()}>{t("Retry")}</button></p>}
+            <p className="text-xs text-[var(--muted)]">{t("Markdown is saved locally on this device. Raw HTML is not rendered.")}</p>
           </div>
-          {showHistory && <aside className="history-panel" aria-label="Note history">
-            <div className="mb-3 flex items-center justify-between"><h3 className="font-semibold">History</h3><button className="icon-button !h-8 !w-8" onClick={() => setShowHistory(false)} aria-label="Close history"><X size={15} /></button></div>
-            {history.length ? history.map((entry) => <div className="history-item" key={entry.id}><time className="text-xs text-[var(--muted)]">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(entry.savedAt)}</time><p className="mt-1 truncate text-sm font-medium">{entry.snapshot.title || 'Untitled note'}</p><p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">{entry.snapshot.content}</p><button className="secondary-button mt-2" onClick={() => void restore(entry)}>Restore</button></div>) : <p className="text-sm text-[var(--muted)]">Earlier saved versions will appear here after you edit this note.</p>}
+          {showHistory && <aside className="history-panel" aria-label={t("Note history")}>
+            <div className="mb-3 flex items-center justify-between"><h3 className="font-semibold">{t("History")}</h3><button className="icon-button !h-8 !w-8" onClick={() => setShowHistory(false)} aria-label={t("Close history")}><X size={15} /></button></div>
+            {history.length ? history.map((entry) => <div className="history-item" key={entry.id}><time className="text-xs text-[var(--muted)]">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(entry.savedAt)}</time><p className="mt-1 truncate text-sm font-medium">{entry.snapshot.title || t("Untitled note")}</p><p className="mt-1 line-clamp-2 text-xs text-[var(--muted)]">{entry.snapshot.content}</p><button className="secondary-button mt-2" onClick={() => void restore(entry)}>{t("Restore")}</button></div>) : <p className="text-sm text-[var(--muted)]">{t("Earlier saved versions will appear here after you edit this note.")}</p>}
           </aside>}
         </div>
         <footer className="editor-footer">
-          <p className="text-xs text-[var(--muted)]">Created {formatDate(note.createdAt)}</p>
-          {!isCreating && <button className="danger-button" onClick={() => void deleteSafely()}><Trash2 size={15} /> {note.deletedAt === undefined ? 'Move to Trash' : 'Delete forever'}</button>}
-          <button className="primary-button ml-auto" onClick={() => void closeSafely()}>{saveState === 'unsaved' ? 'Save and close' : 'Done'}</button>
+          <p className="text-xs text-[var(--muted)]">{t("Created")} {formatDate(note.createdAt)}</p>
+          {!isCreating && <button className="danger-button" onClick={() => void deleteSafely()}><Trash2 size={15} /> {note.deletedAt === undefined ? t("Move to Trash") : t("Delete forever")}</button>}
+          <button className="primary-button ms-auto" onClick={() => void closeSafely()}>{saveState === 'unsaved' ? t("Save and close") : t("Done")}</button>
         </footer>
       </section>
     </div>

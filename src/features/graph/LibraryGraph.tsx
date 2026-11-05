@@ -6,6 +6,7 @@ import { useLibraryStore } from '../../state/libraryStore'
 import type { Note, NoteLink } from '../../types'
 import { buildLibraryGraph, nodeSize, seedPositions, type LibraryGraphData } from './libraryGraphData'
 import type { LayoutRequest, LayoutResponse } from './graphLayout.worker'
+import { t, tp } from '../../i18n/i18n'
 
 interface LibraryGraphProps {
   /** Every note; those in Trash are left out. */
@@ -321,7 +322,7 @@ export default function LibraryGraph({ notes, links, matchingIds, noteLabel, the
     return (
       <div className="empty-state">
         <span className="empty-icon"><Network size={24} aria-hidden="true" /></span>
-        <p className="mt-4 max-w-sm text-sm text-[var(--muted)]">This browser cannot draw the whole-library graph (it needs WebGL 2). Use <strong>Around a note</strong> instead.</p>
+        <p className="mt-4 max-w-sm text-sm text-[var(--muted)]">{t("This browser cannot draw the whole-library graph (it needs WebGL 2). Use")} <strong>{t("Around a note")}</strong> {t("instead.")}</p>
       </div>
     )
   }
@@ -336,24 +337,24 @@ export default function LibraryGraph({ notes, links, matchingIds, noteLabel, the
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--muted)]" role="status" aria-live="polite">
-          {shown === data.nodes.length ? `${data.nodes.length} ${data.nodes.length === 1 ? 'note' : 'notes'}` : `${shown} of ${data.nodes.length} notes`}
-          {' · '}{data.edges.length} {data.edges.length === 1 ? 'link' : 'links'}
-          {arranging && ' · Arranging…'}
+          {shown === data.nodes.length ? tp(data.nodes.length, '{count} note', '{count} notes') : t('{shown} of {total} notes', { shown, total: data.nodes.length })}
+          {' · '}{tp(data.edges.length, '{count} link', '{count} links')}
+          {arranging && t(" · Arranging…")}
         </p>
         <div className="flex items-center gap-1">
-          <button type="button" className="icon-button !h-8 !w-8" onClick={() => zoom(1 / 1.5)} aria-label="Zoom in" title="Zoom in"><ZoomIn size={16} aria-hidden="true" /></button>
-          <button type="button" className="icon-button !h-8 !w-8" onClick={() => zoom(1.5)} aria-label="Zoom out" title="Zoom out"><ZoomOut size={16} aria-hidden="true" /></button>
-          <button type="button" className="icon-button !h-8 !w-8" onClick={() => void camera()?.animatedReset({ duration: 300 })} aria-label="Show the whole graph" title="Show the whole graph"><Maximize size={16} aria-hidden="true" /></button>
+          <button type="button" className="icon-button !h-8 !w-8" onClick={() => zoom(1 / 1.5)} aria-label={t("Zoom in")} title={t("Zoom in")}><ZoomIn size={16} aria-hidden="true" /></button>
+          <button type="button" className="icon-button !h-8 !w-8" onClick={() => zoom(1.5)} aria-label={t("Zoom out")} title={t("Zoom out")}><ZoomOut size={16} aria-hidden="true" /></button>
+          <button type="button" className="icon-button !h-8 !w-8" onClick={() => void camera()?.animatedReset({ duration: 300 })} aria-label={t("Show the whole graph")} title={t("Show the whole graph")}><Maximize size={16} aria-hidden="true" /></button>
         </div>
       </div>
       <div
         ref={containerRef}
         className="library-graph"
         role="img"
-        aria-label={`Graph of ${shown} notes and their links. Drag to move, scroll or pinch to zoom, and select a note to open it. From the keyboard, search to list notes below the graph, or use Around a note.`}
+        aria-label={t("Graph of {shown} notes and their links. Drag to move, scroll or pinch to zoom, and select a note to open it. From the keyboard, search to list notes below the graph, or use Around a note.", { shown })}
       />
       {matchingIds && shown > 0 && shown <= MAX_LISTED_MATCHES && (
-        <nav aria-label="Notes in the graph" className="flex flex-wrap gap-2">
+        <nav aria-label={t("Notes in the graph")} className="flex flex-wrap gap-2">
           {matches.map((node) => (
             <button
               key={node.id}
@@ -371,18 +372,18 @@ export default function LibraryGraph({ notes, links, matchingIds, noteLabel, the
       {selectedNote && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="min-w-0">
-            <p className="section-label">Selected note</p>
+            <p className="section-label">{t("Selected note")}</p>
             <p className="truncate font-medium">{noteLabel(selectedNote)}</p>
-            <p className="text-xs text-[var(--muted)]">{selectedNode?.degree ?? 0} {selectedNode?.degree === 1 ? 'linked note' : 'linked notes'}</p>
+            <p className="text-xs text-[var(--muted)]">{tp(selectedNode?.degree ?? 0, '{count} linked note', '{count} linked notes')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="secondary-button" onClick={() => onExplore(selectedNote)}><Network size={15} aria-hidden="true" /> Explore around it</button>
-            <button type="button" className="secondary-button" onClick={() => onOpenNote(selectedNote)}><ExternalLink size={15} aria-hidden="true" /> Open in editor</button>
+            <button type="button" className="secondary-button" onClick={() => onExplore(selectedNote)}><Network size={15} aria-hidden="true" /> {t("Explore around it")}</button>
+            <button type="button" className="secondary-button" onClick={() => onOpenNote(selectedNote)}><ExternalLink size={15} aria-hidden="true" /> {t("Open in editor")}</button>
           </div>
         </div>
       )}
       {data.legend.length > 0 && (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]" aria-label="Colours by library">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]" aria-label={t("Colours by library")}>
           {data.legend.map((entry) => (
             <li key={entry.name} className="flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: entry.colour }} aria-hidden="true" />

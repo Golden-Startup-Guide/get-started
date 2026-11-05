@@ -2,6 +2,7 @@ import { findTemplates } from '../../lib/templates'
 import type { View } from '../../state/workspaceStore'
 import type { Library, Note, Notebook, SavedSearch, Shelf, Tag, ThemePreference } from '../../types'
 import type { PaletteItem } from './paletteSearch'
+import { t } from '../../i18n/i18n'
 
 export const RECENT_NOTE_COUNT = 8
 
@@ -39,32 +40,32 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
   const notebookName = new Map(notebooks.map((notebook) => [notebook.id, notebook.name]))
 
   const actions: PaletteItem[] = [
-    { id: 'action:new-note', group: 'Actions', label: 'New note', keywords: 'create add write', run: handlers.newNote },
-    { id: 'action:quick', group: 'Actions', label: 'Quick note', keywords: 'capture jot inbox fast idea', run: handlers.quickCapture },
-    { id: 'action:today', group: 'Actions', label: 'Open today’s note', keywords: 'daily journal diary date log', run: handlers.openToday },
-    { id: 'action:settings', group: 'Actions', label: 'Open settings', keywords: 'preferences backup export import restore storage', run: handlers.openSettings },
+    { id: 'action:new-note', group: 'Actions', label: t('New note'), keywords: 'create add write', run: handlers.newNote },
+    { id: 'action:quick', group: 'Actions', label: t('Quick note'), keywords: 'capture jot inbox fast idea', run: handlers.quickCapture },
+    { id: 'action:today', group: 'Actions', label: t('Open today’s note'), keywords: 'daily journal diary date log', run: handlers.openToday },
+    { id: 'action:settings', group: 'Actions', label: t('Open settings'), keywords: 'preferences backup export import restore storage', run: handlers.openSettings },
   ]
   const templates = findTemplates(notes, notebooks)
   for (const template of templates) {
     actions.push({
       id: `action:template-${template.id}`,
       group: 'Actions',
-      label: `New note from template: ${template.title.trim() || 'Untitled'}`,
+      label: t('New note from template: {title}', { title: template.title.trim() || t('Untitled note') }),
       keywords: 'template create add',
       run: () => handlers.newFromTemplate(template),
     })
   }
   if (!templates.length) {
-    actions.push({ id: 'action:create-template', group: 'Actions', label: 'Create a template', keywords: 'template new note from', run: handlers.createTemplate })
+    actions.push({ id: 'action:create-template', group: 'Actions', label: t('Create a template'), keywords: 'template new note from', run: handlers.createTemplate })
   }
-  for (const [value, label] of [['light', 'Use light theme'], ['dark', 'Use dark theme'], ['system', 'Use system theme']] as const) {
+  for (const [value, label] of [['light', t('Use light theme')], ['dark', t('Use dark theme')], ['system', t('Use system theme')]] as const) {
     if (value !== theme) actions.push({ id: `action:theme-${value}`, group: 'Actions', label, keywords: 'appearance colour color mode', keepsEditor: true, run: () => handlers.setTheme(value) })
   }
   if (sidebarCollapsed !== undefined) {
     actions.push({
       id: 'action:sidebar',
       group: 'Actions',
-      label: sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
+      label: sidebarCollapsed ? t('Expand sidebar') : t('Collapse sidebar'),
       keywords: 'navigation panel hide show toggle',
       keepsEditor: true,
       run: handlers.toggleSidebar,
@@ -74,22 +75,22 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
   const place = (id: string, label: string, view: View, detail?: string, keywords?: string): PaletteItem =>
     ({ id: `place:${id}`, group: 'Places', label, detail, keywords, run: () => handlers.goTo(view) })
   const places: PaletteItem[] = [
-    place('all', 'All Notes', 'all', undefined, 'everything home'),
-    place('favorites', 'Favorites', 'favorites', undefined, 'starred hearts'),
-    place('trash', 'Trash', 'trash', undefined, 'deleted bin restore'),
-    place('graph', 'Knowledge Graph', 'graph', undefined, 'links backlinks relationships'),
-    ...libraries.map((library) => place(`library:${library.id}`, library.name, `library:${library.id}`, 'Library')),
-    ...shelves.map((shelf) => place(`shelf:${shelf.id}`, shelf.name, `shelf:${shelf.id}`, `Shelf in ${libraryName.get(shelf.libraryId) ?? 'a library'}`)),
+    place('all', t('All Notes'), 'all', undefined, 'everything home'),
+    place('favorites', t('Favorites'), 'favorites', undefined, 'starred hearts'),
+    place('trash', t('Trash'), 'trash', undefined, 'deleted bin restore'),
+    place('graph', t('Knowledge Graph'), 'graph', undefined, 'links backlinks relationships'),
+    ...libraries.map((library) => place(`library:${library.id}`, library.name, `library:${library.id}`, t('Library'))),
+    ...shelves.map((shelf) => place(`shelf:${shelf.id}`, shelf.name, `shelf:${shelf.id}`, t('Shelf in {library}', { library: libraryName.get(shelf.libraryId) ?? t('a library') }))),
     ...notebooks.map((notebook) => {
       const shelf = notebook.shelfId ? shelfById.get(notebook.shelfId) : undefined
-      return place(`notebook:${notebook.id}`, notebook.name, `notebook:${notebook.id}`, shelf ? `Notebook on ${shelf.name}` : 'Notebook')
+      return place(`notebook:${notebook.id}`, notebook.name, `notebook:${notebook.id}`, shelf ? t('Notebook on {shelf}', { shelf: shelf.name }) : t('Notebook'))
     }),
-    ...tags.map((tag) => place(`tag:${tag.id}`, `#${tag.label}`, `tag:${tag.id}`, 'Tag', tag.label)),
+    ...tags.map((tag) => place(`tag:${tag.id}`, `#${tag.label}`, `tag:${tag.id}`, t('Tag'), tag.label)),
     ...savedSearches.map((search): PaletteItem => ({
       id: `search:${search.id}`,
       group: 'Places',
       label: search.name,
-      detail: 'Saved search',
+      detail: t('Saved search'),
       keywords: `${search.query} saved search`,
       run: () => handlers.runSearch(search.query),
     })),
@@ -98,7 +99,7 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
   const noteItem = (note: Note): PaletteItem => ({
     id: `note:${note.id}`,
     group: 'Notes',
-    label: note.title.trim() || 'Untitled note',
+    label: note.title.trim() || t('Untitled note'),
     detail: notebookName.get(note.notebookId ?? ''),
     run: () => handlers.openNote(note),
   })

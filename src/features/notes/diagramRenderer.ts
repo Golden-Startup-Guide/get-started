@@ -1,4 +1,5 @@
 import mermaid from 'mermaid'
+import { t } from '../../i18n/i18n'
 
 // Its own chunk (with Mermaid's own lazily loaded parts), loaded by DiagramBlock.tsx only when a
 // note has a ```mermaid block.
@@ -29,6 +30,6 @@ export async function renderDiagram(source: string, theme: 'light' | 'dark'): Pr
     const message = error instanceof Error ? error.message : String(error)
     // Mermaid's first line names the problem ("Parse error on line 3:"); the rest is a long,
     // technical list of what it expected.
-    return { error: message.split('\n')[0].replace(/:\s*$/, '') || 'This diagram could not be drawn' }
+    return { error: message.split('\n')[0].replace(/:\s*$/, '') || t('This diagram could not be drawn') }
   }
 }

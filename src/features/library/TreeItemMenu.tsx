@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Check, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { t } from '../../i18n/i18n'
 
 export type MoveOption = { id: string; label: string }
 
@@ -115,8 +116,8 @@ export function TreeItemMenu({
       <button
         ref={buttonRef}
         className="icon-button !h-8 !w-8"
-        aria-label={`Actions for ${name}`}
-        title="More actions"
+        aria-label={t("Actions for {name}", { name })}
+        title={t("More actions")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -136,11 +137,11 @@ export function TreeItemMenu({
           onKeyDown={onMenuKeyDown}
         >
           <button role="menuitem" tabIndex={-1} className="tree-menu-item" onClick={() => choose(onRename)}>
-            <Pencil size={14} aria-hidden="true" /> Rename
+            <Pencil size={14} aria-hidden="true" /> {t("Rename")}
           </button>
           {moveOptions && onMove && moveOptions.length > 1 && (
             <div role="group" aria-labelledby={`${menuId}-move`} className="tree-menu-group">
-              <p id={`${menuId}-move`} className="tree-menu-label">Move to shelf</p>
+              <p id={`${menuId}-move`} className="tree-menu-label">{t("Move to shelf")}</p>
               {moveOptions.map((option) => {
                 const current = option.id === currentMoveId
                 return (
@@ -167,7 +168,7 @@ export function TreeItemMenu({
             title={deleteDisabledReason}
             onClick={() => { if (!deleteDisabledReason) choose(onDelete) }}
           >
-            <Trash2 size={14} aria-hidden="true" /> Delete
+            <Trash2 size={14} aria-hidden="true" /> {t("Delete")}
           </button>
         </div>
       )}

@@ -30,6 +30,7 @@ import {
   validateBackup,
   type NotesBackup,
 } from './backupFormat'
+import { t } from '../i18n/i18n'
 
 export type { NotesBackup } from './backupFormat'
 
@@ -320,7 +321,7 @@ export async function getAllNoteLinks(): Promise<NoteLink[]> {
 }
 
 export async function linkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
-  if (sourceNoteId === targetNoteId) throw new Error('A note cannot link to itself.')
+  if (sourceNoteId === targetNoteId) throw new Error(t("A note cannot link to itself."))
   const db = await database
   const transaction = db.transaction(['notes', 'noteLinks'], 'readwrite')
   const notes = transaction.objectStore('notes')
@@ -330,11 +331,11 @@ export async function linkNotes(sourceNoteId: string, targetNoteId: string): Pro
   ])
   if (!source || !target) {
     await transaction.done
-    throw new Error('Both notes must exist before they can be linked.')
+    throw new Error(t("Both notes must exist before they can be linked."))
   }
   if (source.deletedAt !== undefined || target.deletedAt !== undefined) {
     await transaction.done
-    throw new Error('Restore notes from Trash before linking them.')
+    throw new Error(t("Restore notes from Trash before linking them."))
   }
   await transaction.objectStore('noteLinks').put({ sourceNoteId, targetNoteId })
   await transaction.done
@@ -370,7 +371,7 @@ export async function saveNote(input: Note, options: { forceHistory?: boolean } 
   )
   if (!notebookId) {
     await transaction.done
-    throw new Error('Create a notebook before saving notes.')
+    throw new Error(t("Create a notebook before saving notes."))
   }
   const note = normalizeNote({ ...input, notebookId })
   if (existing && (existing.title !== note.title || existing.content !== note.content)) {
@@ -441,18 +442,18 @@ export async function addNoteAttachment(
   const note = await noteStore.get(noteId)
   if (!note) {
     await transaction.done
-    throw new Error('Save this note before adding attachments.')
+    throw new Error(t("Save this note before adding attachments."))
   }
   const attachmentStore = transaction.objectStore('attachments')
   const existing = await attachmentStore.index('by-note').getAll(noteId)
   const usedBytes = existing.reduce((sum, attachment) => sum + attachment.size, 0)
   if (existing.length >= MAX_ATTACHMENTS_PER_NOTE) {
     await transaction.done
-    throw new Error(`A note can have at most ${MAX_ATTACHMENTS_PER_NOTE} attachments.`)
+    throw new Error(t("A note can have at most {MAX_ATTACHMENTS_PER_NOTE} attachments.", { MAX_ATTACHMENTS_PER_NOTE }))
   }
   if (usedBytes + file.size > MAX_NOTE_ATTACHMENT_BYTES) {
     await transaction.done
-    throw new Error('Attachments for a note cannot exceed 20 MiB in total.')
+    throw new Error(t("Attachments for a note cannot exceed 20 MiB in total."))
   }
   const attachment: StoredNoteAttachment = {
     id: crypto.randomUUID(),
@@ -475,7 +476,7 @@ export async function addNoteAttachment(
       failure = transactionError
     }
     if (isQuotaExceeded(failure)) {
-      throw new Error('Browser storage is full. Remove large attachments or free device storage and try again.')
+      throw new Error(t("Browser storage is full. Remove large attachments or free device storage and try again."))
     }
     throw failure
   }
@@ -490,7 +491,7 @@ export async function deleteNoteAttachment(id: string): Promise<void> {
   const attachment = await attachmentStore.get(id)
   if (!attachment) {
     await transaction.done
-    throw new Error('Attachment not found.')
+    throw new Error(t("Attachment not found."))
   }
   await attachmentStore.delete(id)
   const noteStore = transaction.objectStore('notes')
@@ -507,7 +508,7 @@ export async function trashNote(id: string): Promise<void> {
   const note = await store.get(id)
   if (!note) {
     await transaction.done
-    throw new Error('Note not found.')
+    throw new Error(t("Note not found."))
   }
   if (note.deletedAt !== undefined) {
     await transaction.done
@@ -526,7 +527,7 @@ export async function restoreNote(id: string): Promise<void> {
   const note = await store.get(id)
   if (!note) {
     await transaction.done
-    throw new Error('Note not found.')
+    throw new Error(t("Note not found."))
   }
   if (note.deletedAt === undefined) {
     await transaction.done
@@ -546,11 +547,11 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   const note = await noteStore.get(id)
   if (!note) {
     await transaction.done
-    throw new Error('Note not found.')
+    throw new Error(t("Note not found."))
   }
   if (note.deletedAt === undefined) {
     await transaction.done
-    throw new Error('Only notes in Trash can be permanently deleted.')
+    throw new Error(t("Only notes in Trash can be permanently deleted."))
   }
   await noteStore.delete(id)
   const historyStore = transaction.objectStore('history')
@@ -595,13 +596,13 @@ export async function getShelves(): Promise<Shelf[]> {
 
 export async function createLibrary(name: string): Promise<Library> {
   const cleaned = name.trim()
-  if (!cleaned) throw new Error('Library name cannot be empty.')
+  if (!cleaned) throw new Error(t("Library name cannot be empty."))
   const db = await database
   const transaction = db.transaction(['libraries', 'shelves'], 'readwrite')
   const libraries = await transaction.objectStore('libraries').getAll()
   if (libraries.some((library) => library.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
     await transaction.done
-    throw new Error('A library with that name already exists.')
+    throw new Error(t("A library with that name already exists."))
   }
   const now = Date.now()
   const library = { id: crypto.randomUUID(), name: cleaned, createdAt: now, updatedAt: now }
@@ -620,7 +621,7 @@ export async function createLibrary(name: string): Promise<Library> {
 
 export async function renameLibrary(id: string, name: string): Promise<void> {
   const cleaned = name.trim()
-  if (!cleaned) throw new Error('Library name cannot be empty.')
+  if (!cleaned) throw new Error(t("Library name cannot be empty."))
   const db = await database
   const transaction = db.transaction('libraries', 'readwrite')
   const store = transaction.objectStore('libraries')
@@ -628,11 +629,11 @@ export async function renameLibrary(id: string, name: string): Promise<void> {
   const library = libraries.find((item) => item.id === id)
   if (!library) {
     await transaction.done
-    throw new Error('Library not found.')
+    throw new Error(t("Library not found."))
   }
   if (libraries.some((item) => item.id !== id && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
     await transaction.done
-    throw new Error('A library with that name already exists.')
+    throw new Error(t("A library with that name already exists."))
   }
   await store.put({ ...library, name: cleaned, updatedAt: Date.now() })
   await transaction.done
@@ -641,17 +642,17 @@ export async function renameLibrary(id: string, name: string): Promise<void> {
 
 export async function createShelf(libraryId: string, name: string): Promise<Shelf> {
   const cleaned = name.trim()
-  if (!cleaned) throw new Error('Shelf name cannot be empty.')
+  if (!cleaned) throw new Error(t("Shelf name cannot be empty."))
   const db = await database
   const transaction = db.transaction(['libraries', 'shelves'], 'readwrite')
   if (!(await transaction.objectStore('libraries').get(libraryId))) {
     await transaction.done
-    throw new Error('Library not found.')
+    throw new Error(t("Library not found."))
   }
   const shelves = await transaction.objectStore('shelves').getAll()
   if (shelves.some((shelf) => shelf.libraryId === libraryId && shelf.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
     await transaction.done
-    throw new Error('A shelf with that name already exists in this library.')
+    throw new Error(t("A shelf with that name already exists in this library."))
   }
   const now = Date.now()
   const shelf = { id: crypto.randomUUID(), libraryId, name: cleaned, createdAt: now, updatedAt: now }
@@ -663,7 +664,7 @@ export async function createShelf(libraryId: string, name: string): Promise<Shel
 
 export async function renameShelf(id: string, name: string): Promise<void> {
   const cleaned = name.trim()
-  if (!cleaned) throw new Error('Shelf name cannot be empty.')
+  if (!cleaned) throw new Error(t("Shelf name cannot be empty."))
   const db = await database
   const transaction = db.transaction('shelves', 'readwrite')
   const store = transaction.objectStore('shelves')
@@ -671,11 +672,11 @@ export async function renameShelf(id: string, name: string): Promise<void> {
   const shelf = shelves.find((item) => item.id === id)
   if (!shelf) {
     await transaction.done
-    throw new Error('Shelf not found.')
+    throw new Error(t("Shelf not found."))
   }
   if (shelves.some((item) => item.id !== id && item.libraryId === shelf.libraryId && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
     await transaction.done
-    throw new Error('A shelf with that name already exists in this library.')
+    throw new Error(t("A shelf with that name already exists in this library."))
   }
   await store.put({ ...shelf, name: cleaned, updatedAt: Date.now() })
   await transaction.done
@@ -690,11 +691,11 @@ export async function deleteShelf(id: string, destinationId: string): Promise<vo
   const destination = await shelves.get(destinationId)
   if (!source || !destination || id === destinationId || source.libraryId !== destination.libraryId) {
     await transaction.done
-    throw new Error('Choose a different existing shelf in the same library as the destination.')
+    throw new Error(t("Choose a different existing shelf in the same library as the destination."))
   }
   if ((await shelves.index('by-library').count(source.libraryId)) <= 1) {
     await transaction.done
-    throw new Error('The last shelf in a library cannot be deleted.')
+    throw new Error(t("The last shelf in a library cannot be deleted."))
   }
   const notebooks = transaction.objectStore('notebooks')
   for (const notebook of await notebooks.getAll()) {
@@ -713,11 +714,11 @@ export async function deleteLibrary(id: string, destinationId: string): Promise<
   const destination = await libraries.get(destinationId)
   if (!source || !destination || id === destinationId) {
     await transaction.done
-    throw new Error('Choose a different existing library as the destination.')
+    throw new Error(t("Choose a different existing library as the destination."))
   }
   if ((await libraries.count()) <= 1) {
     await transaction.done
-    throw new Error('The last library cannot be deleted.')
+    throw new Error(t("The last library cannot be deleted."))
   }
   const shelves = transaction.objectStore('shelves')
   const sourceShelves = await shelves.index('by-library').getAll(id)
@@ -750,11 +751,11 @@ export async function moveNotebook(notebookId: string, shelfId: string): Promise
   const notebook = await notebooks.get(notebookId)
   if (!notebook) {
     await transaction.done
-    throw new Error('Notebook not found.')
+    throw new Error(t("Notebook not found."))
   }
   if (!(await transaction.objectStore('shelves').get(shelfId))) {
     await transaction.done
-    throw new Error('Shelf not found.')
+    throw new Error(t("Shelf not found."))
   }
   await notebooks.put({ ...notebook, shelfId, updatedAt: Date.now() })
   await transaction.done
@@ -773,7 +774,7 @@ async function duplicateNotebookMessage(existing: Notebook, getShelf: (id: strin
 
 export async function createNotebook(name: string, shelfId?: string): Promise<Notebook> {
   const cleaned = name.trim()
-  if (!cleaned) throw new Error('Notebook name cannot be empty.')
+  if (!cleaned) throw new Error(t("Notebook name cannot be empty."))
   const db = await database
   const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
   const notebooksStore = transaction.objectStore('notebooks')
@@ -787,7 +788,7 @@ export async function createNotebook(name: string, shelfId?: string): Promise<No
   const targetShelfId = shelfId ?? (await transaction.objectStore('shelves').getAll())[0]?.id
   if (!targetShelfId || !(await transaction.objectStore('shelves').get(targetShelfId))) {
     await transaction.done
-    throw new Error('Choose an existing shelf for the notebook.')
+    throw new Error(t("Choose an existing shelf for the notebook."))
   }
   const now = Date.now()
   const notebook = { id: crypto.randomUUID(), name: cleaned, shelfId: targetShelfId, createdAt: now, updatedAt: now }
@@ -799,7 +800,7 @@ export async function createNotebook(name: string, shelfId?: string): Promise<No
 
 export async function renameNotebook(id: string, name: string): Promise<void> {
   const cleaned = name.trim()
-  if (!cleaned) throw new Error('Notebook name cannot be empty.')
+  if (!cleaned) throw new Error(t("Notebook name cannot be empty."))
   const db = await database
   const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
   const notebooksStore = transaction.objectStore('notebooks')
@@ -807,7 +808,7 @@ export async function renameNotebook(id: string, name: string): Promise<void> {
   const notebook = notebooks.find((item) => item.id === id)
   if (!notebook) {
     await transaction.done
-    throw new Error('Notebook not found.')
+    throw new Error(t("Notebook not found."))
   }
   const existing = notebooks.find((item) => item.id !== id && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())
   if (existing) {
@@ -828,11 +829,11 @@ export async function deleteNotebook(id: string, destinationId: string): Promise
   const destination = await notebooks.get(destinationId)
   if (!source || !destination || id === destinationId) {
     await transaction.done
-    throw new Error('Choose a different existing notebook as the destination.')
+    throw new Error(t("Choose a different existing notebook as the destination."))
   }
   if ((await notebooks.count()) <= 1) {
     await transaction.done
-    throw new Error('The last notebook cannot be deleted.')
+    throw new Error(t("The last notebook cannot be deleted."))
   }
   const noteStore = transaction.objectStore('notes')
   const notes = await noteStore.index('by-notebook').getAll(id)
@@ -863,11 +864,11 @@ export async function moveNote(noteId: string, notebookId: string): Promise<void
   const note = await notes.get(noteId)
   if (!note) {
     await transaction.done
-    throw new Error('Note not found.')
+    throw new Error(t("Note not found."))
   }
   if (!(await transaction.objectStore('notebooks').get(notebookId))) {
     await transaction.done
-    throw new Error('Notebook not found.')
+    throw new Error(t("Notebook not found."))
   }
   await notes.put({ ...note, notebookId, updatedAt: Date.now() })
   await transaction.done
@@ -940,7 +941,7 @@ export async function setNoteFlag(
 ): Promise<void> {
   const db = await database
   const note = await db.get('notes', id)
-  if (!note) throw new Error('Note not found.')
+  if (!note) throw new Error(t("Note not found."))
   await saveNote({ ...note, [flag]: value, updatedAt: Date.now() })
 }
 
@@ -956,9 +957,9 @@ export async function getNoteHistory(noteId: string): Promise<NoteHistoryEntry[]
 export async function restoreHistory(revisionId: string): Promise<Note> {
   const db = await database
   const revision = await db.get('history', revisionId)
-  if (!revision) throw new Error('History revision not found.')
+  if (!revision) throw new Error(t("History revision not found."))
   const current = await db.get('notes', revision.noteId)
-  if (!current) throw new Error('The note for this revision no longer exists.')
+  if (!current) throw new Error(t("The note for this revision no longer exists."))
   const restored = { ...current, title: revision.snapshot.title, content: revision.snapshot.content, updatedAt: Date.now() }
   await saveNote(restored, { forceHistory: true })
   return normalizeNote(restored)
@@ -970,9 +971,9 @@ function readBlob(blob: Blob): Promise<ArrayBuffer> {
     const reader = new FileReader()
     reader.onload = () => {
       if (reader.result instanceof ArrayBuffer) resolve(reader.result)
-      else reject(new Error('The attachment could not be read for export.'))
+      else reject(new Error(t("The attachment could not be read for export.")))
     }
-    reader.onerror = () => reject(reader.error ?? new Error('The attachment could not be read for export.'))
+    reader.onerror = () => reject(reader.error ?? new Error(t("The attachment could not be read for export.")))
     reader.readAsArrayBuffer(blob)
   })
 }
@@ -1031,8 +1032,8 @@ function serializeBackup(backup: NotesBackup): string {
   if (new Blob([text]).size > MAX_BACKUP_SIZE_BYTES) {
     throw new Error(
       backup.attachments.length || backup.history.length
-        ? 'This backup exceeds 40 MiB. Export it without attachments or history, or remove some attachments, and try again.'
-        : 'This backup exceeds 40 MiB even without attachments and history.',
+        ? t('This backup exceeds 40 MiB. Export it without attachments or history, or remove some attachments, and try again.')
+        : t('This backup exceeds 40 MiB even without attachments and history.'),
     )
   }
   return text
@@ -1312,12 +1313,12 @@ export interface ImportSummary {
 }
 
 export async function importBackupFile(file: File): Promise<ImportSummary> {
-  if (file.size > MAX_BACKUP_SIZE_BYTES) throw new Error('Backup files must be 40 MiB or smaller.')
+  if (file.size > MAX_BACKUP_SIZE_BYTES) throw new Error(t("Backup files must be 40 MiB or smaller."))
   let parsed: unknown
   try {
     parsed = JSON.parse(await file.text())
   } catch {
-    throw new Error('The selected file is not valid JSON.')
+    throw new Error(t("The selected file is not valid JSON."))
   }
   const summary = await importBackupInto(await database, validateBackup(parsed))
   announceChange()
@@ -1393,7 +1394,7 @@ export async function importBackupInto(db: IDBPDatabase<NotesDatabase>, backup: 
     const libraryId = libraryIdMap.get(imported.libraryId)
     if (!libraryId) {
       transaction.abort()
-      throw new Error('A backup shelf refers to a library that could not be restored.')
+      throw new Error(t("A backup shelf refers to a library that could not be restored."))
     }
     const sameId = shelfById.get(imported.id)
     const local = sameId?.libraryId === libraryId && sameId.name.toLocaleLowerCase() === imported.name.toLocaleLowerCase()
@@ -1415,7 +1416,7 @@ export async function importBackupInto(db: IDBPDatabase<NotesDatabase>, backup: 
   const defaultShelf = currentShelves.find((shelf) => shelf.id === DEFAULT_SHELF_ID) ?? currentShelves[0]
   if (!defaultShelf) {
     transaction.abort()
-    throw new Error('A default shelf is not available for imported notebooks.')
+    throw new Error(t("A default shelf is not available for imported notebooks."))
   }
   const defaultShelfId = defaultShelf.id
 
@@ -1450,7 +1451,7 @@ export async function importBackupInto(db: IDBPDatabase<NotesDatabase>, backup: 
     currentNotebooks[0]?.id
   if (!fallbackNotebookId) {
     transaction.abort()
-    throw new Error('A notebook is not available for imported notes.')
+    throw new Error(t("A notebook is not available for imported notes."))
   }
   const acceptedNoteIds = new Set<string>()
   const importedNotebookByNote = new Map<string, string>()

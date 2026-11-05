@@ -32,6 +32,7 @@ import { FALLBACK_FOCUS_ID } from './DeleteStructureDialog'
 import { useNoteCounts } from './noteCounts'
 import { shelfForNewNotebook } from './placement'
 import { TreeItemMenu } from './TreeItemMenu'
+import { t } from '../../i18n/i18n'
 
 export function LibrarySidebar({
   onNavigate,
@@ -114,42 +115,42 @@ export function LibrarySidebar({
       aria-hidden={isCompactNavigation && !navigationOpen}
       role={isDrawer ? 'dialog' : undefined}
       aria-modal={isDrawer ? true : undefined}
-      aria-label="Primary navigation"
+      aria-label={t("Primary navigation")}
       onKeyDown={isDrawer ? (event) => keepFocusInDialog(event, onCloseNavigation) : undefined}
     >
       <div className="mb-6 flex items-center justify-between gap-2">
-        <a href="/" className="flex min-w-0 items-center gap-3 px-2 text-lg font-semibold" aria-label="My Notes home">
+        <a href="/" className="flex min-w-0 items-center gap-3 px-2 text-lg font-semibold" aria-label={t("My Notes home")}>
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#d77762] text-white">
             <FileText size={20} aria-hidden="true" />
           </span>
-          <span className="truncate">My Notes</span>
+          <span className="truncate">{t("My Notes")}</span>
         </a>
         <button
           ref={closeButtonRef}
           className="icon-button navigation-close"
           onClick={onCloseNavigation}
-          aria-label={isCompactNavigation ? 'Close navigation' : 'Collapse sidebar'}
-          title={isCompactNavigation ? 'Close navigation' : 'Collapse sidebar'}
+          aria-label={isCompactNavigation ? t("Close navigation") : t("Collapse sidebar")}
+          title={isCompactNavigation ? t("Close navigation") : t("Collapse sidebar")}
         >
           <PanelLeftClose size={18} aria-hidden="true" />
         </button>
       </div>
-      <button id={FALLBACK_FOCUS_ID} ref={newNoteRef} onClick={onNewNote} className="primary-button mb-5 flex items-center justify-center gap-2" aria-label="Create a new note from navigation">
-        <Plus size={17} aria-hidden="true" /> New note
+      <button id={FALLBACK_FOCUS_ID} ref={newNoteRef} onClick={onNewNote} className="primary-button mb-5 flex items-center justify-center gap-2" aria-label={t("Create a new note from navigation")}>
+        <Plus size={17} aria-hidden="true" /> {t("New note")}
       </button>
-      <nav aria-label="Note views" className="space-y-1">
-        <NavButton active={view === 'all'} label="All Notes" count={notes.length} onClick={() => onNavigate('all')} icon={<FileText size={16} />} />
-        <NavButton active={view === 'favorites'} label="Favorites" count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
-        <NavButton active={view === 'trash'} label="Trash" count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />
-        <NavButton active={view === 'graph'} label="Knowledge Graph" count={notes.length} onClick={() => onNavigate('graph')} icon={<Network size={16} />} />
+      <nav aria-label={t("Note views")} className="space-y-1">
+        <NavButton active={view === 'all'} label={t("All Notes")} count={notes.length} onClick={() => onNavigate('all')} icon={<FileText size={16} />} />
+        <NavButton active={view === 'favorites'} label={t("Favorites")} count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
+        <NavButton active={view === 'trash'} label={t("Trash")} count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />
+        <NavButton active={view === 'graph'} label={t("Knowledge Graph")} count={notes.length} onClick={() => onNavigate('graph')} icon={<Network size={16} />} />
         <button className="nav-button flex w-full items-center gap-3 text-left" onClick={onOpenToday}>
-          <CalendarDays size={16} aria-hidden="true" /><span className="min-w-0 flex-1 truncate">Today’s note</span>
+          <CalendarDays size={16} aria-hidden="true" /><span className="min-w-0 flex-1 truncate">{t("Today’s note")}</span>
         </button>
       </nav>
       {savedSearches?.length ? (
         <div className="mt-8">
-          <h2 className="section-label mb-2 px-2">Saved searches</h2>
-          <nav aria-label="Saved searches" className="space-y-1">
+          <h2 className="section-label mb-2 px-2">{t("Saved searches")}</h2>
+          <nav aria-label={t("Saved searches")} className="space-y-1">
             {savedSearches.map((search) => (
               <NavButton
                 key={search.id}
@@ -164,10 +165,10 @@ export function LibrarySidebar({
       ) : null}
       <div className="library-tree mt-8 min-w-0">
         <div className="mb-2 flex items-center justify-between px-2">
-          <h2 className="section-label">Your Library</h2>
+          <h2 className="section-label">{t("Your Library")}</h2>
           <span className="text-xs text-[var(--muted)]">{libraries.length}</span>
         </div>
-        <nav aria-label="Libraries" className="min-w-0 space-y-3">
+        <nav aria-label={t("Libraries")} className="min-w-0 space-y-3">
           {libraries.map((library) => {
             const libraryShelves = shelves.filter((shelf) => shelf.libraryId === library.id)
             const libraryExpanded = !collapsedLibraries.includes(library.id)
@@ -176,7 +177,7 @@ export function LibrarySidebar({
                 <div className="group flex min-w-0 items-center gap-1">
                   <button
                     className="icon-button tree-disclosure !h-8 !w-8 shrink-0"
-                    aria-label={`${libraryExpanded ? 'Collapse' : 'Expand'} ${library.name}`}
+                    aria-label={libraryExpanded ? t('Collapse {name}', { name: library.name }) : t('Expand {name}', { name: library.name })}
                     aria-expanded={libraryExpanded}
                     aria-controls={`library-contents-${library.id}`}
                     onClick={() => toggleLibrary(library.id)}
@@ -195,7 +196,7 @@ export function LibrarySidebar({
                     name={library.name}
                     onRename={() => void promptRename({ kind: 'library', item: library })}
                     onDelete={() => askToDelete({ kind: 'library', item: library })}
-                    deleteDisabledReason={libraries.length <= 1 ? 'The last library cannot be deleted' : undefined}
+                    deleteDisabledReason={libraries.length <= 1 ? t('The last library cannot be deleted.') : undefined}
                   />
                 </div>
                 <div
@@ -203,7 +204,7 @@ export function LibrarySidebar({
                   role="group"
                   aria-label={`${library.name} shelves`}
                   hidden={!libraryExpanded}
-                  className="ml-3 min-w-0 border-l border-[var(--border)] pl-2"
+                  className="ms-3 min-w-0 border-s border-[var(--border)] ps-2"
                 >
                   {libraryShelves.map((shelf) => {
                     const shelfExpanded = !collapsedShelves.includes(shelf.id)
@@ -212,7 +213,7 @@ export function LibrarySidebar({
                         <div className="group flex min-w-0 items-center gap-1">
                           <button
                             className="icon-button tree-disclosure !h-8 !w-8 shrink-0"
-                            aria-label={`${shelfExpanded ? 'Collapse' : 'Expand'} ${shelf.name}`}
+                            aria-label={shelfExpanded ? t('Collapse {name}', { name: shelf.name }) : t('Expand {name}', { name: shelf.name })}
                             aria-expanded={shelfExpanded}
                             aria-controls={`shelf-contents-${shelf.id}`}
                             onClick={() => toggleShelf(shelf.id)}
@@ -231,12 +232,12 @@ export function LibrarySidebar({
                             name={shelf.name}
                             onRename={() => void promptRename({ kind: 'shelf', item: shelf })}
                             onDelete={() => askToDelete({ kind: 'shelf', item: shelf })}
-                            deleteDisabledReason={libraryShelves.length <= 1 ? 'The last shelf in a library cannot be deleted' : undefined}
+                            deleteDisabledReason={libraryShelves.length <= 1 ? t('The last shelf in a library cannot be deleted.') : undefined}
                           />
                         </div>
                         <div id={`shelf-contents-${shelf.id}`} role="group" aria-label={`${shelf.name} notebooks`} hidden={!shelfExpanded}>
                           {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
-                            <div key={notebook.id} className="library-tree-notebook ml-3 min-w-0">
+                            <div key={notebook.id} className="library-tree-notebook ms-3 min-w-0">
                               <div className="group flex min-w-0 items-center gap-1">
                                 <NavButton
                                   active={view === `notebook:${notebook.id}`}
@@ -250,7 +251,7 @@ export function LibrarySidebar({
                                   name={notebook.name}
                                   onRename={() => void promptRename({ kind: 'notebook', item: notebook })}
                                   onDelete={() => askToDelete({ kind: 'notebook', item: notebook })}
-                                  deleteDisabledReason={notebooks.length <= 1 ? 'The last notebook cannot be deleted' : undefined}
+                                  deleteDisabledReason={notebooks.length <= 1 ? t('The last notebook cannot be deleted.') : undefined}
                                   moveOptions={shelfOptions}
                                   currentMoveId={notebook.shelfId}
                                   onMove={(shelfId) => void moveNotebookToShelf(notebook.id, shelfId)}
@@ -263,9 +264,9 @@ export function LibrarySidebar({
                     )
                   })}
                   <form className="mt-1 flex min-w-0 gap-1" onSubmit={(event) => void addShelf(library, event)}>
-                    <label className="sr-only" htmlFor={`new-shelf-${library.id}`}>New shelf in {library.name}</label>
-                    <input id={`new-shelf-${library.id}`} className="small-input !min-h-8 min-w-0 flex-1 !px-2 text-xs" value={shelfNames[library.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [library.id]: event.target.value }))} placeholder="New shelf" />
-                    <button className="icon-button !h-8 !w-8" aria-label={`Add shelf to ${library.name}`} type="submit"><Plus size={15} /></button>
+                    <label className="sr-only" htmlFor={`new-shelf-${library.id}`}>{t('New shelf in {name}', { name: library.name })}</label>
+                    <input id={`new-shelf-${library.id}`} className="small-input !min-h-8 min-w-0 flex-1 !px-2 text-xs" value={shelfNames[library.id] ?? ''} onChange={(event) => setShelfNames((current) => ({ ...current, [library.id]: event.target.value }))} placeholder={t("New shelf")} />
+                    <button className="icon-button !h-8 !w-8" aria-label={t("Add shelf to {name}", { name: library.name })} type="submit"><Plus size={15} /></button>
                   </form>
                 </div>
               </div>
@@ -273,26 +274,26 @@ export function LibrarySidebar({
           })}
         </nav>
         <form className="mt-3 flex gap-2" onSubmit={(event) => void addLibrary(event)}>
-          <label className="sr-only" htmlFor="new-library">New library name</label>
-          <input id="new-library" className="small-input min-w-0 flex-1" value={libraryName} onChange={(event) => setLibraryName(event.target.value)} placeholder="New library" />
-          <button className="icon-button" aria-label="Add library" type="submit"><Plus size={16} /></button>
+          <label className="sr-only" htmlFor="new-library">{t("New library name")}</label>
+          <input id="new-library" className="small-input min-w-0 flex-1" value={libraryName} onChange={(event) => setLibraryName(event.target.value)} placeholder={t("New library")} />
+          <button className="icon-button" aria-label={t("Add library")} type="submit"><Plus size={16} /></button>
         </form>
         <form className="mt-2 flex gap-2" onSubmit={(event) => void addNotebook(event)}>
-          <label className="sr-only" htmlFor="new-notebook">New notebook name</label>
-          <input id="new-notebook" className="small-input min-w-0 flex-1" value={notebookName} onChange={(event) => setNotebookName(event.target.value)} placeholder="New notebook" />
-          <button className="icon-button" aria-label="Add notebook" type="submit"><Plus size={16} /></button>
+          <label className="sr-only" htmlFor="new-notebook">{t("New notebook name")}</label>
+          <input id="new-notebook" className="small-input min-w-0 flex-1" value={notebookName} onChange={(event) => setNotebookName(event.target.value)} placeholder={t("New notebook")} />
+          <button className="icon-button" aria-label={t("Add notebook")} type="submit"><Plus size={16} /></button>
         </form>
       </div>
       <div className="mt-8">
-        <h2 className="section-label mb-2 px-2">Tags</h2>
-        <nav aria-label="Tags" className="space-y-1">
+        <h2 className="section-label mb-2 px-2">{t("Tags")}</h2>
+        <nav aria-label={t("Tags")} className="space-y-1">
           {tags.map((tag) => (
             <NavButton key={tag.id} active={view === `tag:${tag.id}`} label={tag.label} count={tag.count} onClick={() => onNavigate(`tag:${tag.id}`)} icon={<TagIcon size={15} />} />
           ))}
-          {tags.length === 0 && <p className="px-3 py-1 text-xs text-[var(--muted)]">Tags you add to notes appear here.</p>}
+          {tags.length === 0 && <p className="px-3 py-1 text-xs text-[var(--muted)]">{t("Tags you add to notes appear here.")}</p>}
         </nav>
       </div>
-      <button onClick={onOpenSettings} className="nav-button mt-auto flex items-center gap-3" aria-label="Open settings"><Settings size={17} /> Settings</button>
+      <button onClick={onOpenSettings} className="nav-button mt-auto flex items-center gap-3" aria-label={t("Open settings")}><Settings size={17} /> {t("Settings")}</button>
     </aside>
   )
 }

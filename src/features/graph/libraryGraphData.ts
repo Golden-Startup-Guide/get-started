@@ -1,4 +1,5 @@
 import type { Library, Note, Notebook, NoteLink, Shelf } from '../../types'
+import { t } from '../../i18n/i18n'
 
 /** Colours for libraries in the graph, in order; notes outside any library use the last. */
 export const LIBRARY_COLOURS = ['#d77762', '#4f8fc0', '#6aa864', '#b07cc6', '#d1a23f', '#4aa8a0', '#c46f9b', '#8a8f98']
@@ -68,7 +69,7 @@ export function buildLibraryGraph(
   }
 
   const legend = libraries.filter((library) => usedLibraries.has(library.id)).map((library) => ({ name: library.name, colour: colourOf.get(library.id) as string }))
-  if (unfiled) legend.push({ name: 'Not on a shelf', colour: UNFILED_COLOUR })
+  if (unfiled) legend.push({ name: t('Not on a shelf'), colour: UNFILED_COLOUR })
   return { nodes, edges, legend }
 }
 

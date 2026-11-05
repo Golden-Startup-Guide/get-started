@@ -5,6 +5,7 @@ import { checkBackup, describeCheck, type BackupCheck } from '../lib/backupCheck
 import { readDeviceValue, writeDeviceValue } from '../lib/deviceStore'
 import { exportBackupFile } from '../lib/notes'
 import { useLibraryStore } from './libraryStore'
+import { t } from '../i18n/i18n'
 
 /** What is kept about backups on this device (the folder is kept separately). */
 interface BackupRecord {
@@ -110,11 +111,11 @@ export const useBackupStore = create<BackupState>()((set, get) => {
       if (check.ok) {
         set({ lastBackupAt: now, lastBackupFile: file, lastBackupOmitted: omitted, lastCheck: checkRecord(check), lastError: undefined, snoozedUntil: undefined })
       } else {
-        set({ lastCheck: checkRecord(check), lastError: `${file} was saved, but restoring it as a test failed: ${check.problem}.` })
+        set({ lastCheck: checkRecord(check), lastError: t('{file} was saved, but restoring it as a test failed: {problem}.', { file, problem: check.problem }) })
       }
       await save()
     } catch (reason) {
-      set({ lastError: reason instanceof Error ? reason.message : 'The backup could not be written.' })
+      set({ lastError: reason instanceof Error ? reason.message : t('The backup could not be written.') })
     } finally {
       set({ running: false, checkedAt: Date.now() })
     }
