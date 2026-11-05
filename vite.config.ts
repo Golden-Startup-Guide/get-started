@@ -45,7 +45,12 @@ function workerSafeEntityDecoder(): Plugin {
   }
 }
 
+// Where the app is served from: '/' locally and in tests, '/get-started/' on GitHub Pages
+// (set by the Deploy workflow). Every path below follows it.
+const base = process.env.BASE_PATH ?? '/'
+
 export default defineConfig({
+  base,
   // The version shown in Settings and in problem reports (from package.json).
   define: { __APP_VERSION__: JSON.stringify(version) },
   build: {
@@ -76,39 +81,39 @@ export default defineConfig({
         description: 'A quiet, private place for all the things you want to remember.',
         theme_color: '#f8f7f4',
         background_color: '#f8f7f4',
-        id: '/',
+        id: base,
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         categories: ['productivity', 'utilities'],
         // Long-press (or right-click) the app's icon for these.
         shortcuts: [
-          { name: 'New note', url: '/?action=new' },
-          { name: 'Quick note', url: '/?action=quick' },
-          { name: 'Today’s note', url: '/?action=today' },
+          { name: 'New note', url: `${base}?action=new` },
+          { name: 'Quick note', url: `${base}?action=quick` },
+          { name: 'Today’s note', url: `${base}?action=today` },
         ],
         // On Android, the installed app appears in the share menu; what is shared is saved to Inbox.
         share_target: {
-          action: '/',
+          action: base,
           method: 'GET',
           params: { title: 'share-title', text: 'share-text', url: 'share-url' },
         },
         icons: [
           {
-            src: '/icon-192.png',
+            src: `${base}icon-192.png`,
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icon-512.png',
+            src: `${base}icon-512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',
           },
           {
-            src: '/my-notes.svg',
+            src: `${base}my-notes.svg`,
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any maskable',
@@ -118,7 +123,7 @@ export default defineConfig({
       workbox: {
         // The first install takes control at once, so the app works offline from the first visit.
         clientsClaim: true,
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         // The install download, which every user pays, holds only the app's core: the page, its
         // script and styles, the note editor, the preview and search workers, the code highlighter,
         // and icons. Maths (KaTeX and its fonts, about 0.7 MB) and diagrams (Mermaid, 56 files
@@ -134,7 +139,7 @@ export default defineConfig({
             // Everything else the app loads from /assets/ is kept after its first use, so maths and
             // diagrams work offline from then on. File names are content-hashed, so cache-first
             // never serves a stale file.
-            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/assets/'),
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.includes('/assets/'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'my-notes-on-demand',

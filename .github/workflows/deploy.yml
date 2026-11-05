@@ -1,0 +1,66 @@
+name: Deploy
+
+# Publishes main to GitHub Pages: https://golden-startup-guide.github.io/get-started/
+# main only receives pull requests that passed CI; the built site is smoke-tested where it will
+# be served (the /get-started/ path) before it is published.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push waits rather than cancelling one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and smoke-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_PATH: /get-started/
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for GitHub Pages
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke-test the built site at its path
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4180 --strictPort &
+          npx --yes wait-on@8 --timeout 60000 http://127.0.0.1:4180/get-started/
+          node scripts/smokeTest.mjs http://127.0.0.1:4180/get-started/
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
