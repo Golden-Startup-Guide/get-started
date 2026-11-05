@@ -593,6 +593,28 @@ The application should be opened normally to let IndexedDB apply its
 registered upgrades. Do not manually delete the database as a troubleshooting
 step unless you intentionally want to erase the local data.
 
+**Every upgrade is tested against real past data.** `src/test/databaseFixtures/`
+keeps a sample database made by the storage code of each released database
+version (1, 2, 4, 5, and 6; version 3 was never released), plus one from the
+latest code. Each holds that version's exact stores and indexes and a small
+library built with that version's own functions: notes with text, Markdown,
+and non-ASCII characters, tags, notebooks, an edit in history, a binary
+attachment, a link, a note in Trash, a library and shelf, and settings, as far
+as that version supported them. `upgrades.test.ts` recreates each database
+exactly, opens it with today's code, and checks that every note keeps its
+title, text, times, and Trash state; every notebook ends up on a shelf in a
+library; every attachment is unchanged byte for byte; every history entry,
+link, and setting survives; the start-up integrity check finds nothing to
+repair; and a backup of the result passes its test restore. A test also fails
+if a released version has no sample.
+
+When a change raises `DATABASE_VERSION`, capture a sample from the version it
+replaces (and, once released, from the new one): check the commit out with
+`git worktree add --detach .fixture-worktrees/<commit> <commit>`, add it to
+`PAST_VERSIONS` in `scripts/captureDatabaseFixtures.test.ts`, and run
+`npm run fixtures:capture`, which also refreshes the sample from the current
+code.
+
 ### Start-up integrity check
 
 Shortly after My Notes starts (in idle time, so start-up never waits), it
