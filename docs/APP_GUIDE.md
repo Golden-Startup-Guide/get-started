@@ -593,6 +593,28 @@ The application should be opened normally to let IndexedDB apply its
 registered upgrades. Do not manually delete the database as a troubleshooting
 step unless you intentionally want to erase the local data.
 
+### Start-up integrity check
+
+Shortly after My Notes starts (in idle time, so start-up never waits), it
+checks the library for damage, such as an interrupted write in an older
+version, a bug, or an edited backup might leave, and repairs it:
+
+- Links whose note at either end no longer exists are removed.
+- Attachments and history entries left behind by notes that no longer exist
+  are removed (they could never be shown).
+- Notes whose notebook is gone move to **Personal** (or the first notebook,
+  or a new **Recovered notes** notebook); notebooks whose shelf is gone move to
+  **General**; shelves whose library is gone move to **Personal Library**.
+  Moved notes keep their edit times.
+- A tag list that no longer matches the notes is rebuilt.
+
+The check reads only what start-up already loaded, plus key-only scans of the
+attachment and history indexes (no file contents), so it stays quick in large
+libraries. Repairs happen in one transaction, and each item is checked again
+first, so nothing another tab changed in the meantime is touched. When
+anything other than the tag list was repaired, a notice says exactly what;
+**Settings → Storage on this device** shows the result of the latest check.
+
 ### Offline and device boundaries
 
 The PWA build generates a web app manifest and service worker that precaches

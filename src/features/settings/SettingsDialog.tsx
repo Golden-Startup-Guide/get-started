@@ -12,6 +12,7 @@ import { AutoBackupSettings } from '../backup/AutoBackupSettings'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { changeTheme, downloadBackup, requestPersistenceFromSettings, restoreBackup } from '../../state/actions'
 import { useLibraryStore } from '../../state/libraryStore'
+import { useIntegrityStore } from '../../state/integrityStore'
 import { usePersistenceStore } from '../../state/persistenceStore'
 import { useWorkspaceStore } from '../../state/workspaceStore'
 
@@ -27,6 +28,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const tags = useLibraryStore((state) => state.tags)
   const links = useLibraryStore((state) => state.links)
   const persistence = usePersistenceStore((state) => state.status)
+  const integrity = useIntegrityStore()
   const error = useWorkspaceStore((state) => state.error)
   const notice = useWorkspaceStore((state) => state.notice)
   const showError = useWorkspaceStore((state) => state.showError)
@@ -126,6 +128,15 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             <div><dt>Notes</dt><dd>{storage.notes}</dd></div><div><dt>Trash</dt><dd>{storage.trash}</dd></div><div><dt>Notebooks</dt><dd>{storage.notebooks}</dd></div><div><dt>Tags</dt><dd>{storage.tags}</dd></div><div><dt>History revisions</dt><dd>{storage.revisions}</dd></div><div><dt>Attachments</dt><dd>{storage.attachments}</dd></div><div><dt>Attachment data</dt><dd>{formatBytes(storage.attachmentBytes)}</dd></div><div><dt>Estimated content size</dt><dd>{formatBytes(storage.estimatedBytes)}</dd></div>
           </dl>
           <p className="mt-2 text-xs text-[var(--muted)]">Includes attachment data; browser quota may differ.</p>
+          <p className="mt-2 text-sm" aria-live="polite">
+            {integrity.failed
+              ? `The library check at start-up could not run: ${integrity.failed}`
+              : !integrity.checkedAt
+                ? 'The library is checked for damage shortly after My Notes starts.'
+                : integrity.repaired.length
+                  ? `The library check at start-up repaired it: ${integrity.repaired.join('; ')}.`
+                  : 'The library check at start-up found no problems.'}
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2" aria-live="polite">
             <p className="text-sm">
               {persistence === 'persisted'
