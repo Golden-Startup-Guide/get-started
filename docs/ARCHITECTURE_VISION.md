@@ -139,7 +139,7 @@ A plugin API is what made VS Code and Obsidian category leaders.
 
 ## 6. Decisions to make first
 
-These are hard to reverse; each needs an ADR before implementation:
+These are hard to reverse; each needs an ADR before implementation. **Decided on November 5, 2026: see [DECISIONS.md](DECISIONS.md)** (no CRDT or sync service, stay on IndexedDB, CodeMirror 6, free and open source with no service to run).
 
 1. **CRDT:** Yjs (mature and fast) or Automerge (cleaner history model).
 2. **Storage:** SQLite on OPFS, or stay on IndexedDB with a separate search index.

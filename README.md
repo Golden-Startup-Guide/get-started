@@ -13,19 +13,23 @@ AI-powered processing.
 
 ## What you can do
 
-- **Write comfortably:** create and edit Markdown notes with a live preview,
-  interactive checklists, autosave status, and restorable revision history.
-- **Keep things organized:** use libraries, shelves, notebooks, tags, favorites,
-  and pins to arrange and revisit notes.
-- **Find and connect ideas:** search note titles, content, tags, and notebook
-  names; link notes, explore backlinks, and navigate a bounded relationship
-  graph.
-- **Keep useful context nearby:** attach files, preview common images, play
-  supported audio, and record audio when the browser permits it.
-- **Recover and move your data:** restore deleted notes from Trash and export or
-  import validated JSON backups.
-- **Work across conditions:** use the responsive, installable PWA online or
-  offline after its app shell has been cached.
+- **Write comfortably:** Markdown with live preview, checklists, tables, maths,
+  diagrams, code highlighting, slash commands, templates, daily notes, quick
+  notes (Alt+N), and a command palette (Ctrl+K). Notes save as you type, with
+  restorable history.
+- **Keep things organized:** libraries, shelves, notebooks, tags, favorites, and
+  pins.
+- **Find and connect ideas:** `[[wikilinks]]` with section links and embedded
+  notes, backlinks, search with filters (`tag:`, `has:task`, `after:7d`, and
+  more) and saved searches, and a graph of the whole library.
+- **Keep useful context nearby:** attach files, preview images, and record
+  audio.
+- **Never lose a note:** Trash, automatic backups to a folder (proven by
+  restoring each one) or backup reminders, a repair check at start-up, and
+  upgrades tested against every past version.
+- **Move your notes freely:** export as Markdown files, and import from
+  Obsidian, Notion, Evernote, Google Keep, Apple Notes, and Markdown folders.
+- **Use it anywhere:** install it on a computer or phone; it works offline.
 
 ## Get started
 
@@ -62,7 +66,9 @@ notebook.
 
 Notes, relationships, attachments, settings, and history are stored in the
 browser's IndexedDB database on the current device and browser profile. My Notes
-does not provide an account or automatically synchronize data between devices.
+has no account and sends your notes nowhere; see the [privacy policy](PRIVACY.md).
+It does not synchronize between devices: use automatic backups to a folder your
+cloud drive syncs, or export and import, to move notes between them.
 Data is also scoped to the app's origin: changing hostname, port, or browser
 profile can make a different local database appear. Clearing browser site data
 can remove locally stored content. If notes appear missing, do not clear site
@@ -91,6 +97,9 @@ for storage, backup, migration, and feature details.
   architectural changes.
 - [Performance baseline](docs/PERFORMANCE.md) — benchmark method, current
   numbers against targets, and the causes to fix first.
+- [Decisions](docs/DECISIONS.md) — storage, sync, editor, business model,
+  platforms, and hosting, and why.
+- [Privacy policy](PRIVACY.md) and [security policy](SECURITY.md).
 
 ## Development
 
@@ -105,3 +114,7 @@ npm run build  # TypeScript project checks and production PWA build
 The app is built with React, TypeScript, Vite, Tailwind CSS, IndexedDB (`idb`),
 and `vite-plugin-pwa`. Tests use Vitest, React Testing Library, and
 `fake-indexeddb`.
+
+## Licence
+
+My Notes is free software under the [MIT licence](LICENSE).
