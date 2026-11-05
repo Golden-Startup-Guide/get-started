@@ -14,6 +14,7 @@ import type {
   ThemePreference,
 } from '../types'
 import {
+  MAX_ATTACHMENT_SIZE_BYTES,
   MAX_ATTACHMENTS_PER_NOTE,
   MAX_BACKUP_SIZE_BYTES,
   MAX_NOTE_ATTACHMENT_BYTES,
@@ -976,6 +977,11 @@ export interface BackupOptions {
   history?: boolean
 }
 
+/** Everything in the library, as a backup holds it (no size limit; see exportBackup). */
+export async function collectLibrary(options: BackupOptions = {}): Promise<NotesBackup> {
+  return buildBackup(options)
+}
+
 async function buildBackup({ attachments: includeAttachments = true, history: includeHistory = true }: BackupOptions): Promise<NotesBackup> {
   const db = await database
   const [notes, notebooks, libraries, shelves, tags, settings, history, attachments, links] = await Promise.all([
@@ -1186,6 +1192,100 @@ export async function repairLibrary(problems: LibraryProblems): Promise<LibraryR
   await transaction.done
   if (Object.values(repairs).some((value) => value === true || (typeof value === 'number' && value > 0))) announceChange()
   return repairs
+}
+
+/** A note brought in from another app (see features/transfer). */
+export interface IncomingNote {
+  title: string
+  content: string
+  tags: string[]
+  /** The notebook to put it in, by name; created if missing. */
+  notebook: string
+  createdAt: number
+  updatedAt: number
+  pinned?: boolean
+  favorite?: boolean
+  /** Put straight into Trash (it was deleted in the other app). */
+  trashed?: boolean
+  attachments: Array<{ name: string; type: string; data: Uint8Array }>
+}
+
+export interface NotesImportSummary {
+  notes: number
+  notebooksCreated: number
+  attachments: number
+  /** Attachments left out: too large, or over a note's limits. */
+  attachmentsSkipped: number
+}
+
+/**
+ * Adds notes from another app as new notes (never replacing any), in one transaction. Notebooks
+ * are matched by name, ignoring capitals, or created on the default shelf. Attachments over the
+ * usual limits are left out and counted.
+ */
+export async function importNotes(incoming: IncomingNote[]): Promise<NotesImportSummary> {
+  const db = await database
+  const transaction = db.transaction(['notes', 'notebooks', 'shelves', 'tags', 'attachments'], 'readwrite')
+  const notes = transaction.objectStore('notes')
+  const notebooks = transaction.objectStore('notebooks')
+  const attachments = transaction.objectStore('attachments')
+  const byName = new Map((await notebooks.getAll()).map((notebook) => [notebook.name.toLocaleLowerCase(), notebook]))
+  const shelves = transaction.objectStore('shelves')
+  const shelfId = ((await shelves.get(DEFAULT_SHELF_ID)) ?? (await shelves.getAll())[0])?.id
+  const summary: NotesImportSummary = { notes: 0, notebooksCreated: 0, attachments: 0, attachmentsSkipped: 0 }
+  const now = Date.now()
+
+  for (const item of incoming) {
+    const name = item.notebook.trim() || 'Imported'
+    let notebook = byName.get(name.toLocaleLowerCase())
+    if (!notebook) {
+      notebook = { id: crypto.randomUUID(), name, shelfId, createdAt: now, updatedAt: now }
+      await notebooks.add(notebook)
+      byName.set(name.toLocaleLowerCase(), notebook)
+      summary.notebooksCreated += 1
+    }
+    const note = normalizeNote({
+      id: crypto.randomUUID(),
+      title: item.title,
+      content: item.content,
+      tags: item.tags,
+      notebookId: notebook.id,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      pinned: item.pinned ?? false,
+      favorite: item.favorite ?? false,
+      ...(item.trashed ? { deletedAt: now } : {}),
+    })
+    await notes.add(note)
+    summary.notes += 1
+
+    let count = 0
+    let bytes = 0
+    for (const file of item.attachments) {
+      const fits = file.data.byteLength > 0 && file.data.byteLength <= MAX_ATTACHMENT_SIZE_BYTES
+        && count < MAX_ATTACHMENTS_PER_NOTE && bytes + file.data.byteLength <= MAX_NOTE_ATTACHMENT_BYTES
+      if (!fits) {
+        summary.attachmentsSkipped += 1
+        continue
+      }
+      await attachments.add({
+        id: crypto.randomUUID(),
+        noteId: note.id,
+        name: file.name.trim() || 'attachment',
+        type: file.type || 'application/octet-stream',
+        size: file.data.byteLength,
+        createdAt: item.createdAt,
+        data: file.data.slice().buffer,
+      })
+      count += 1
+      bytes += file.data.byteLength
+      summary.attachments += 1
+    }
+  }
+  await refreshTags(notes, transaction.objectStore('tags'))
+  await transaction.done
+  announceChange()
+  return summary
 }
 
 export interface ImportSummary {

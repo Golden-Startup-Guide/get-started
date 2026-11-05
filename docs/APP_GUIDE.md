@@ -558,6 +558,40 @@ Import is a **merge**, not a replace operation:
 Keep backups outside the browser profile. A backup stored only in the same
 profile does not protect against that profile's data being cleared or lost.
 
+### Markdown export
+
+**Settings → Markdown and other apps → Export as Markdown (.zip)** downloads the
+library as Markdown files: a folder per library, shelf, and notebook, a `.md`
+file per note named after its title, and the note's attachments in a
+"<title> files" folder beside it, linked from an **Attachments** list at the
+end of the note. Each file starts with front matter holding the note's exact
+title (when the file name had to change it), notebook, tags, created and
+updated times, and whether it is pinned or a favorite. Notes in Trash are in a
+`Trash` folder, with the time they were deleted. Obsidian and most Markdown
+apps open the folder as it is, and wikilinks keep working there. It is not a
+backup: history is not included, so use the JSON backup to restore
+everything.
+
+### Importing from other apps
+
+**Settings → Markdown and other apps → Import from** adds notes from another
+app as new notes; nothing already in My Notes is changed. Choose the app, then
+its files (or, for Markdown and Apple Notes, a folder):
+
+| From | What to choose | What comes across |
+|---|---|---|
+| Markdown files or an Obsidian vault | the vault folder, a `.zip`, or `.md` files | folders become notebooks; front matter title, tags, dates, pinned, and favorite; inline `#tags`; files embedded (`![[photo.png]]`) or linked locally become attachments; `[[wikilinks]]` stay as they are. A My Notes Markdown export comes back with its notebooks, tags, flags, Trash, and attachments. |
+| Notion | the `.zip` from Export → Markdown & CSV | pages become notes in a **Notion** notebook, without Notion's ID in their titles or the repeated title heading; links between pages become `[[links]]`; images and files become attachments. Databases (CSV) are not imported. |
+| Evernote | `.enex` files (one per notebook) | each file becomes a notebook; titles, tags, created and updated times, formatting, checklists, tables, and attachments |
+| Google Keep | the Takeout `.zip` | text and checklists, labels as tags, pins, images; archived notes get the tag `archived`, and notes in Keep's trash go to Trash |
+| Apple Notes | the folder or `.zip` an exporter app made (Apple Notes has no export of its own) | Markdown, HTML, and text files, with folders as notebooks and images as attachments |
+
+Attachments larger than 5 MiB, or beyond a note's 20 attachments or 20 MiB,
+are left out, and the notice says how many. Embedded files are mentioned in
+the note's text as "(attachment: name)", and the files themselves are in its
+**Attachments** list. Reading the files happens in the page, so a very large
+export may take a moment.
+
 ## 4. Local storage, migrations, and offline behavior
 
 ### IndexedDB database
