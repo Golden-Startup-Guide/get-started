@@ -39,7 +39,7 @@ describe('automatic backups', () => {
     expect(backupReminder(useBackupStore.getState(), now - DAY)).toBe('overdue')
 
     // A downloaded backup counts, and is remembered on this device.
-    await useBackupStore.getState().recordDownload()
+    await useBackupStore.getState().recordDownload({ ok: true, notes: 5, attachments: 0, history: 0, links: 0 })
     expect(backupReminder(useBackupStore.getState(), now - DAY)).toBeUndefined()
     const reloaded = await freshStores()
     await reloaded.useBackupStore.getState().load()
@@ -62,6 +62,8 @@ describe('automatic backups', () => {
     expect(first.folder?.name).toBe('Cloud backups')
     expect(first.lastBackupFile).toMatch(/^my-notes-backup-\d{4}-\d{2}-\d{2}\.json$/)
     expect(JSON.parse(folder.files.get(first.lastBackupFile!)!)).toEqual(expect.objectContaining({ version: 4, notes: expect.any(Array) }))
+    // Proven by restoring it, as saved, into a test database.
+    expect(first.lastCheck).toEqual({ at: expect.any(Number), ok: true, summary: expect.stringMatching(/^\d+ notes?, \d+ attachments?, \d+ history entr(y|ies), and \d+ links?$/) })
 
     // Not due again straight away.
     folder.files.clear()
@@ -106,6 +108,27 @@ describe('automatic backups', () => {
     const state = useBackupStore.getState()
     expect(state.lastError).toBe('The disk is full.')
     expect(state.lastBackupAt).toBeUndefined()
+    useBackupStore.setState({ firstSeenAt: Date.now() - 8 * DAY, checkedAt: Date.now() })
+    expect(backupReminder(useBackupStore.getState(), Date.now())).toBe('failed')
+  })
+
+  it('does not count a backup that fails its test restore', async () => {
+    // The file reads back damaged, as if the disk or a sync client mangled it.
+    class DamagingFolder extends MemoryFolder {
+      override async getFileHandle(name: string) {
+        const handle = await super.getFileHandle(name)
+        return { ...handle, getFile: async () => new Blob(['{"format": "my-notes-backup", "notes": [']) }
+      }
+    }
+    const folder = new DamagingFolder()
+    vi.stubGlobal('showDirectoryPicker', vi.fn(async () => folder))
+    const { useBackupStore, backupReminder } = await freshStores()
+    await useBackupStore.getState().load()
+    await useBackupStore.getState().chooseFolder()
+    const state = useBackupStore.getState()
+    expect(state.lastBackupAt).toBeUndefined()
+    expect(state.lastCheck).toEqual({ at: expect.any(Number), ok: false, summary: 'the file is not valid JSON' })
+    expect(state.lastError).toMatch(/^my-notes-backup-.+\.json was saved, but restoring it as a test failed: the file is not valid JSON\.$/)
     useBackupStore.setState({ firstSeenAt: Date.now() - 8 * DAY, checkedAt: Date.now() })
     expect(backupReminder(useBackupStore.getState(), Date.now())).toBe('failed')
   })

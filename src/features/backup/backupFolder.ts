@@ -7,7 +7,10 @@ import { backupFileName, backupsToRemove } from './backupSchedule'
  */
 export interface BackupFolder {
   readonly name: string
-  getFileHandle(name: string, options?: { create?: boolean }): Promise<{ createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }> }>
+  getFileHandle(name: string, options?: { create?: boolean }): Promise<{
+    createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>
+    getFile(): Promise<Blob>
+  }>
   removeEntry(name: string): Promise<void>
   keys(): AsyncIterable<string>
   queryPermission?(descriptor: { mode: 'readwrite' }): Promise<PermissionState>
@@ -59,4 +62,20 @@ export async function writeBackupToFolder(folder: BackupFolder, backup: Blob, no
     await folder.removeEntry(old).catch(() => undefined)
   }
   return name
+}
+
+/** Reads a backup back from the folder, as saved, to check it. */
+export async function readBackupFromFolder(folder: BackupFolder, name: string): Promise<string> {
+  return readText(await (await folder.getFileHandle(name)).getFile())
+}
+
+/** A file's text (with a fallback for test environments whose Blob has no text()). */
+export function readText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(blob)
+  })
 }

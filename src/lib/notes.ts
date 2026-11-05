@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase, type IDBPObjectStore } from 'idb'
+import { deleteDB, openDB, type DBSchema, type IDBPDatabase, type IDBPObjectStore, type IDBPTransaction, type StoreNames } from 'idb'
 import type {
   AppSettings,
   Note,
@@ -128,90 +128,100 @@ const database = openDB<NotesDatabase>('my-notes', DATABASE_VERSION, {
   terminated() {
     emitStorageEvent({ type: 'terminated' })
   },
-  async upgrade(db, oldVersion, _newVersion, transaction) {
-    const now = Date.now()
-    if (oldVersion < 1) {
-      const store = db.createObjectStore('notes', { keyPath: 'id' })
-      store.createIndex('by-updated', 'updatedAt')
-    }
-
-    if (oldVersion < 2) {
-      const notes = transaction.objectStore('notes')
-      if (!notes.indexNames.contains('by-notebook')) {
-        notes.createIndex('by-notebook', 'notebookId')
-      }
-      if (!notes.indexNames.contains('by-tags')) {
-        notes.createIndex('by-tags', 'tags', { multiEntry: true })
-      }
-
-      const notebooks = db.createObjectStore('notebooks', { keyPath: 'id' })
-      notebooks.createIndex('by-name', 'name')
-      for (const [id, name] of starterNotebooks) {
-        notebooks.put({ id, name, createdAt: now, updatedAt: now })
-      }
-
-      db.createObjectStore('settings', { keyPath: 'id' }).put({
-        id: 'preferences',
-        theme: 'system',
-      })
-
-      const tags = db.createObjectStore('tags', { keyPath: 'id' })
-      tags.createIndex('by-label', 'label')
-
-      const history = db.createObjectStore('history', { keyPath: 'id' })
-      history.createIndex('by-note', 'noteId')
-      history.createIndex('by-saved-at', 'savedAt')
-
-      let cursor = await notes.openCursor()
-      while (cursor) {
-        const note = cursor.value
-        cursor.update({
-          ...note,
-          notebookId: note.notebookId ?? 'starter-personal',
-          tags: cleanTags(note.tags ?? []),
-          pinned: note.pinned ?? false,
-          favorite: note.favorite ?? false,
-        })
-        cursor = await cursor.continue()
-      }
-    }
-
-    if (oldVersion < 4) {
-      db.createObjectStore('attachments', { keyPath: 'id' }).createIndex('by-note', 'noteId')
-    }
-
-    if (oldVersion < 5) {
-      const links = db.createObjectStore('noteLinks', { keyPath: ['sourceNoteId', 'targetNoteId'] })
-      links.createIndex('by-source', 'sourceNoteId')
-      links.createIndex('by-target', 'targetNoteId')
-    }
-
-    if (oldVersion < 6) {
-      const libraries = db.createObjectStore('libraries', { keyPath: 'id' })
-      libraries.createIndex('by-name', 'name')
-      const shelves = db.createObjectStore('shelves', { keyPath: 'id' })
-      shelves.createIndex('by-library', 'libraryId')
-      shelves.createIndex('by-name', 'name')
-      const notebooks = transaction.objectStore('notebooks')
-      const library = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: now, updatedAt: now }
-      const shelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: now, updatedAt: now }
-      libraries.put(library)
-      shelves.put(shelf)
-      let cursor = await notebooks.openCursor()
-      while (cursor) {
-        cursor.update({ ...cursor.value, shelfId: cursor.value.shelfId ?? DEFAULT_SHELF_ID })
-        cursor = await cursor.continue()
-      }
-    }
-
-    // A brand-new library only (never an upgrade of existing data): one starter note per
-    // starter notebook. They carry no tags, so the tags store needs no update.
-    if (oldVersion === 0) {
-      const notes = transaction.objectStore('notes')
-      for (const note of starterNotes(now)) notes.put(note)
-    }
+  upgrade(db, oldVersion, _newVersion, transaction) {
+    return upgradeDatabase(db, oldVersion, transaction, true)
   },
 })
+
+type UpgradeTransaction = IDBPTransaction<NotesDatabase, ArrayLike<StoreNames<NotesDatabase>>, 'versionchange'>
+
+/**
+ * Creates or upgrades the database's stores. A new device also gets the starter notebooks, the
+ * default library and shelf, and (unless `withStarterNotes` is false) a starter note in each.
+ */
+async function upgradeDatabase(db: IDBPDatabase<NotesDatabase>, oldVersion: number, transaction: UpgradeTransaction, withStarterNotes: boolean) {
+  const now = Date.now()
+  if (oldVersion < 1) {
+    const store = db.createObjectStore('notes', { keyPath: 'id' })
+    store.createIndex('by-updated', 'updatedAt')
+  }
+
+  if (oldVersion < 2) {
+    const notes = transaction.objectStore('notes')
+    if (!notes.indexNames.contains('by-notebook')) {
+      notes.createIndex('by-notebook', 'notebookId')
+    }
+    if (!notes.indexNames.contains('by-tags')) {
+      notes.createIndex('by-tags', 'tags', { multiEntry: true })
+    }
+
+    const notebooks = db.createObjectStore('notebooks', { keyPath: 'id' })
+    notebooks.createIndex('by-name', 'name')
+    for (const [id, name] of starterNotebooks) {
+      notebooks.put({ id, name, createdAt: now, updatedAt: now })
+    }
+
+    db.createObjectStore('settings', { keyPath: 'id' }).put({
+      id: 'preferences',
+      theme: 'system',
+    })
+
+    const tags = db.createObjectStore('tags', { keyPath: 'id' })
+    tags.createIndex('by-label', 'label')
+
+    const history = db.createObjectStore('history', { keyPath: 'id' })
+    history.createIndex('by-note', 'noteId')
+    history.createIndex('by-saved-at', 'savedAt')
+
+    let cursor = await notes.openCursor()
+    while (cursor) {
+      const note = cursor.value
+      cursor.update({
+        ...note,
+        notebookId: note.notebookId ?? 'starter-personal',
+        tags: cleanTags(note.tags ?? []),
+        pinned: note.pinned ?? false,
+        favorite: note.favorite ?? false,
+      })
+      cursor = await cursor.continue()
+    }
+  }
+
+  if (oldVersion < 4) {
+    db.createObjectStore('attachments', { keyPath: 'id' }).createIndex('by-note', 'noteId')
+  }
+
+  if (oldVersion < 5) {
+    const links = db.createObjectStore('noteLinks', { keyPath: ['sourceNoteId', 'targetNoteId'] })
+    links.createIndex('by-source', 'sourceNoteId')
+    links.createIndex('by-target', 'targetNoteId')
+  }
+
+  if (oldVersion < 6) {
+    const libraries = db.createObjectStore('libraries', { keyPath: 'id' })
+    libraries.createIndex('by-name', 'name')
+    const shelves = db.createObjectStore('shelves', { keyPath: 'id' })
+    shelves.createIndex('by-library', 'libraryId')
+    shelves.createIndex('by-name', 'name')
+    const notebooks = transaction.objectStore('notebooks')
+    const library = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: now, updatedAt: now }
+    const shelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: now, updatedAt: now }
+    libraries.put(library)
+    shelves.put(shelf)
+    let cursor = await notebooks.openCursor()
+    while (cursor) {
+      cursor.update({ ...cursor.value, shelfId: cursor.value.shelfId ?? DEFAULT_SHELF_ID })
+      cursor = await cursor.continue()
+    }
+  }
+
+  // A brand-new library only (never an upgrade of existing data): one starter note per
+  // starter notebook. They carry no tags, so the tags store needs no update.
+  if (oldVersion === 0 && withStarterNotes) {
+    const notes = transaction.objectStore('notes')
+    for (const note of starterNotes(now)) notes.put(note)
+  }
+}
 
 export async function openNotesDatabase(): Promise<IDBPDatabase<NotesDatabase>> {
   return database
@@ -1041,8 +1051,32 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   } catch {
     throw new Error('The selected file is not valid JSON.')
   }
-  const backup = validateBackup(parsed)
-  const db = await database
+  const summary = await importBackupInto(await database, validateBackup(parsed))
+  announceChange()
+  return summary
+}
+
+/**
+ * Opens an empty database laid out like a new device's (starter notebooks, library, and shelf,
+ * but no starter notes), to restore a backup into as a test. `discard` closes and deletes it.
+ */
+export async function openTestRestoreDatabase(name: string): Promise<{ db: IDBPDatabase<NotesDatabase>; discard: () => Promise<void> }> {
+  const db = await openDB<NotesDatabase>(name, DATABASE_VERSION, {
+    upgrade(upgrading, oldVersion, _newVersion, transaction) {
+      return upgradeDatabase(upgrading, oldVersion, transaction, false)
+    },
+  })
+  return {
+    db,
+    discard: async () => {
+      db.close()
+      await deleteDB(name)
+    },
+  }
+}
+
+/** Merges a validated backup into a database; see importBackupFile. */
+export async function importBackupInto(db: IDBPDatabase<NotesDatabase>, backup: NotesBackup): Promise<ImportSummary> {
   const transaction = db.transaction(['notes', 'notebooks', 'libraries', 'shelves', 'settings', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
   const noteStore = transaction.objectStore('notes')
   const notebookStore = transaction.objectStore('notebooks')
@@ -1214,7 +1248,6 @@ export async function importBackupFile(file: File): Promise<ImportSummary> {
   }
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
-  announceChange()
   return {
     notesAdded,
     notesSkipped,

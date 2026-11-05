@@ -29,6 +29,8 @@ import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templa
 import { notesLinkingTo, renameWikilinks } from '../lib/wikilinks'
 import { shelfForNewNotebook } from '../features/library/placement'
 import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemePreference } from '../types'
+import { readText } from '../features/backup/backupFolder'
+import { checkBackup, describeCheck } from '../lib/backupCheck'
 import { useBackupStore } from './backupStore'
 import { useEditorStore } from './editorStore'
 import { useLibraryStore } from './libraryStore'
@@ -326,8 +328,15 @@ export async function downloadBackup(options: BackupOptions) {
     link.download = `my-notes-backup-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     URL.revokeObjectURL(url)
-    workspace().showNotice('Your backup has been downloaded.')
-    await useBackupStore.getState().recordDownload()
+    workspace().showNotice('Your backup has been downloaded. Checking that it restores…')
+    // Prove the downloaded backup restores, from exactly what was downloaded.
+    const check = await checkBackup(await readText(blob))
+    await useBackupStore.getState().recordDownload(check)
+    if (check.ok) workspace().showNotice(`Your backup has been downloaded and checked: a test restore brought back ${describeCheck(check)}.`)
+    else {
+      workspace().showNotice(null)
+      workspace().showError(`Your backup was downloaded, but restoring it as a test failed: ${check.problem}. Keep your earlier backups, and try exporting again.`)
+    }
   } catch (reason) {
     reportError(reason, 'The backup could not be created.')
   }
