@@ -761,6 +761,16 @@ export async function moveNotebook(notebookId: string, shelfId: string): Promise
   announceChange()
 }
 
+/**
+ * Notebook names are unique across all libraries (docs/DECISIONS.md, decision 8): links,
+ * imports, backups, and the Inbox, Templates, and Daily notes notebooks find a notebook by name.
+ * The message says where the existing one is.
+ */
+async function duplicateNotebookMessage(existing: Notebook, getShelf: (id: string) => Promise<Shelf | undefined>): Promise<string> {
+  const shelf = existing.shelfId ? await getShelf(existing.shelfId) : undefined
+  return `A notebook named “${existing.name}” already exists${shelf ? `, on the shelf “${shelf.name}”` : ''}. Notebook names are unique across all your libraries, so choose another name.`
+}
+
 export async function createNotebook(name: string, shelfId?: string): Promise<Notebook> {
   const cleaned = name.trim()
   if (!cleaned) throw new Error('Notebook name cannot be empty.')
@@ -768,9 +778,11 @@ export async function createNotebook(name: string, shelfId?: string): Promise<No
   const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
   const notebooksStore = transaction.objectStore('notebooks')
   const notebooks = await notebooksStore.getAll()
-  if (notebooks.some((notebook) => notebook.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())) {
+  const existing = notebooks.find((notebook) => notebook.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())
+  if (existing) {
+    const message = await duplicateNotebookMessage(existing, (id) => transaction.objectStore('shelves').get(id))
     await transaction.done
-    throw new Error('A notebook with that name already exists.')
+    throw new Error(message)
   }
   const targetShelfId = shelfId ?? (await transaction.objectStore('shelves').getAll())[0]?.id
   if (!targetShelfId || !(await transaction.objectStore('shelves').get(targetShelfId))) {
@@ -789,22 +801,21 @@ export async function renameNotebook(id: string, name: string): Promise<void> {
   const cleaned = name.trim()
   if (!cleaned) throw new Error('Notebook name cannot be empty.')
   const db = await database
-  const transaction = db.transaction('notebooks', 'readwrite')
-  const notebooks = await transaction.store.getAll()
+  const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
+  const notebooksStore = transaction.objectStore('notebooks')
+  const notebooks = await notebooksStore.getAll()
   const notebook = notebooks.find((item) => item.id === id)
   if (!notebook) {
     await transaction.done
     throw new Error('Notebook not found.')
   }
-  if (
-    notebooks.some(
-      (item) => item.id !== id && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase(),
-    )
-  ) {
+  const existing = notebooks.find((item) => item.id !== id && item.name.toLocaleLowerCase() === cleaned.toLocaleLowerCase())
+  if (existing) {
+    const message = await duplicateNotebookMessage(existing, (shelfId) => transaction.objectStore('shelves').get(shelfId))
     await transaction.done
-    throw new Error('A notebook with that name already exists.')
+    throw new Error(message)
   }
-  await transaction.store.put({ ...notebook, name: cleaned, updatedAt: Date.now() })
+  await notebooksStore.put({ ...notebook, name: cleaned, updatedAt: Date.now() })
   await transaction.done
   announceChange()
 }
