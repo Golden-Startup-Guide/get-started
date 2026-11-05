@@ -412,3 +412,25 @@ software (SwiftShader), so these numbers overstate the cost on a machine with a 
 WebKit on the same machine reports the Intel GPU. The views outside the graph are unchanged:
 it is a separate chunk and runs only while the graph is shown.
 
+### Size budgets and Lighthouse in CI (November 5, 2026)
+
+Every pull request now also fails if the app grows past its budgets, or if
+Lighthouse scores drop:
+
+| Check | Budget | Now |
+|---|---|---|
+| Install download (everything precached) | 1,500 KiB | 1,307 KiB, 18 files |
+| Start-up script, gzipped | 125 KiB | 105 KiB |
+| Start-up styles, gzipped | 15 KiB | 9 KiB |
+| Lighthouse performance (mobile throttling) | 90 | 100 |
+| Lighthouse accessibility | 95 | 100 |
+| Lighthouse best practices | 90 | 100 |
+
+`npm run size` (scripts/checkSizes.mjs) measures the files the service worker
+precaches and the gzipped start-up script and styles; chunks loaded on demand
+(maths, diagrams, the graph, imports) are not limited, since nobody downloads
+them until they are used. Lighthouse runs three times on the built app with
+its mobile preset (`lighthouserc.json`, `@lhci/cli` 0.16), and the median run
+is checked; reports are kept as a CI artifact. Raise a budget only on purpose,
+with the reason in the pull request.
+

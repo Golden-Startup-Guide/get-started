@@ -38,6 +38,23 @@ jobs:
       - name: Build (type check and production bundle)
         run: npm run build
 
+      # The install download and start-up code must stay within budget (scripts/checkSizes.mjs).
+      - name: Size budgets
+        run: npm run size
+
+      # Lighthouse on the built app, with mobile CPU and network throttling: performance,
+      # accessibility, and best practices must stay at 90, 95, and 90 or better (lighthouserc.json).
+      - name: Lighthouse
+        run: npx --yes @lhci/cli@0.16.0 autorun
+
+      - name: Upload Lighthouse reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/
+          retention-days: 14
+
       # Only shipped dependencies; dev-tool advisories are tracked in docs/AUDIT.md.
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
