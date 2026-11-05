@@ -679,12 +679,20 @@ installation, the app shell can be opened offline. Notes and attachments are
 already local, so their normal read/write operations do not require a network
 connection.
 
-The precached install download (about 1.2 MB) holds only the app's core: the
+The precached install download (about 1.3 MB) holds only the app's core: the
 page, its script and styles, the note editor, the long-note preview worker, the
 code highlighter, and icons. Maths (KaTeX and its fonts) and diagrams (Mermaid,
 about 3.3 MB in 56 files) are fetched the first time a note uses them and
 then kept by the service worker, so they also work offline from then on. A note
 opened offline before that first time shows the TeX or diagram source instead.
+
+**Updates.** While the app is open it checks for a new version every hour (and
+whenever it starts). A new version downloads in the background and then waits:
+a banner says **A new version of My Notes is ready**, with **Reload to update**
+and **Later**. Reloading saves the open note first, and if the note cannot be
+saved the update waits, so nothing typed is lost. **Later** hides the banner
+until the next visit, and the new version is used from then on. The app never
+reloads by itself.
 
 Data belongs to the app's origin (scheme, hostname, and port), browser profile,
 and device where it was created. Opening the app at a different origin or in a

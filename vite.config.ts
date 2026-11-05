@@ -58,7 +58,10 @@ export default defineConfig({
     react(),
     contentSecurityPolicyPlugin(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // A new version waits until the user chooses to reload (see src/state/updateStore.ts), so
+      // the page never reloads under someone mid-edit. Registration is in src/main.tsx.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['my-notes.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'My Notes',
@@ -92,6 +95,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // The first install takes control at once, so the app works offline from the first visit.
+        clientsClaim: true,
         navigateFallback: '/index.html',
         // The install download, which every user pays, holds only the app's core: the page, its
         // script and styles, the note editor, the preview and search workers, the code highlighter,
@@ -100,6 +105,8 @@ export default defineConfig({
         globPatterns: [
           '*.{html,js,svg,png,ico,webmanifest}',
           'assets/{index,NoteEditor,markdownPreview.worker,search.worker,highlighter}-*.{js,css}',
+          // Loaded by the service worker registration in main.tsx, on every start.
+          'assets/workbox-window*.js',
         ],
         runtimeCaching: [
           {

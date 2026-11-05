@@ -20,6 +20,7 @@ import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
 import { SettingsDialog } from './features/settings/SettingsDialog'
 import { BackupReminder } from './features/backup/BackupReminder'
+import { UpdateBanner } from './features/app/UpdateBanner'
 import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
@@ -603,6 +604,7 @@ function App() {
             </div>
           </header>
           {error && <div role="alert" className="notice notice-error mb-5">{error}<button onClick={() => showError(null)} aria-label="Dismiss error"><X size={15} /></button></div>}
+          <UpdateBanner />
           <BackupReminder onOpenSettings={openSettings} />
           {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => showNotice(null)} aria-label="Dismiss notice"><X size={15} /></button></div>}
           {view.startsWith('shelf:') && (
