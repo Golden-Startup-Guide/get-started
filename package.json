@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "size": "node scripts/checkSizes.mjs",
     "fixtures:capture": "vitest run --config vitest.fixtures.config.ts",
     "test:e2e": "playwright test",
     "bench": "playwright test --config playwright.bench.config.ts"

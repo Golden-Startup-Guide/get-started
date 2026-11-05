@@ -67,7 +67,7 @@ Without AI, platforms reach the top through craft, not feature count. Obsidian w
 - **Search inside attachments:** PDF text extraction with pdf.js; optional OCR for images with Tesseract (classic OCR, not AI).
 - **Graph:** a whole-library view rendered with WebGL (for example sigma.js), with filters and a local "neighbourhood" mode (**done**, November 2026: sigma.js with a ForceAtlas2 layout in a worker, filtered by the search box, beside the existing neighbourhood explorer).
 
-### E. Speed targets, enforced in CI
+### E. Speed targets, enforced in CI (**done**, November 2026: typing, search, and start-up benchmarks, size budgets, and Lighthouse in CI)
 
 | Measure | Target |
 |---|---|
