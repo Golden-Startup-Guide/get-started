@@ -115,3 +115,25 @@ Security Policy is therefore delivered in a `<meta>` tag, which covers scripts,
 styles, connections, workers, and objects but not `frame-ancestors` (embedding
 by other sites); the app also refuses to run inside a frame. Moving to
 Cloudflare Pages or Netlify would allow real headers if that matters later.
+
+## 8. Notebook names are unique across all libraries
+
+**Decision.** No two notebooks may share a name (ignoring capitals), even in
+different libraries or on different shelves. Trying to create or rename one to
+a name in use says where the existing notebook is.
+
+**Why.** A notebook's name is how much of the app finds it:
+- note links shown as "Note — Notebook" use it to tell apart notes with the same
+  title;
+- imports and backup restores merge notebooks by name;
+- the Inbox, Templates, and Daily notes notebooks are found by name;
+- search's `notebook:` filter matches names.
+
+Allowing duplicates would make each of these ambiguous, and the confusion it
+avoids is small: a clear message when a name is taken.
+
+**Revisit if** people want the same notebook name in different libraries
+(for example "Ideas" for work and home). That would need notebooks to be named
+by their path (`Library › Shelf › Notebook`) everywhere they are shown,
+matched, and imported.
+

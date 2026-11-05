@@ -49,6 +49,10 @@ export default defineConfig({
     // Never inline fonts as data: URLs (Vite inlines small files by default): the Content Security
     // Policy only allows fonts from the app itself. KaTeX ships several fonts under 4 KB.
     assetsInlineLimit: (filePath) => (/\.(woff2?|ttf|otf|eot)$/i.test(filePath) ? false : undefined),
+    // The chunks over Vite's default 500 kB warning are all loaded on demand (the note editor,
+    // and Mermaid's diagram types); what users must download is limited by the budgets in
+    // scripts/checkSizes.mjs, which CI enforces.
+    chunkSizeWarningLimit: 800,
   },
   worker: {
     format: 'es',
