@@ -69,10 +69,24 @@ export default defineConfig({
         description: 'A quiet, private place for all the things you want to remember.',
         theme_color: '#f8f7f4',
         background_color: '#f8f7f4',
+        id: '/',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',
         scope: '/',
+        categories: ['productivity', 'utilities'],
+        // Long-press (or right-click) the app's icon for these.
+        shortcuts: [
+          { name: 'New note', url: '/?action=new' },
+          { name: 'Quick note', url: '/?action=quick' },
+          { name: 'Today’s note', url: '/?action=today' },
+        ],
+        // On Android, the installed app appears in the share menu; what is shared is saved to Inbox.
+        share_target: {
+          action: '/',
+          method: 'GET',
+          params: { title: 'share-title', text: 'share-text', url: 'share-url' },
+        },
         icons: [
           {
             src: '/icon-192.png',

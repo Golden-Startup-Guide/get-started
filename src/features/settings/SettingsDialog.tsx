@@ -10,6 +10,7 @@ import { DATABASE_VERSION, getStorageSnapshot } from '../../lib/notes'
 import { formatBytes } from '../notes/noteDisplay'
 import { AutoBackupSettings } from '../backup/AutoBackupSettings'
 import { TransferSettings } from '../transfer/TransferSettings'
+import { InstallSettings } from '../app/InstallSettings'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { changeTheme, downloadBackup, requestPersistenceFromSettings, restoreBackup } from '../../state/actions'
 import { useLibraryStore } from '../../state/libraryStore'
@@ -124,6 +125,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </section>
         <AutoBackupSettings />
         <TransferSettings />
+        <InstallSettings />
         <section className="mt-7">
           <h3 className="mb-3 text-sm font-semibold">Storage on this device</h3>
           <dl className="settings-stats">

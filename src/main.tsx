@@ -2,8 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
 import App from './App'
+import { listenForInstall } from './state/installStore'
 import { updateReady } from './state/updateStore'
 import './index.css'
+
+listenForInstall()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
