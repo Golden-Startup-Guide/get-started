@@ -47,6 +47,19 @@ describe('live preview', () => {
     expect(lineText(0)).toBe('Title')
   })
 
+  it('shows a mark only while the cursor touches it, not anywhere on its line', () => {
+    open('# Title\n**bold** text\n- item\nlast', 7)
+    expect(lineText(0)).toBe('Title')
+    view!.dispatch({ selection: { anchor: 21 } })
+    expect(lineText(1)).toBe('bold text')
+    view!.dispatch({ selection: { anchor: 11 } })
+    expect(lineText(1)).toBe('**bold** text')
+    view!.dispatch({ selection: { anchor: 28 } })
+    expect(lineText(2)).toBe('• item')
+    view!.dispatch({ selection: { anchor: 22 } })
+    expect(lineText(2)).toBe('- item')
+  })
+
   it('turns bullets into dots and task markers into checkboxes that edit the text', () => {
     open('- [ ] Water\n- [x] Compost\n- Plain\n1. First\nEnd')
     const boxes = view!.contentDOM.querySelectorAll<HTMLInputElement>('input.cm-lp-checkbox')
