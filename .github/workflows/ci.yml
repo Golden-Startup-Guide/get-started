@@ -53,6 +53,8 @@ jobs:
         with:
           name: lighthouse-reports
           path: .lighthouseci/
+          # The folder's name starts with a dot, which upload-artifact skips unless told otherwise.
+          include-hidden-files: true
           retention-days: 14
 
       # Only shipped dependencies; dev-tool advisories are tracked in docs/AUDIT.md.
