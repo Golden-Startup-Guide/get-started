@@ -666,7 +666,8 @@ describe('Knowledge Library workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Start reading' })).toBeInTheDocument()
     const libraries = screen.getByRole('region', { name: 'Explore libraries' })
     expect(within(libraries).getByRole('button', { name: /^Health & Wellbeing/ })).toBeInTheDocument()
-    expect(within(libraries).getByRole('button', { name: /^My notes/ })).toBeInTheDocument()
+    // Home is drawn before the library loads; personal libraries join the tiles once it has.
+    expect(await within(libraries).findByRole('button', { name: /^My notes/ })).toBeInTheDocument()
 
     // Recently added lists the Welcome note and the handbooks; opening one is remembered.
     const recent = await screen.findByRole('region', { name: 'Recently added' })
