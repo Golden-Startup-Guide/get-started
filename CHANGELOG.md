@@ -5,7 +5,9 @@ a **major** version may need something from you (a new backup format, say), a **
 adds features, and a **patch** fixes problems. The app updates itself, asking first; see
 [docs/RELEASING.md](docs/RELEASING.md) for how releases are made.
 
-## [Unreleased]
+## [1.1.0] - 2026-11-06
+
+Notes that read like documents, and a plan for what comes next.
 
 ### Changed
 - Note cards show the start of each note formatted, as headings, bullets, and checkboxes, instead of its raw text with `#`, `**`, and `|` marks. Tables, code, formulas, diagrams, and images appear as a labelled chip.
