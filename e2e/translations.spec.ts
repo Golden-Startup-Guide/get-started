@@ -30,7 +30,10 @@ test('shows no English text on the main screens in Spanish', async ({ page, brow
       }
       return values
     })
-    for (const text of texts) {
+    for (const raw of texts) {
+      // The app's name is a name, the same in every language.
+      const text = raw.replace(/(The Personal )?Knowledge Library/g, '').trim()
+      if (!text) continue
       for (const key of english) if (text === key || (key.length > 12 && text.includes(key))) found.add(`${screen}: ${key}`)
     }
   }
