@@ -1,6 +1,7 @@
-import { useState, type FormEvent, type RefObject } from 'react'
+import { useMemo, useState, type FormEvent, type RefObject } from 'react'
 import {
   Archive,
+  BookOpen,
   CalendarDays,
   ChevronDown,
   FileText,
@@ -26,6 +27,7 @@ import {
 } from '../../state/actions'
 import { sameSearch } from '../../lib/savedSearches'
 import { useLibraryStore } from '../../state/libraryStore'
+import { CORE_CATALOG, useCoreStore } from '../../state/coreStore'
 import { useWorkspaceStore, type View } from '../../state/workspaceStore'
 import type { Library } from '../../types'
 import { FALLBACK_FOCUS_ID } from './DeleteStructureDialog'
@@ -77,6 +79,23 @@ export function LibrarySidebar({
   const [notebookName, setNotebookName] = useState('')
   const [shelfNames, setShelfNames] = useState<Record<string, string>>({})
   const isDrawer = isCompactNavigation && navigationOpen
+  const coreNotes = useCoreStore((state) => state.notes)
+  const coreLoaded = useCoreStore((state) => state.loaded)
+  // Handbook note counts per library, shelf, and notebook, once their notes have loaded.
+  const coreCounts = useMemo(() => {
+    if (!coreLoaded) return undefined
+    const counts = new Map<string, number>()
+    const add = (id: string) => counts.set(id, (counts.get(id) ?? 0) + 1)
+    const shelfOf = new Map(CORE_CATALOG.notebooks.map((notebook) => [notebook.id, notebook.shelfId]))
+    const libraryOf = new Map(CORE_CATALOG.shelves.map((shelf) => [shelf.id, shelf.libraryId]))
+    for (const note of coreNotes) {
+      const shelfId = shelfOf.get(note.notebookId) ?? ''
+      add(note.notebookId)
+      add(shelfId)
+      add(libraryOf.get(shelfId) ?? '')
+    }
+    return counts
+  }, [coreNotes, coreLoaded])
   const shelfOptions = shelves.map((shelf) => ({
     id: shelf.id,
     label: `${libraries.find((library) => library.id === shelf.libraryId)?.name ?? 'Library'} · ${shelf.name}`,
@@ -166,6 +185,68 @@ export function LibrarySidebar({
           </nav>
         </div>
       ) : null}
+      <div className="library-tree mt-8 min-w-0">
+        <div className="mb-2 flex items-center justify-between px-2">
+          <h2 className="section-label">{t("Handbooks")}</h2>
+          <span className="text-xs text-[var(--muted)]">{CORE_CATALOG.libraries.length}</span>
+        </div>
+        {/* Built-in and read-only: no menus or forms to change them. */}
+        <nav aria-label={t("Handbooks")} className="min-w-0 space-y-3">
+          {CORE_CATALOG.libraries.map((library) => {
+            const libraryShelves = CORE_CATALOG.shelves.filter((shelf) => shelf.libraryId === library.id)
+            const libraryExpanded = !collapsedLibraries.includes(library.id)
+            return (
+              <div key={library.id} className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1">
+                  <button
+                    className="icon-button tree-disclosure !h-8 !w-8 shrink-0"
+                    aria-label={libraryExpanded ? t('Collapse {name}', { name: library.name }) : t('Expand {name}', { name: library.name })}
+                    aria-expanded={libraryExpanded}
+                    aria-controls={`library-contents-${library.id}`}
+                    onClick={() => toggleLibrary(library.id)}
+                  >
+                    <ChevronDown size={15} aria-hidden="true" />
+                  </button>
+                  <NavButton
+                    active={view === `library:${library.id}`}
+                    label={library.name}
+                    count={coreCounts?.get(library.id)}
+                    onClick={() => onNavigate(`library:${library.id}`)}
+                    icon={<BookOpen size={16} />}
+                    className="min-w-0 flex-1 !w-auto"
+                  />
+                </div>
+                <div id={`library-contents-${library.id}`} role="group" aria-label={`${library.name} shelves`} hidden={!libraryExpanded} className="ms-3 min-w-0 border-s border-[var(--border)] ps-2">
+                  {libraryShelves.map((shelf) => (
+                    <div key={shelf.id} className="mb-2">
+                      <NavButton
+                        active={view === `shelf:${shelf.id}`}
+                        label={shelf.name}
+                        count={coreCounts?.get(shelf.id)}
+                        onClick={() => onNavigate(`shelf:${shelf.id}`)}
+                        icon={<Layers3 size={15} />}
+                        className="min-w-0"
+                      />
+                      {CORE_CATALOG.notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
+                        <div key={notebook.id} className="library-tree-notebook ms-3 min-w-0">
+                          <NavButton
+                            active={view === `notebook:${notebook.id}`}
+                            label={notebook.name}
+                            count={coreCounts?.get(notebook.id)}
+                            onClick={() => onNavigate(`notebook:${notebook.id}`)}
+                            icon={<Archive size={15} />}
+                            className="min-w-0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </nav>
+      </div>
       <div className="library-tree mt-8 min-w-0">
         <div className="mb-2 flex items-center justify-between px-2">
           <h2 className="section-label">{t("Your Library")}</h2>

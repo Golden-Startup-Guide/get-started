@@ -1,0 +1,504 @@
+{
+ "description": "Made by the storage code at commit 1df5e85 (plus any uncommitted changes), the latest when captured.",
+ "name": "my-notes",
+ "version": 7,
+ "stores": [
+  {
+   "name": "attachments",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-note",
+     "keyPath": "noteId",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "e4869411-f2c7-4e01-bf0d-8a6690150927",
+     "value": {
+      "id": "e4869411-f2c7-4e01-bf0d-8a6690150927",
+      "noteId": "fixture-garden",
+      "name": "bytes.bin",
+      "type": "application/octet-stream",
+      "size": 6,
+      "createdAt": 1768471440000,
+      "data": {
+       "$arrayBuffer": "AAEC/f7/"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "history",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-note",
+     "keyPath": "noteId",
+     "unique": false,
+     "multiEntry": false
+    },
+    {
+     "name": "by-saved-at",
+     "keyPath": "savedAt",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "8512d32c-49c5-4025-94f9-9c92b6770979",
+     "value": {
+      "id": "8512d32c-49c5-4025-94f9-9c92b6770979",
+      "noteId": "fixture-garden",
+      "savedAt": 1768471320000,
+      "snapshot": {
+       "id": "fixture-garden",
+       "title": "Garden plan",
+       "content": "# Garden\n\n- [ ] Sow basil\n- [x] Order seeds\n\nCafé ✓ — **bold** and `code`",
+       "createdAt": 1768471260000,
+       "updatedAt": 1768471260000,
+       "notebookId": "8689d622-9ae5-4f34-84df-a8254f2c2873",
+       "tags": [
+        "Garden",
+        "Plans"
+       ],
+       "pinned": true,
+       "favorite": false
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "libraries",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-name",
+     "keyPath": "name",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "fa66eab7-9a6d-457a-b969-6db9397ebb6f",
+     "value": {
+      "id": "fa66eab7-9a6d-457a-b969-6db9397ebb6f",
+      "name": "Fixture library",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-library",
+     "value": {
+      "id": "starter-library",
+      "name": "Personal Library",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    }
+   ]
+  },
+  {
+   "name": "noteLinks",
+   "keyPath": [
+    "sourceNoteId",
+    "targetNoteId"
+   ],
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-source",
+     "keyPath": "sourceNoteId",
+     "unique": false,
+     "multiEntry": false
+    },
+    {
+     "name": "by-target",
+     "keyPath": "targetNoteId",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": [
+      "fixture-recipes",
+      "fixture-garden"
+     ],
+     "value": {
+      "sourceNoteId": "fixture-recipes",
+      "targetNoteId": "fixture-garden"
+     }
+    }
+   ]
+  },
+  {
+   "name": "notebooks",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-name",
+     "keyPath": "name",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "8689d622-9ae5-4f34-84df-a8254f2c2873",
+     "value": {
+      "id": "8689d622-9ae5-4f34-84df-a8254f2c2873",
+      "name": "Fixture notebook",
+      "shelfId": "693600ea-4019-46c7-9904-bab91654958d",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-health",
+     "value": {
+      "id": "starter-health",
+      "name": "Health Handbook",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000,
+      "shelfId": "starter-shelf"
+     }
+    },
+    {
+     "key": "starter-ideas",
+     "value": {
+      "id": "starter-ideas",
+      "name": "Ideas",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000,
+      "shelfId": "starter-shelf"
+     }
+    },
+    {
+     "key": "starter-personal",
+     "value": {
+      "id": "starter-personal",
+      "name": "Personal",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000,
+      "shelfId": "starter-shelf"
+     }
+    },
+    {
+     "key": "starter-research",
+     "value": {
+      "id": "starter-research",
+      "name": "Research",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000,
+      "shelfId": "starter-shelf"
+     }
+    },
+    {
+     "key": "starter-work",
+     "value": {
+      "id": "starter-work",
+      "name": "Work",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000,
+      "shelfId": "starter-shelf"
+     }
+    }
+   ]
+  },
+  {
+   "name": "notes",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-notebook",
+     "keyPath": "notebookId",
+     "unique": false,
+     "multiEntry": false
+    },
+    {
+     "name": "by-tags",
+     "keyPath": "tags",
+     "unique": false,
+     "multiEntry": true
+    },
+    {
+     "name": "by-updated",
+     "keyPath": "updatedAt",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "fixture-garden",
+     "value": {
+      "id": "fixture-garden",
+      "title": "Garden plan",
+      "content": "# Garden\n\n- [ ] Sow basil\n- [x] Order seeds\n\nCafé ✓ — **bold** and `code`\n\nA later edit",
+      "createdAt": 1768471260000,
+      "updatedAt": 1768471440000,
+      "notebookId": "8689d622-9ae5-4f34-84df-a8254f2c2873",
+      "tags": [
+       "Garden",
+       "Plans"
+      ],
+      "pinned": true,
+      "favorite": false
+     }
+    },
+    {
+     "key": "fixture-old",
+     "value": {
+      "id": "fixture-old",
+      "title": "Old list",
+      "content": "Done with this",
+      "createdAt": 1768471440000,
+      "updatedAt": 1768471440000,
+      "notebookId": "8689d622-9ae5-4f34-84df-a8254f2c2873",
+      "tags": [
+       "Archive"
+      ],
+      "pinned": false,
+      "favorite": false,
+      "deletedAt": 1768471440000
+     }
+    },
+    {
+     "key": "fixture-recipes",
+     "value": {
+      "id": "fixture-recipes",
+      "title": "Recipes",
+      "content": "Pesto: basil, garlic, pine nuts",
+      "createdAt": 1768471380000,
+      "updatedAt": 1768471380000,
+      "notebookId": "8689d622-9ae5-4f34-84df-a8254f2c2873",
+      "tags": [
+       "Recipes"
+      ],
+      "favorite": true,
+      "pinned": false
+     }
+    },
+    {
+     "key": "starter-note-health",
+     "value": {
+      "id": "starter-note-health",
+      "title": "Health handbook",
+      "content": "A private place for health information you want close at hand.\n\n## Contacts\n| Who | Phone | Notes |\n|---|---|---|\n| Doctor | | |\n| Pharmacy | | |\n\n## Medications\n| Name | Dose | When |\n|---|---|---|\n| | | |\n\n## Appointments\n- [ ] Next check-up:\n\n## Log\nDate: notes on how you feel, symptoms, or questions for your next visit.",
+      "notebookId": "starter-health",
+      "createdAt": 1768471199996,
+      "updatedAt": 1768471199996,
+      "tags": [],
+      "pinned": false,
+      "favorite": false
+     }
+    },
+    {
+     "key": "starter-note-ideas",
+     "value": {
+      "id": "starter-note-ideas",
+      "title": "Idea capture",
+      "content": "Write the idea down first; shape it later.\n\n## The idea\nIn one sentence:\n\n## Why it matters\n-\n\n## Next small step\n- [ ] Spend 15 minutes exploring it\n- [ ] Link related notes",
+      "notebookId": "starter-ideas",
+      "createdAt": 1768471199998,
+      "updatedAt": 1768471199998,
+      "tags": [],
+      "pinned": false,
+      "favorite": false
+     }
+    },
+    {
+     "key": "starter-note-research",
+     "value": {
+      "id": "starter-note-research",
+      "title": "Research notes",
+      "content": "## Question\nWhat am I trying to find out?\n\n## Sources\n1. Title, author, link or book page\n\n## Key findings\n- Finding, with the source it came from\n\n## Open questions\n-\n\nTip: give each topic its own note and connect them under **Linked notes** to build up a knowledge graph.",
+      "notebookId": "starter-research",
+      "createdAt": 1768471199997,
+      "updatedAt": 1768471199997,
+      "tags": [],
+      "pinned": false,
+      "favorite": false
+     }
+    },
+    {
+     "key": "starter-note-welcome",
+     "value": {
+      "id": "starter-note-welcome",
+      "title": "Welcome to your Knowledge Library",
+      "content": "Your notes stay in this browser. Nothing is sent anywhere, and the app works offline.\n\n## Getting around\n- **Libraries, shelves, and notebooks** in the sidebar organize your notes, from broad to specific.\n- **Search** looks through titles, text, notebooks, and tags.\n- **Favorites** and **pins** keep important notes close.\n\n## Writing\nJust type. The buttons above the note make text **bold** or *italic* and add headings, lists, and checklists. You can also type / at the start of a line to pick one.\n\n- [ ] Tick this box to try a checklist\n- [ ] Add a tag to this note\n- [ ] Link to another note with the **Link to a note** button, like [[Weekly plan]]\n\n## Keeping your notes safe\nExport a backup from **Settings** now and then, and keep it somewhere other than this browser.\n\nDelete this note whenever you like.",
+      "notebookId": "starter-personal",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000,
+      "tags": [],
+      "pinned": false,
+      "favorite": false
+     }
+    },
+    {
+     "key": "starter-note-work",
+     "value": {
+      "id": "starter-note-work",
+      "title": "Weekly plan",
+      "content": "## This week's focus\n-\n\n## Tasks\n- [ ] Review last week's notes\n- [ ] Plan the three most important tasks\n- [ ] Block time for focused work\n\n## Meetings\n| Day | Meeting | Notes |\n|---|---|---|\n| Monday | | |\n\n## Wins and lessons\n- ",
+      "notebookId": "starter-work",
+      "createdAt": 1768471199999,
+      "updatedAt": 1768471199999,
+      "tags": [],
+      "pinned": false,
+      "favorite": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "reading",
+   "keyPath": "noteId",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-opened",
+     "keyPath": "openedAt",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "fixture-garden",
+     "value": {
+      "noteId": "fixture-garden",
+      "openedAt": 1768471440000
+     }
+    }
+   ]
+  },
+  {
+   "name": "settings",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [],
+   "records": [
+    {
+     "key": "preferences",
+     "value": {
+      "id": "preferences",
+      "theme": "dark",
+      "paper": false,
+      "editorMode": "source",
+      "savedSearches": [
+       {
+        "id": "382fc5b9-158d-451c-acbe-a9dbe8a41e5a",
+        "name": "Open tasks",
+        "query": "has:task"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "shelves",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-library",
+     "keyPath": "libraryId",
+     "unique": false,
+     "multiEntry": false
+    },
+    {
+     "name": "by-name",
+     "keyPath": "name",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "3c8b753a-ae59-47f1-b2af-3c15f6716fdc",
+     "value": {
+      "id": "3c8b753a-ae59-47f1-b2af-3c15f6716fdc",
+      "libraryId": "fa66eab7-9a6d-457a-b969-6db9397ebb6f",
+      "name": "General",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "693600ea-4019-46c7-9904-bab91654958d",
+     "value": {
+      "id": "693600ea-4019-46c7-9904-bab91654958d",
+      "libraryId": "fa66eab7-9a6d-457a-b969-6db9397ebb6f",
+      "name": "Fixture shelf",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    },
+    {
+     "key": "starter-shelf",
+     "value": {
+      "id": "starter-shelf",
+      "libraryId": "starter-library",
+      "name": "General",
+      "createdAt": 1768471200000,
+      "updatedAt": 1768471200000
+     }
+    }
+   ]
+  },
+  {
+   "name": "tags",
+   "keyPath": "id",
+   "autoIncrement": false,
+   "indexes": [
+    {
+     "name": "by-label",
+     "keyPath": "label",
+     "unique": false,
+     "multiEntry": false
+    }
+   ],
+   "records": [
+    {
+     "key": "garden",
+     "value": {
+      "id": "garden",
+      "label": "Garden",
+      "count": 1
+     }
+    },
+    {
+     "key": "plans",
+     "value": {
+      "id": "plans",
+      "label": "Plans",
+      "count": 1
+     }
+    },
+    {
+     "key": "recipes",
+     "value": {
+      "id": "recipes",
+      "label": "Recipes",
+      "count": 1
+     }
+    }
+   ]
+  }
+ ]
+}

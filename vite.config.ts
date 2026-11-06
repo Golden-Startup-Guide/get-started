@@ -1,7 +1,9 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { fileURLToPath } from 'node:url'
 import { version } from './package.json'
+import { coreContentPlugin } from './scripts/coreContent'
 
 // Production only: the dev server injects an inline script (React refresh) that this
 // policy would block. Remote https images are allowed because the preview loads them on
@@ -68,6 +70,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    coreContentPlugin(fileURLToPath(new URL('./content', import.meta.url))),
     contentSecurityPolicyPlugin(),
     VitePWA({
       // A new version waits until the user chooses to reload (see src/state/updateStore.ts), so
@@ -133,6 +136,9 @@ export default defineConfig({
           'assets/{index,NoteEditor,markdownPreview.worker,search.worker,highlighter,htmlToMarkdown}-*.{js,css}',
           // Loaded by the service worker registration in main.tsx, on every start.
           'assets/workbox-window*.js',
+          // The built-in handbooks, one file per library (scripts/coreContent.ts): readable offline
+          // from the first launch.
+          'assets/core-*.js',
         ],
         runtimeCaching: [
           {

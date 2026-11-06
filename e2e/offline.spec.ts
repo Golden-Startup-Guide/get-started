@@ -46,3 +46,19 @@ test('keeps maths and diagrams working offline once a note has shown them', asyn
     await context.setOffline(false)
   }
 })
+
+test('opens a built-in handbook note offline, straight from its address', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Playwright emulates offline service workers reliably only in Chromium')
+  await openWorkspace(page)
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
+
+  await context.setOffline(true)
+  try {
+    // Never opened online: the handbook and the reader must both come from the install.
+    await page.goto('/#/notebook/core-everyday-nutrition?note=core-staying-hydrated')
+    const reader = page.getByRole('dialog', { name: 'Staying hydrated' })
+    await expect(reader.getByRole('heading', { name: 'Keep water close' })).toBeVisible()
+  } finally {
+    await context.setOffline(false)
+  }
+})

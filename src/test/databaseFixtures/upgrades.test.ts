@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { IDBFactory } from 'fake-indexeddb'
 import { describe, expect, it, vi } from 'vitest'
-import type { AppSettings, Notebook, Note, NoteHistoryEntry, NoteLink } from '../../types'
+import type { AppSettings, Notebook, Note, NoteHistoryEntry, NoteLink, ReadingRecord } from '../../types'
 import { readText } from '../../features/backup/backupFolder'
 import { fixtureRecords, restoreDatabase, type DatabaseFixture } from './fixtureFormat'
 
@@ -85,6 +85,9 @@ describe('upgrading databases from past versions', () => {
       expect(links).toHaveLength(fixtureRecords(fixture, 'noteLinks').length)
       const savedSettings = (fixtureRecords(fixture, 'settings') as AppSettings[])[0]
       expect(settings).toEqual(savedSettings ?? { id: 'preferences', theme: 'system' })
+      // What was last opened, from version 7 on; older versions start with none.
+      const reading = fixtureRecords(fixture, 'reading') as ReadingRecord[]
+      expect((await storage.getLastReading())?.noteId).toBe(reading.sort((a, b) => b.openedAt - a.openedAt)[0]?.noteId)
 
       // Consistent: the start-up check finds nothing to repair.
       const library = { notes, trash, notebooks, shelves, libraries, tags, links }

@@ -8,6 +8,8 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 ## [Unreleased]
 
 ### Added
+- **Built-in handbooks**: Health & Wellbeing, Agriculture, and Financial Literacy, listed under Handbooks in the sidebar and readable offline from the first launch. They are read-only; **Make a personal copy** or **Write a note about this** to work with one, and link to them from your notes with `[[Title]]`. The first handbooks are short drafts, labelled as such.
+- The app remembers the note you opened last, for "Continue reading" on the coming Home page (database version 7; upgrades are automatic).
 - Every page and note has its own address, so **Back** and **Forward** work, a reload keeps your place, and pages can be bookmarked. A missing page or note is explained rather than shown blank.
 - A breadcrumb on every page; on phones, a link up a level and a **Page location** button.
 - The collapsed sidebar becomes a rail of named icons instead of disappearing, and a **Skip to main content** link comes first.

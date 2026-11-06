@@ -2046,3 +2046,81 @@ html[data-theme='dark'] .workspace {
     grid-row: 1;
   }
 }
+
+/* A handbook library, shelf, or notebook: what it is for, under its title. */
+.handbook-description {
+  max-width: 42rem;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* The handbook reader: one comfortable reading column (the full reading room is phase 6). */
+.handbook-note {
+  display: flex;
+  flex-direction: column;
+}
+
+.handbook-body {
+  padding: 2rem 1.25rem 2.5rem;
+}
+
+.handbook-column {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.handbook-type {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.handbook-title {
+  margin-top: 0.4rem;
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.handbook-summary {
+  margin-top: 0.6rem;
+  color: var(--muted);
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  line-height: 1.55;
+}
+
+.handbook-meta {
+  margin-top: 0.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* Marked by words, not only colour. */
+.handbook-draft {
+  display: inline-block;
+  border: 1px solid var(--ochre);
+  border-radius: 999px;
+  color: var(--text);
+  padding: 0.15rem 0.6rem;
+}
+
+.workspace .handbook-text {
+  margin-top: 1.5rem;
+  font-size: 1.075rem;
+  line-height: 1.75;
+}
+
+.handbook-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}

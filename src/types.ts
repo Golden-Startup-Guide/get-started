@@ -91,3 +91,60 @@ export interface NoteAttachment {
   createdAt: number
   blob: Blob
 }
+
+/**
+ * Built-in handbook content: curated, shipped with the app, readable offline, and never edited in
+ * place or stored in the database. Written in content/ and compiled by scripts/coreContent.ts.
+ */
+export type CoreNoteType = 'Article' | 'Guide' | 'Chapter' | 'Handbook'
+
+export interface CoreLibrary extends Library {
+  source: 'core'
+  description: string
+  order: number
+}
+
+export interface CoreShelf extends Shelf {
+  source: 'core'
+  description: string
+  order: number
+}
+
+export interface CoreNotebook extends Notebook {
+  source: 'core'
+  shelfId: string
+  description: string
+  order: number
+}
+
+export interface CoreNote extends Note {
+  source: 'core'
+  notebookId: string
+  summary: string
+  type: CoreNoteType
+  /** Position in its notebook. */
+  order: number
+  /** The day it was added, YYYY-MM-DD. */
+  added: string
+  /** Not final yet; labelled Draft. */
+  draft?: boolean
+  /** Who reviewed it and when, for health and money guidance. */
+  reviewed?: string
+}
+
+/** Everything about the handbooks except the notes' text, which loads per library. */
+export interface CoreCatalog {
+  /** Changes whenever any handbook file changes. */
+  version: string
+  libraries: CoreLibrary[]
+  shelves: CoreShelf[]
+  notebooks: CoreNotebook[]
+}
+
+/** A note the reader opened: kept for "Continue reading" (src/lib/notes.ts, the reading store). */
+export interface ReadingRecord {
+  noteId: string
+  openedAt: number
+  /** How far through the note the reader was, from 0 to 1, once saved. */
+  position?: number
+}

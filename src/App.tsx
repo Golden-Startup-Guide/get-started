@@ -27,11 +27,16 @@ import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
 import { LibraryHome } from './features/library/LibraryHome'
+import { HandbookLibraryHome } from './features/library/HandbookLibraryHome'
+import { LazyHandbookNote } from './features/notes/LazyHandbookNote'
+import { CORE_CATALOG, useCoreStore } from './state/coreStore'
+import { isCoreId } from './lib/core'
+import { recordReading } from './lib/notes'
 import { LibrarySidebar } from './features/library/LibrarySidebar'
 import { Breadcrumb, type Crumb } from './features/library/Breadcrumb'
 import { CollapsedRail } from './features/library/CollapsedRail'
 import { useRouting } from './features/app/useRouting'
-import { notebookForNewNote, shelfForNewNotebook } from './features/library/placement'
+import { isHandbookView, notebookForNewNote, shelfForNewNotebook } from './features/library/placement'
 import {
   changeTheme,
   createNotebookOnShelf,
@@ -59,7 +64,7 @@ import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery, pruneSear
 import { findSavedSearch } from './lib/savedSearches'
 import { DAILY_NOTEBOOK, dailyNoteContent, fillTemplate, findDailyNote, isoDate } from './lib/templates'
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
-import type { Note, NoteLink } from './types'
+import type { CoreNote, Note, NoteLink } from './types'
 import './workspace.css'
 import { t, tp } from './i18n/i18n'
 
@@ -88,6 +93,9 @@ function App() {
   const attachedNoteIds = useLibraryStore((state) => state.attachedNoteIds)
   const settings = useLibraryStore((state) => state.settings)
   const isLoading = useLibraryStore((state) => state.isLoading)
+  const coreNotes = useCoreStore((state) => state.notes)
+  const coreLoaded = useCoreStore((state) => state.loaded)
+  const coreFailed = useCoreStore((state) => state.failed)
   const refresh = useLibraryStore((state) => state.refresh)
   const view = useWorkspaceStore((state) => state.view)
   const query = useWorkspaceStore((state) => state.query)
@@ -140,6 +148,23 @@ function App() {
       stopSync()
     }
   }, [])
+
+  // The handbooks' text, once the library has loaded and the page is idle (a handbook page or
+  // address loads it at once).
+  useEffect(() => {
+    if (isLoading) return
+    const load = () => void useCoreStore.getState().load()
+    if (isHandbookView(useWorkspaceStore.getState().view)) return load()
+    if (window.requestIdleCallback) {
+      const handle = window.requestIdleCallback(load, { timeout: 4000 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const timer = window.setTimeout(load, 1500)
+    return () => window.clearTimeout(timer)
+  }, [isLoading])
+  useEffect(() => {
+    if (isHandbookView(view)) void useCoreStore.getState().load()
+  }, [view])
 
   // Once the library has loaded, check it for damage (in idle time, so start-up never waits).
   useEffect(() => {
@@ -198,7 +223,14 @@ function App() {
     }
   }, [isCompactNavigation, navigationOpen, setNavigationOpen])
 
-  const notebookNames = useMemo(() => new Map(notebooks.map((notebook) => [notebook.id, notebook.name])), [notebooks])
+  // Handbook and personal libraries, shelves, and notebooks, for finding names and places; changes
+  // only ever go to the personal ones.
+  const allLibraries = useMemo(() => [...CORE_CATALOG.libraries, ...libraries], [libraries])
+  const allShelves = useMemo(() => [...CORE_CATALOG.shelves, ...shelves], [shelves])
+  const allNotebooks = useMemo(() => [...CORE_CATALOG.notebooks, ...notebooks], [notebooks])
+  // Every note a [[link]] can reach: personal notes first, then handbook notes.
+  const linkableNotes = useMemo(() => (coreNotes.length ? [...notes, ...coreNotes] : notes), [notes, coreNotes])
+  const notebookNames = useMemo(() => new Map(allNotebooks.map((notebook) => [notebook.id, notebook.name])), [allNotebooks])
   const notebookName = useCallback((note: Note) => notebookNames.get(note.notebookId ?? '') ?? 'Personal', [notebookNames])
   const graphNotes = useMemo(() => [...notes, ...trash], [notes, trash])
   const linkLabels = useMemo(() => buildNoteLinkLabels(graphNotes, notebooks), [graphNotes, notebooks])
@@ -216,7 +248,7 @@ function App() {
 
   // Sorting depends only on the notes, not the search, so typing never re-sorts the library.
   const sortedNotes = useMemo(() => sortNotes(notes), [notes])
-  const locations = useMemo(() => buildLocations(notebooks, shelves, libraries), [notebooks, shelves, libraries])
+  const locations = useMemo(() => buildLocations(allNotebooks, allShelves, allLibraries), [allNotebooks, allShelves, allLibraries])
   const searchQuery = useMemo(() => parseSearchQuery(query), [query])
   // Large libraries are searched in a worker; while it answers, the previous results stay shown
   // and the count reads "Searching…". Smaller ones search here, instantly.
@@ -261,6 +293,17 @@ function App() {
     const selectedTag = view.startsWith('tag:') ? view.slice('tag:'.length) : undefined
     const shelfOfNotebook = new Map(notebooks.map((notebook) => [notebook.id, notebook.shelfId]))
     const searching = !isEmptyQuery(searchQuery)
+    // A handbook library, shelf, or notebook shows its handbook notes, in notebook order.
+    if (isHandbookView(view)) {
+      const shelfOfCoreNotebook = new Map(CORE_CATALOG.notebooks.map((notebook) => [notebook.id, notebook.shelfId]))
+      const libraryOfCoreShelf = new Map(CORE_CATALOG.shelves.map((shelf) => [shelf.id, shelf.libraryId]))
+      const id = view.slice(view.indexOf(':') + 1)
+      return coreNotes.filter((note) => {
+        const shelfId = shelfOfCoreNotebook.get(note.notebookId)
+        const inScope = note.notebookId === id || shelfId === id || libraryOfCoreShelf.get(shelfId ?? '') === id
+        return inScope && (!searching || matchesQuery(note, searchQuery, locations, attachedNoteIds))
+      })
+    }
     const inView = (note: Note) => {
       if (view === 'trash' && note.deletedAt === undefined) return false
       if (view !== 'trash' && note.deletedAt !== undefined) return false
@@ -283,7 +326,7 @@ function App() {
     }
     const ordered = view === 'trash' ? trash : sortedNotes
     return ordered.filter((note) => inView(note) && (!searching || matchesQuery(note, searchQuery, locations, attachedNoteIds)))
-  }, [attachedNoteIds, listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, useWorkerResults, workerSearch.ids])
+  }, [attachedNoteIds, coreNotes, listPosition, locations, noteById, notebooks, searchQuery, sortedNotes, trash, view, useWorkerResults, workerSearch.ids])
 
   // In the graph, the search narrows the notes shown.
   const graphMatches = useMemo(
@@ -293,8 +336,8 @@ function App() {
 
   // Forget the cached search text of notes deleted for good.
   useEffect(() => {
-    pruneSearchCache([...notes, ...trash].map((note) => note.id))
-  }, [notes, trash])
+    pruneSearchCache([...notes, ...trash, ...coreNotes].map((note) => note.id))
+  }, [notes, trash, coreNotes])
 
   const viewLabel = view === 'all'
     ? t('All Notes')
@@ -305,23 +348,28 @@ function App() {
       : view === 'graph'
         ? t('Knowledge Graph')
       : view.startsWith('library:')
-        ? libraries.find((item) => item.id === view.slice(8))?.name ?? t('Library')
+        ? allLibraries.find((item) => item.id === view.slice(8))?.name ?? t('Library')
       : view.startsWith('shelf:')
-        ? shelves.find((item) => item.id === view.slice(6))?.name ?? t('Shelf')
+        ? allShelves.find((item) => item.id === view.slice(6))?.name ?? t('Shelf')
       : view.startsWith('notebook:')
-        ? notebooks.find((item) => item.id === view.slice(9))?.name ?? t('Notebook')
+        ? allNotebooks.find((item) => item.id === view.slice(9))?.name ?? t('Notebook')
         : tags.find((item) => item.id === view.slice(4))?.label ?? t('Tag')
   const activeShelf = view.startsWith('shelf:')
-    ? shelves.find((shelf) => shelf.id === view.slice(6))
+    ? allShelves.find((shelf) => shelf.id === view.slice(6))
     : undefined
   const activeNotebook = view.startsWith('notebook:')
-    ? notebooks.find((notebook) => notebook.id === view.slice(9))
+    ? allNotebooks.find((notebook) => notebook.id === view.slice(9))
     : undefined
   const activeNotebookShelf = activeNotebook
-    ? shelves.find((shelf) => shelf.id === activeNotebook.shelfId)
+    ? allShelves.find((shelf) => shelf.id === activeNotebook.shelfId)
+    : undefined
+  const handbookView = isHandbookView(view)
+  // What a handbook library, shelf, or notebook is for, under its title.
+  const handbookDescription = handbookView
+    ? [...CORE_CATALOG.libraries, ...CORE_CATALOG.shelves, ...CORE_CATALOG.notebooks].find((item) => item.id === view.slice(view.indexOf(':') + 1))?.description
     : undefined
   const libraryCrumb = (libraryId: string): Crumb => ({
-    label: libraries.find((library) => library.id === libraryId)?.name ?? t('Library'),
+    label: allLibraries.find((library) => library.id === libraryId)?.name ?? t('Library'),
     view: `library:${libraryId}`,
   })
   // The levels above the current page; the page itself is the heading.
@@ -332,6 +380,15 @@ function App() {
         ...(activeShelf ? [libraryCrumb(activeShelf.libraryId)] : []),
         ...(activeNotebookShelf ? [libraryCrumb(activeNotebookShelf.libraryId), { label: activeNotebookShelf.name, view: `shelf:${activeNotebookShelf.id}` as View }] : []),
       ]
+
+  // A handbook note's [[links]] reach handbook notes first, then personal ones.
+  const handbookLinkTargets = useMemo(() => [...coreNotes, ...notes], [coreNotes, notes])
+
+  // Remember what was opened, for "Continue reading". A new note counts from when it is next opened.
+  const openedNoteId = activeNote && !isCreating ? activeNote.id : undefined
+  useEffect(() => {
+    if (openedNoteId) void recordReading(openedNoteId).catch(() => undefined)
+  }, [openedNoteId])
 
   useRouting({
     ready: !isLoading,
@@ -416,6 +473,32 @@ function App() {
 
   function openNewNote() {
     openDraft()
+  }
+
+  /** "Library / Shelf / Notebook" for a handbook note. */
+  function handbookLocation(note: CoreNote): string {
+    const notebook = CORE_CATALOG.notebooks.find((item) => item.id === note.notebookId)
+    const shelf = CORE_CATALOG.shelves.find((item) => item.id === notebook?.shelfId)
+    const library = CORE_CATALOG.libraries.find((item) => item.id === shelf?.libraryId)
+    return [library?.name, shelf?.name, notebook?.name].filter(Boolean).join(' / ')
+  }
+
+  /** A personal, editable copy of a handbook note, ending with a link back to it. */
+  function copyHandbookNote(note: CoreNote) {
+    const notebookId = notebookForNewNote('all', notebooks, shelves)
+    openDraft({ title: note.title, content: `${note.content}
+
+---
+${t('Copied from the handbook note [[{title}]].', { title: note.title })}
+`, notebookId })
+  }
+
+  /** A new personal note about a handbook note, linking to it. */
+  function writeAboutHandbookNote(note: CoreNote) {
+    const notebookId = notebookForNewNote('all', notebooks, shelves)
+    openDraft({ title: t('Notes on {title}', { title: note.title }), content: `${t('About [[{title}]]:', { title: note.title })}
+
+`, notebookId })
   }
 
   /** Today's note in the Daily notes notebook, started from the "Daily note" template if new. */
@@ -632,6 +715,7 @@ function App() {
                   ? <Breadcrumb trail={breadcrumbTrail} current={viewLabel} onNavigate={navigateToView} />
                   : <p className="section-label mb-1">{t("Personal Knowledge Library")}</p>}
                 <h1 ref={pageHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight sm:text-3xl">{viewLabel}</h1>
+                {handbookDescription && <p className="handbook-description">{handbookDescription}</p>}
               </div>
             </div>
             <div className="workspace-actions flex items-center gap-2">
@@ -650,14 +734,14 @@ function App() {
           <UpdateBanner />
           <BackupReminder onOpenSettings={openSettings} />
           {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => showNotice(null)} aria-label={t("Dismiss notice")}><X size={15} /></button></div>}
-          {view.startsWith('shelf:') && (
+          {view.startsWith('shelf:') && !handbookView && (
             <form className="mb-5 flex max-w-xl gap-2" onSubmit={(event) => void addNotebookOnShelfPage(event)}>
               <label className="sr-only" htmlFor="shelf-new-notebook">{t('New notebook in {name}', { name: viewLabel })}</label>
               <input id="shelf-new-notebook" className="small-input min-w-0 flex-1" value={shelfNotebookName} onChange={(event) => setShelfNotebookName(event.target.value)} placeholder={t("New notebook in {viewLabel}", { viewLabel })} />
               <button className="secondary-button" type="submit"><Plus size={15} /> {t("Add notebook")}</button>
             </form>
           )}
-          {view.startsWith('notebook:') && (
+          {view.startsWith('notebook:') && !handbookView && (
             <div className="mb-5 max-w-xl md:hidden">
               <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mobile-notebook-shelf">{t("Move notebook to shelf")}</label>
               <select
@@ -693,7 +777,9 @@ function App() {
           {isLoading ? (
             <p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading your notes…")}</p>
           ) : view.startsWith('library:') ? (
-            <LibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
+            handbookView
+              ? <HandbookLibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
+              : <LibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
           ) : view === 'graph' ? (
             <KnowledgeGraph
               notes={graphNotes}
@@ -703,6 +789,10 @@ function App() {
               noteLabel={noteLabel}
               onOpenNote={openNote}
             />
+          ) : handbookView && !coreLoaded ? (
+            <p role="status" className="py-16 text-center text-[var(--muted)]">
+              {coreFailed ? t('The handbooks could not be loaded. Connect to the internet once so the app can finish installing, then reload.') : t('Loading the handbooks…')}
+            </p>
           ) : filteredNotes.length ? (
             <NoteGrid
               notes={filteredNotes}
@@ -730,14 +820,28 @@ function App() {
         </main>
       </div>
 
-      {activeNote && (
+      {activeNote && isCoreId(activeNote.id) ? (
+        <LazyHandbookNote
+          note={activeNote as CoreNote}
+          onError={showError}
+          location={handbookLocation(activeNote as CoreNote)}
+          notes={handbookLinkTargets}
+          onOpenNote={(note, section) => {
+            useEditorStore.getState().setPendingSection(section ?? null)
+            openNote(note)
+          }}
+          onClose={closeEditor}
+          onMakeCopy={() => copyHandbookNote(activeNote as CoreNote)}
+          onWriteAbout={() => writeAboutHandbookNote(activeNote as CoreNote)}
+        />
+      ) : activeNote && (
         <LazyNoteEditor
           key={`${activeNote.id}:${editorRevision}`}
           note={activeNote}
           isCreating={isCreating}
           notebooks={notebooks}
           tags={tags}
-          notes={notes}
+          notes={linkableNotes}
           trash={trash}
           onSave={saveEditedNote}
           onRefresh={refresh}

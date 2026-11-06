@@ -1,3 +1,4 @@
+import { isCoreId } from '../../lib/core'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
   ArrowLeft,
@@ -490,7 +491,8 @@ export function NoteEditor({
     // Another note still has the old title, so those links already lead somewhere.
     const holder = titleIndex.get(normalizeTitle(linkedTitle))
     if (holder && holder.id !== note.id) return []
-    return notesLinkingTo(notes, linkedTitle, note.id)
+    // Handbook notes are read-only, so their links are never rewritten.
+    return notesLinkingTo(notes.filter((item) => !isCoreId(item.id)), linkedTitle, note.id)
   }, [settledTitle, linkedTitle, titleIndex, notes, note.id])
 
   async function updateLinks() {
@@ -828,3 +830,6 @@ export function NoteEditor({
     </div>
   )
 }
+
+// The handbook reader uses the same preview, so it ships in this chunk (see noteEditorChunk.ts).
+export { HandbookNote } from './HandbookNote'

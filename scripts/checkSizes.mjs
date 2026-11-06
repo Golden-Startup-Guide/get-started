@@ -1,5 +1,6 @@
 // Fails the build when the app grows past its size budgets (run after `npm run build`):
-//   - the install download (everything the service worker precaches), which every user pays;
+//   - the install download (everything the service worker precaches), which every user pays,
+//     counting the app and the built-in handbooks (content/) separately;
 //   - the start-up script and styles, gzipped, which every visit waits for.
 // Chunks loaded on demand (maths, diagrams, the graph, imports) are not limited: nobody pays
 // for them until they use them. Raise a budget only on purpose, with the reason in the PR.
@@ -9,6 +10,8 @@ import { gzipSync } from 'node:zlib'
 
 const BUDGETS = {
   installKiB: 1500,
+  // Text compresses well and is cheap; images in handbooks must stay few and small.
+  handbooksKiB: 600,
   startupScriptGzipKiB: 125,
   startupStylesGzipKiB: 15,
 }
@@ -19,7 +22,11 @@ const kib = (bytes) => bytes / 1024
 // The precache list, as written into the service worker.
 const serviceWorker = readFileSync(join(dist, 'sw.js'), 'utf8')
 const precached = [...serviceWorker.matchAll(/url:"([^"]+)"/g)].map((match) => decodeURIComponent(match[1]))
-const install = precached.reduce((sum, file) => sum + statSync(join(dist, file)).size, 0)
+const isHandbook = (file) => /^assets\/core-[^/]+\.js$/.test(file)
+const sizeOf = (files) => files.reduce((sum, file) => sum + statSync(join(dist, file)).size, 0)
+const appFiles = precached.filter((file) => !isHandbook(file))
+const handbookFiles = precached.filter(isHandbook)
+const install = sizeOf(appFiles)
 
 const assets = readdirSync(join(dist, 'assets'))
 const entry = (extension) => {
@@ -29,7 +36,8 @@ const entry = (extension) => {
 }
 
 const rows = [
-  ['Install download (precached)', kib(install), BUDGETS.installKiB, `${precached.length} files`],
+  ['Install download (precached)', kib(install), BUDGETS.installKiB, `${appFiles.length} files`],
+  ['Built-in handbooks (precached)', kib(sizeOf(handbookFiles)), BUDGETS.handbooksKiB, `${handbookFiles.length} libraries`],
   ['Start-up script, gzipped', kib(entry('.js')), BUDGETS.startupScriptGzipKiB, ''],
   ['Start-up styles, gzipped', kib(entry('.css')), BUDGETS.startupStylesGzipKiB, ''],
 ]
