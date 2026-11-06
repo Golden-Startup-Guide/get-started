@@ -30,8 +30,9 @@ test('formats Markdown as you write, ticks tasks in the editor, and remembers So
 
   // markdownText switches to Source; the choice is remembered after a reload.
   expect(await markdownText(page)).toBe('# Spring\nBuy **compost** soon\n- [x] Water the seedlings')
+  // The note is in the page's address, so the reload opens it again.
   await page.reload()
-  await page.getByRole('button', { name: 'Open note Garden plan' }).click()
+  await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Garden plan')
   await expect(page.getByRole('button', { name: 'Plain text' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('.cm-line').nth(0)).toHaveText('# Spring')
 })

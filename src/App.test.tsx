@@ -306,7 +306,7 @@ describe('Knowledge Library workspace', () => {
 
   it('opens a keyboard-accessible navigation drawer on compact screens', async () => {
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === '(max-width: 1023px)',
+      matches: query === '(max-width: 1199px)',
       media: query,
       onchange: null,
       addEventListener: vi.fn(),

@@ -12,7 +12,8 @@ export type View =
   | `notebook:${string}`
   | `tag:${string}`
 
-const COMPACT_NAVIGATION_QUERY = '(max-width: 1023px)'
+// Phones and tablets: the navigation is a drawer over the page (design specification, section 3).
+const COMPACT_NAVIGATION_QUERY = '(max-width: 1199px)'
 
 export function matchesCompactNavigation(): boolean {
   return window.matchMedia?.(COMPACT_NAVIGATION_QUERY).matches ?? false

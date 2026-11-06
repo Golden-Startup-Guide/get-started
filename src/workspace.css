@@ -73,8 +73,9 @@ html[data-theme='dark'] .workspace {
   top: 0;
   align-self: flex-start;
   display: flex;
-  width: 18rem;
-  flex: 0 0 18rem;
+  /* 264 px expanded, as in the design specification. */
+  width: 16.5rem;
+  flex: 0 0 16.5rem;
   height: 100vh;
   height: 100dvh;
   overflow-x: hidden;
@@ -102,21 +103,6 @@ html[data-theme='dark'] .workspace {
   flex-wrap: wrap;
   color: var(--muted);
   font-size: 0.72rem;
-}
-
-.workspace-breadcrumb button {
-  border-radius: 0.25rem;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.workspace-breadcrumb button:hover {
-  color: var(--text);
-}
-
-.workspace-breadcrumb button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
 }
 
 .tree-disclosure svg {
@@ -997,7 +983,7 @@ html[data-theme='dark'] .workspace {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1199px) {
   .workspace-sidebar,
   .workspace-sidebar[data-collapsed='true'] {
     position: fixed;
@@ -1882,4 +1868,181 @@ html[data-theme='dark'] .workspace {
   font-size: 1.05rem;
   font-weight: 600;
   line-height: 1.2;
+}
+
+/* Skip link: hidden until focused with the keyboard. */
+.skip-link {
+  position: absolute;
+  z-index: 100;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 0.5rem;
+  transform: translateY(-150%);
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  transform: none;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+/* The sidebar collapsed to a 72 px rail of icons, on wide screens. */
+.collapsed-rail {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: flex;
+  width: 72px;
+  flex: 0 0 72px;
+  height: 100vh;
+  height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  border-inline-end: 1px solid var(--border);
+  background: var(--canvas);
+  padding: 1rem 0;
+}
+
+.rail-button {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 0.75rem;
+  color: var(--muted);
+}
+
+.rail-button:hover,
+.rail-button[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* The current place is marked by shape as well as colour. */
+.rail-button[aria-current='page']::before {
+  position: absolute;
+  inset-block: 10px;
+  inset-inline-start: -14px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  content: '';
+}
+
+.rail-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Each icon's name, shown on hover and on keyboard focus. */
+.rail-button[data-tooltip]:hover::after,
+.rail-button[data-tooltip]:focus-visible::after {
+  position: absolute;
+  z-index: 70;
+  inset-inline-start: calc(100% + 0.6rem);
+  border-radius: 0.4rem;
+  background: var(--text);
+  color: var(--canvas);
+  content: attr(data-tooltip);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.rail-divider {
+  width: 28px;
+  height: 1px;
+  margin: 0.4rem 0;
+  background: var(--border);
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+/* Breadcrumb: the whole path on wide screens; a link up and a "Page location" button on phones. */
+.workspace-breadcrumb [aria-current='page'] {
+  color: var(--text);
+}
+
+.workspace-breadcrumb a {
+  border-radius: 0.25rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.workspace-breadcrumb a:hover {
+  color: var(--text);
+}
+
+.workspace-breadcrumb a:focus-visible,
+.breadcrumb-location:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.breadcrumb-compact {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .breadcrumb-full {
+    display: none !important;
+  }
+
+  .breadcrumb-compact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .breadcrumb-parent,
+  .breadcrumb-location {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--muted);
+  }
+
+  .breadcrumb-path {
+    flex-basis: 100%;
+  }
+}
+
+/* Phones: the menu and actions share the top row; where you are and the page title get the full
+   width below, so a long path or title is not squeezed between buttons. */
+@media (max-width: 639px) {
+  .workspace .workspace-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    row-gap: 1rem;
+  }
+
+  .workspace .workspace-header-start {
+    display: contents;
+  }
+
+  .workspace .workspace-title {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .workspace .workspace-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }

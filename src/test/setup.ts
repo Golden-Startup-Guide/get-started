@@ -1,3 +1,4 @@
+import { beforeEach } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import 'fake-indexeddb/auto'
 
@@ -9,3 +10,9 @@ Reflect.deleteProperty(globalThis, 'BroadcastChannel')
 // the window) calls window.scrollTo, which jsdom only reports as "Not implemented"; real
 // browsers are covered by the Playwright tests.
 window.scrollTo = () => undefined
+
+// The page's address holds where the reader is (see src/lib/routes.ts); each test starts on the
+// start page rather than wherever the test before it ended.
+beforeEach(() => {
+  if (typeof window !== 'undefined') window.history.replaceState(null, '', '/')
+})
