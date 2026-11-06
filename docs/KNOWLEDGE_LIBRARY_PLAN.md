@@ -15,7 +15,7 @@ phases of work. Each phase is one pull request, merged only when the owner appro
 | Question | Decision |
 |---|---|
 | Where does the library's content come from? | **It is bundled with the app.** Curated handbooks ship with the app, work offline from the first launch, carry a version, and are read-only. The bundled content is part of the product, not sample data. Downloadable content packs come later. |
-| Name | **The Personal Knowledge Library.** The specification's working name, "The People's Home", is not used in the app. |
+| Name | **The Personal Knowledge Library** is the app. **The People's Home** is the name of the website that will host it, so the app never uses it as its own name. |
 | Writing | **Kept, but secondary.** Reading and discovery lead. The editor, quick notes, templates, daily notes, and the command palette stay, under a clear area for writing. |
 | Delivery | **Phased pull requests**, listed below. Each is reviewed and merged on request. |
 | Server, licence, hosting | Unchanged ([DECISIONS.md](DECISIONS.md)): no server, MIT licence, GitHub Pages. |
@@ -191,6 +191,16 @@ small set of placeholder handbook notes clearly marked as drafts. Phase 9 replac
 - **Accessibility sign-off:** a manual screen reader pass with NVDA and Firefox, and with VoiceOver and Safari, plus a high-contrast mode check. These need a person; automated checks are not enough.
 - **Usability:** a session with 3–5 non-technical readers covering the spec's success signals: they can say where they are, resume reading, follow a related note and come back, and do all of this with a keyboard, touch, and zoom.
 - **Release:** a minor version, with notes in the changelog.
+
+## Not planned
+
+The specification rules these out, and this plan keeps them out:
+- AI features: no assistants, generated summaries, or chat with notes;
+- communication: no chat, comments, voice, or video calls;
+- social features: no profiles, likes, follows, or shares to a feed;
+- dashboards: no activity feeds, scores, streaks, or charts of reading.
+
+A proposal for any of these needs a new decision in [DECISIONS.md](DECISIONS.md) first.
 
 ## Risks
 

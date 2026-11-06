@@ -1,4 +1,4 @@
-> **Source document**, kept as received on 6 November 2026. The app is named *The Personal Knowledge Library*, not "The People’s Home"; see [../KNOWLEDGE_LIBRARY_PLAN.md](../KNOWLEDGE_LIBRARY_PLAN.md) for decisions and phases.
+> **Source document**, kept as received on 6 November 2026. The app is *The Personal Knowledge Library*; *The People’s Home* is the website that will host it. See [../KNOWLEDGE_LIBRARY_PLAN.md](../KNOWLEDGE_LIBRARY_PLAN.md) for decisions and phases.
 
 # The People’s Home
 ## UI/UX Architecture & Design Foundation
