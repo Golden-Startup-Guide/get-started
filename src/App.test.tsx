@@ -16,6 +16,8 @@ describe('Knowledge Library workspace', () => {
   beforeEach(async () => {
     await deleteDB('my-notes')
     vi.resetModules()
+    // These tests start on All Notes; Home has its own tests.
+    window.history.replaceState(null, '', '/#/notes')
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: false,
       media: query,
@@ -44,6 +46,12 @@ describe('Knowledge Library workspace', () => {
     const { default: App } = await import('./App')
     const user = userEvent.setup()
     render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+    // A second notebook to move a note into; a new library has only "Personal".
+    fireEvent.change(screen.getByRole('textbox', { name: 'New notebook name' }), { target: { value: 'Work' } })
+    await user.click(screen.getByRole('button', { name: 'Add notebook' }))
+    await screen.findByRole('heading', { name: 'Work', level: 1 })
+    await user.click(screen.getByRole('button', { name: /^All Notes/ }))
     await screen.findByRole('heading', { name: 'All Notes' })
 
     await user.click(screen.getByRole('button', { name: 'Create a new note' }))
@@ -84,7 +92,8 @@ describe('Knowledge Library workspace', () => {
     const tagInput = screen.getByRole('textbox', { name: 'Add tags' })
     fireEvent.change(tagInput, { target: { value: 'Seeds' } })
     fireEvent.keyDown(tagInput, { key: 'Enter' })
-    fireEvent.change(screen.getByRole('combobox', { name: 'Notebook' }), { target: { value: 'starter-work' } })
+    const notebookChoice = screen.getByRole('combobox', { name: 'Notebook' })
+    fireEvent.change(notebookChoice, { target: { value: (within(notebookChoice).getByRole('option', { name: 'Work' }) as HTMLOptionElement).value } })
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 3000 })
     await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
     await screen.findByRole('heading', { name: 'Garden notes' })
@@ -115,13 +124,13 @@ describe('Knowledge Library workspace', () => {
     await screen.findByRole('heading', { name: 'All Notes' })
 
     const libraryNavigation = screen.getByRole('navigation', { name: 'Libraries' })
-    await within(libraryNavigation).findByText('Personal Library')
-    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 5' }))
+    await within(libraryNavigation).findByText('My notes')
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'My notes 1' }))
     expect(await screen.findByRole('heading', { name: 'Library home' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Open General shelf' }))
     expect(await screen.findByRole('heading', { name: 'General' })).toBeInTheDocument()
 
-    await user.click(within(libraryNavigation).getByRole('button', { name: 'Personal Library 5' }))
+    await user.click(within(libraryNavigation).getByRole('button', { name: 'My notes 1' }))
     await screen.findByRole('heading', { name: 'Library home' })
     const main = screen.getByRole('main')
     await user.type(within(main).getByRole('textbox', { name: 'New library name' }), 'Garden Library')
@@ -201,16 +210,16 @@ describe('Knowledge Library workspace', () => {
 
     const sidebar = screen.getByRole('complementary', { name: 'Primary navigation' })
     const libraryNavigation = within(sidebar).getByRole('navigation', { name: 'Libraries' })
-    await within(libraryNavigation).findByRole('button', { name: 'Personal Library 5' })
+    await within(libraryNavigation).findByRole('button', { name: 'My notes 1' })
     const toggle = screen.getByRole('button', { name: 'Collapse sidebar' })
-    const collapseLibrary = within(sidebar).getByRole('button', { name: 'Collapse Personal Library' })
+    const collapseLibrary = within(sidebar).getByRole('button', { name: 'Collapse My notes' })
     const libraryContentsId = collapseLibrary.getAttribute('aria-controls')!
     await user.click(collapseLibrary)
-    expect(within(sidebar).getByRole('button', { name: 'Expand Personal Library' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(sidebar).getByRole('button', { name: 'Expand My notes' })).toHaveAttribute('aria-expanded', 'false')
     expect(document.getElementById(libraryContentsId)).toHaveAttribute('hidden')
-    expect(within(sidebar).queryByRole('button', { name: 'General 5' })).not.toBeInTheDocument()
-    await user.click(within(sidebar).getByRole('button', { name: 'Expand Personal Library' }))
-    expect(await within(sidebar).findByRole('button', { name: 'General 5' })).toBeInTheDocument()
+    expect(within(sidebar).queryByRole('button', { name: 'General 1' })).not.toBeInTheDocument()
+    await user.click(within(sidebar).getByRole('button', { name: 'Expand My notes' }))
+    expect(await within(sidebar).findByRole('button', { name: 'General 1' })).toBeInTheDocument()
 
     // The sidebar collapses itself; the header then offers the way back, and focus follows.
     expect(screen.queryByRole('button', { name: 'Expand sidebar' })).not.toBeInTheDocument()
@@ -620,5 +629,31 @@ describe('Knowledge Library workspace', () => {
     await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Saved searches' })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Save this search' })).toBeInTheDocument()
     await expect(storage.getSettings()).resolves.toEqual(expect.objectContaining({ savedSearches: [] }))
-  })
+  }, 15000)
+
+  it('opens on Home: an invitation to start, the libraries to explore, and then where to continue', async () => {
+    window.history.replaceState(null, '', '/')
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Welcome to your library', level: 1 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Start reading' })).toBeInTheDocument()
+    const libraries = screen.getByRole('region', { name: 'Explore libraries' })
+    expect(within(libraries).getByRole('button', { name: /^Health & Wellbeing/ })).toBeInTheDocument()
+    expect(within(libraries).getByRole('button', { name: /^My notes/ })).toBeInTheDocument()
+
+    // Recently added lists the Welcome note and the handbooks; opening one is remembered.
+    const recent = await screen.findByRole('region', { name: 'Recently added' })
+    await user.click(within(recent).getByRole('button', { name: /^Welcome to your Knowledge Library/ }))
+    await screen.findByRole('textbox', { name: 'Note title' })
+    await user.click(screen.getAllByRole('button', { name: 'Close editor' })[1])
+    const resume = await screen.findByRole('region', { name: 'Continue reading' })
+    expect(within(resume).getByText('Welcome to your Knowledge Library', { selector: 'p' })).toBeInTheDocument()
+    expect(within(resume).getByRole('button', { name: 'Continue reading Welcome to your Knowledge Library' })).toBeInTheDocument()
+    expect(within(resume).getByText('My notes / General / Personal')).toBeInTheDocument()
+
+    await user.click(within(libraries).getByRole('button', { name: /^Health & Wellbeing/ }))
+    expect(await screen.findByRole('heading', { name: 'Health & Wellbeing', level: 1 })).toBeInTheDocument()
+    expect(window.location.hash).toBe('#/library/core-health-and-wellbeing')
+  }, 15000)
 })

@@ -168,7 +168,9 @@ async function upgradeDatabase(db: IDBPDatabase<NotesDatabase>, oldVersion: numb
 
     const notebooks = db.createObjectStore('notebooks', { keyPath: 'id' })
     notebooks.createIndex('by-name', 'name')
-    for (const [id, name] of starterNotebooks) {
+    // A brand-new library starts with one notebook; a library upgraded from version 1 gets the
+    // original set, as it always has.
+    for (const [id, name] of oldVersion === 0 ? starterNotebooks.slice(0, 1) : starterNotebooks) {
       notebooks.put({ id, name, createdAt: now, updatedAt: now })
     }
 
@@ -215,7 +217,8 @@ async function upgradeDatabase(db: IDBPDatabase<NotesDatabase>, oldVersion: numb
     shelves.createIndex('by-library', 'libraryId')
     shelves.createIndex('by-name', 'name')
     const notebooks = transaction.objectStore('notebooks')
-    const library = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: now, updatedAt: now }
+    // "My notes" for a brand-new library, beside the built-in handbooks; upgrades keep their name.
+    const library = { id: DEFAULT_LIBRARY_ID, name: oldVersion === 0 ? 'My notes' : 'Personal Library', createdAt: now, updatedAt: now }
     const shelf = { id: DEFAULT_SHELF_ID, libraryId: DEFAULT_LIBRARY_ID, name: 'General', createdAt: now, updatedAt: now }
     libraries.put(library)
     shelves.put(shelf)
@@ -230,8 +233,8 @@ async function upgradeDatabase(db: IDBPDatabase<NotesDatabase>, oldVersion: numb
     db.createObjectStore('reading', { keyPath: 'noteId' }).createIndex('by-opened', 'openedAt')
   }
 
-  // A brand-new library only (never an upgrade of existing data): one starter note per
-  // starter notebook. They carry no tags, so the tags store needs no update.
+  // A brand-new library only (never an upgrade of existing data): the Welcome note. It carries
+  // no tags, so the tags store needs no update.
   if (oldVersion === 0 && withStarterNotes) {
     const notes = transaction.objectStore('notes')
     for (const note of starterNotes(now)) notes.put(note)
@@ -1181,7 +1184,7 @@ export async function repairLibrary(problems: LibraryProblems): Promise<LibraryR
   const libraryToUse = async () => {
     fallbackLibrary ??= (await libraries.get(DEFAULT_LIBRARY_ID)) ?? (await libraries.getAll())[0]
     if (!fallbackLibrary) {
-      fallbackLibrary = { id: DEFAULT_LIBRARY_ID, name: 'Personal Library', createdAt: now, updatedAt: now }
+      fallbackLibrary = { id: DEFAULT_LIBRARY_ID, name: 'My notes', createdAt: now, updatedAt: now }
       await libraries.put(fallbackLibrary)
     }
     return fallbackLibrary

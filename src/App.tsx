@@ -27,6 +27,7 @@ import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
 import { LibraryHome } from './features/library/LibraryHome'
+import { HomePage } from './features/home/HomePage'
 import { HandbookLibraryHome } from './features/library/HandbookLibraryHome'
 import { LazyHandbookNote } from './features/notes/LazyHandbookNote'
 import { CORE_CATALOG, useCoreStore } from './state/coreStore'
@@ -339,7 +340,9 @@ function App() {
     pruneSearchCache([...notes, ...trash, ...coreNotes].map((note) => note.id))
   }, [notes, trash, coreNotes])
 
-  const viewLabel = view === 'all'
+  const viewLabel = view === 'home'
+    ? t('Home')
+    : view === 'all'
     ? t('All Notes')
     : view === 'favorites'
       ? t('Favorites')
@@ -373,10 +376,10 @@ function App() {
     view: `library:${libraryId}`,
   })
   // The levels above the current page; the page itself is the heading.
-  const breadcrumbTrail: Crumb[] = view === 'all'
+  const breadcrumbTrail: Crumb[] = view === 'home'
     ? []
     : [
-        { label: t('Knowledge Library'), view: 'all' },
+        { label: t('Home'), view: 'home' },
         ...(activeShelf ? [libraryCrumb(activeShelf.libraryId)] : []),
         ...(activeNotebookShelf ? [libraryCrumb(activeNotebookShelf.libraryId), { label: activeNotebookShelf.name, view: `shelf:${activeNotebookShelf.id}` as View }] : []),
       ]
@@ -402,7 +405,7 @@ function App() {
   // The browser tab and history show the page, or the open note.
   useEffect(() => {
     const appName = t('The Personal Knowledge Library')
-    const page = activeNote ? activeNote.title.trim() || t('Untitled note') : view === 'all' ? '' : viewLabel
+    const page = activeNote ? activeNote.title.trim() || t('Untitled note') : view === 'home' ? '' : viewLabel
     document.title = page ? `${page} — ${appName}` : appName
   }, [activeNote, view, viewLabel])
 
@@ -714,7 +717,7 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
                 {breadcrumbTrail.length > 0
                   ? <Breadcrumb trail={breadcrumbTrail} current={viewLabel} onNavigate={navigateToView} />
                   : <p className="section-label mb-1">{t("Personal Knowledge Library")}</p>}
-                <h1 ref={pageHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight sm:text-3xl">{viewLabel}</h1>
+                <h1 ref={pageHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight sm:text-3xl">{view === 'home' ? t('Welcome to your library') : viewLabel}</h1>
                 {handbookDescription && <p className="handbook-description">{handbookDescription}</p>}
               </div>
             </div>
@@ -755,7 +758,7 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
             </div>
           )}
           <div className="mb-5 flex min-w-0 items-center gap-3">
-            {!view.startsWith('library:') && (
+            {!view.startsWith('library:') && view !== 'home' && (
               <>
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
@@ -774,7 +777,10 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
               </>
             )}
           </div>
-          {isLoading ? (
+          {view === 'home' ? (
+            // Drawn at once, before the library has loaded: the handbooks need no database.
+            <HomePage onNavigate={navigateToView} onOpenNote={openNote} />
+          ) : isLoading ? (
             <p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading your notes…")}</p>
           ) : view.startsWith('library:') ? (
             handbookView

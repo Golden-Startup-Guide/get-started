@@ -15,10 +15,10 @@ test('exports the library as Markdown files and imports an Obsidian vault and an
   expect(zip.suggestedFilename()).toMatch(/^my-notes-markdown-\d{4}-\d{2}-\d{2}\.zip$/)
   const files = unzipSync(new Uint8Array(await readFile((await zip.path())!)))
   const notes = Object.keys(files).filter((path) => path.endsWith('.md'))
-  expect(notes).toHaveLength(5)
-  expect(notes).toContain('Personal Library/General/Personal/Welcome to your Knowledge Library.md')
-  expect(strFromU8(files['Personal Library/General/Personal/Welcome to your Knowledge Library.md'])).toMatch(/^---\nnotebook: Personal\n/)
-  await expect(dialog.getByRole('status').filter({ hasText: 'Exported 5 notes as Markdown' })).toBeVisible()
+  expect(notes).toHaveLength(1)
+  expect(notes).toContain('My notes/General/Personal/Welcome to your Knowledge Library.md')
+  expect(strFromU8(files['My notes/General/Personal/Welcome to your Knowledge Library.md'])).toMatch(/^---\nnotebook: Personal\n/)
+  await expect(dialog.getByRole('status').filter({ hasText: 'Exported 1 note as Markdown' })).toBeVisible()
 
   // Import an Obsidian vault (.zip): folders become notebooks, embedded files attachments.
   const vault = zipSync({

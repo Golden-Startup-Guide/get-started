@@ -123,7 +123,7 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
   - **Recently added**, from the content's `added` dates and new personal notes;
   - an offline status shown only when it is true and meaningful.
 - **No dashboard:** no counts styled as scores, feeds, or charts.
-- **The old "All Notes" grid** moves to the personal area as **My notes**, with the formatted cards from #74.
+- **The "All Notes" grid** keeps its name and moves to its own address, `#/notes`; "My notes" is the name of the personal library new installs start with.
 - **Done when:** end-to-end tests cover a first visit, a return visit, and the empty-history case.
 
 ### Phase 5: Library, shelf, and notebook pages

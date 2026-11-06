@@ -8,6 +8,7 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 ## [Unreleased]
 
 ### Added
+- **Home**, the new start page: Continue reading (the note you opened last, and where it sits), tiles to explore the libraries, Recently added, and whether the app is available offline. All Notes moves to its own address, `#/notes`, and the breadcrumb starts at Home.
 - **Built-in handbooks**: Health & Wellbeing, Agriculture, and Financial Literacy, listed under Handbooks in the sidebar and readable offline from the first launch. They are read-only; **Make a personal copy** or **Write a note about this** to work with one, and link to them from your notes with `[[Title]]`. The first handbooks are short drafts, labelled as such.
 - The app remembers the note you opened last, for "Continue reading" on the coming Home page (database version 7; upgrades are automatic).
 - Every page and note has its own address, so **Back** and **Forward** work, a reload keeps your place, and pages can be bookmarked. A missing page or note is explained rather than shown blank.
@@ -16,6 +17,7 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 - A **Soft paper** theme for long reading. Older versions read its backups as the light theme.
 
 ### Changed
+- New libraries start with the handbooks and one Welcome note in a personal library called **My notes**, instead of five starter notebooks and notes. Existing libraries are unchanged.
 - The app is now **The Personal Knowledge Library**, the first step of the plan in [docs/KNOWLEDGE_LIBRARY_PLAN.md](docs/KNOWLEDGE_LIBRARY_PLAN.md). Messages say "the app" in place of the old name. Your notes, settings, and backups are unchanged.
 - New colours from the design specification: warm paper, forest green, and a blue focus ring, in light and dark. Every pairing is checked against WCAG 2.2 AA.
 - Titles and note text use a serif for easier reading.

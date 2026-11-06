@@ -4,6 +4,26 @@ import type { Catalog } from './i18n'
 // reviewed by a native speaker: corrections are welcome. i18n.test.ts checks that every text
 // in the app is here.
 const catalog: Catalog = {
+  "Home": "الرئيسية",
+  "Welcome to your library": "مرحبًا بك في مكتبتك",
+  "Explore practical knowledge, find a new subject, or pick up where you left off.": "استكشف معرفة عملية، أو اعثر على موضوع جديد، أو تابع من حيث توقفت.",
+  "Continue reading": "متابعة القراءة",
+  "Note {index} of {count}": "الملاحظة {index} من {count}",
+  "Start reading": "ابدأ القراءة",
+  "Choose a library below. The handbooks are ready to read, even offline.": "اختر مكتبة أدناه. الأدلة جاهزة للقراءة، حتى دون اتصال.",
+  "Explore libraries": "استكشاف المكتبات",
+  "Your own library: private, on this device.": "مكتبتك الخاصة: خاصة، على هذا الجهاز.",
+  "Recently added": "أُضيف مؤخرًا",
+  "You are offline. Your notes and the handbooks still work.": "أنت غير متصل. ملاحظاتك والأدلة لا تزال تعمل.",
+  "Available offline: your notes and the handbooks are saved on this device.": "متاح دون اتصال: ملاحظاتك والأدلة محفوظة على هذا الجهاز.",
+  "{count} shelves": {
+    "zero": "لا رفوف",
+    "one": "رف واحد",
+    "two": "رفّان",
+    "few": "{count} رفوف",
+    "many": "{count} رفًا",
+    "other": "{count} رف"
+  },
   "Copied from the handbook note [[{title}]].": "منسوخ من ملاحظة الدليل [[{title}]].",
   "Notes on {title}": "ملاحظات حول {title}",
   "About [[{title}]]:": "حول [[{title}]]:",
@@ -248,7 +268,6 @@ const catalog: Catalog = {
   "Keep my version": "الإبقاء على نسختي",
   "Keep notes on this device": "الاحتفاظ بالملاحظات على هذا الجهاز",
   "Knowledge Graph": "رسم المعرفة",
-  "Knowledge Library": "مكتبة المعرفة",
   "Language": "اللغة",
   "Last backup: {time} (downloaded).": "آخر نسخة احتياطية: {time} (تم تنزيلها).",
   "Last backup: {time} ({file}).": "آخر نسخة احتياطية: {time} ({file}).",

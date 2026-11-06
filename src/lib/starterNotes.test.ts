@@ -15,13 +15,11 @@ describe('starter notes in a brand-new library', () => {
     await deleteDB('my-notes')
   })
 
-  it('gives every starter notebook one untagged note, welcome note first', async () => {
+  it('starts "My notes" with one notebook and the untagged Welcome note', async () => {
     const notes = await storage.getNotes()
-    const notebooks = await storage.getNotebooks()
-    expect(notes).toHaveLength(notebooks.length)
-    expect(new Set(notes.map((note) => note.notebookId))).toEqual(new Set(notebooks.map((notebook) => notebook.id)))
-    expect(notes[0]).toEqual(expect.objectContaining({ id: 'starter-note-welcome', notebookId: 'starter-personal', title: 'Welcome to your Knowledge Library' }))
-    expect(notes.every((note) => note.tags?.length === 0 && !note.pinned && !note.favorite && note.content.length > 0)).toBe(true)
+    expect(notes).toEqual([expect.objectContaining({ id: 'starter-note-welcome', notebookId: 'starter-personal', title: 'Welcome to your Knowledge Library', tags: [], pinned: false, favorite: false })])
+    expect((await storage.getNotebooks()).map((notebook) => notebook.name)).toEqual(['Personal'])
+    expect((await storage.getLibraries()).map((library) => library.name)).toEqual(['My notes'])
     expect(await storage.getTags()).toEqual([])
   })
 
@@ -30,7 +28,7 @@ describe('starter notes in a brand-new library', () => {
     const text = JSON.stringify(backup)
     const file = new File([text], 'backup.json', { type: 'application/json' })
     Object.defineProperty(file, 'text', { value: async () => text })
-    await expect(storage.importBackupFile(file)).resolves.toEqual(expect.objectContaining({ notesAdded: 0, notesSkipped: 5 }))
-    expect(await storage.getNotes()).toHaveLength(5)
+    await expect(storage.importBackupFile(file)).resolves.toEqual(expect.objectContaining({ notesAdded: 0, notesSkipped: 1 }))
+    expect(await storage.getNotes()).toHaveLength(1)
   })
 })

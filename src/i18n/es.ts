@@ -4,6 +4,23 @@ import type { Catalog } from './i18n'
 // reviewed by a native speaker: corrections are welcome. i18n.test.ts checks that every text
 // in the app is here.
 const catalog: Catalog = {
+  "Home": "Inicio",
+  "Welcome to your library": "Te damos la bienvenida a tu biblioteca",
+  "Explore practical knowledge, find a new subject, or pick up where you left off.": "Explora conocimientos prácticos, descubre un tema nuevo o retoma donde lo dejaste.",
+  "Continue reading": "Seguir leyendo",
+  "Note {index} of {count}": "Nota {index} de {count}",
+  "Start reading": "Empieza a leer",
+  "Choose a library below. The handbooks are ready to read, even offline.": "Elige una biblioteca abajo. Los manuales están listos para leer, incluso sin conexión.",
+  "Explore libraries": "Explorar bibliotecas",
+  "Your own library: private, on this device.": "Tu propia biblioteca: privada, en este dispositivo.",
+  "Recently added": "Añadido recientemente",
+  "You are offline. Your notes and the handbooks still work.": "No tienes conexión. Tus notas y los manuales siguen funcionando.",
+  "Available offline: your notes and the handbooks are saved on this device.": "Disponible sin conexión: tus notas y los manuales están guardados en este dispositivo.",
+  "{count} shelves": {
+    "one": "{count} estante",
+    "other": "{count} estantes",
+    "many": "{count} estantes"
+  },
   "Copied from the handbook note [[{title}]].": "Copiado de la nota del manual [[{title}]].",
   "Notes on {title}": "Notas sobre {title}",
   "About [[{title}]]:": "Sobre [[{title}]]:",
@@ -242,7 +259,6 @@ const catalog: Catalog = {
   "Keep my version": "Mantener mi versión",
   "Keep notes on this device": "Conservar las notas en este dispositivo",
   "Knowledge Graph": "Gráfico de conocimiento",
-  "Knowledge Library": "Biblioteca de conocimiento",
   "Language": "Idioma",
   "Last backup: {time} (downloaded).": "Última copia: {time} (descargada).",
   "Last backup: {time} ({file}).": "Última copia: {time} ({file}).",

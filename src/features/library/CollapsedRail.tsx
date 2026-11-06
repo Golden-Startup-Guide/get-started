@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from 'react'
-import { CalendarDays, FileText, Heart, Network, PanelLeftOpen, Plus, Settings, Trash2 } from 'lucide-react'
+import { CalendarDays, FileText, Heart, Home, Network, PanelLeftOpen, Plus, Settings, Trash2 } from 'lucide-react'
 import type { View } from '../../state/workspaceStore'
 import { t } from '../../i18n/i18n'
 
@@ -37,6 +37,7 @@ export function CollapsedRail({
       </button>
       {item(t('New note'), <Plus size={18} aria-hidden="true" />, onNewNote)}
       <span className="rail-divider" aria-hidden="true" />
+      {item(t('Home'), <Home size={18} aria-hidden="true" />, () => onNavigate('home'), view === 'home')}
       {item(t('All Notes'), <FileText size={18} aria-hidden="true" />, () => onNavigate('all'), view === 'all')}
       {item(t('Favorites'), <Heart size={18} aria-hidden="true" />, () => onNavigate('favorites'), view === 'favorites')}
       {item(t('Knowledge Graph'), <Network size={18} aria-hidden="true" />, () => onNavigate('graph'), view === 'graph')}

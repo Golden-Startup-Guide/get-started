@@ -16,14 +16,17 @@ export interface Route {
   query?: string
 }
 
-const PAGES = new Set(['favorites', 'trash', 'graph'])
+// Pages with a fixed address; All Notes is "#/notes", and Home is "#/".
+const PAGES = new Set(['notes', 'favorites', 'trash', 'graph'])
 const ITEMS = new Set(['library', 'shelf', 'notebook', 'tag'])
 
 export function routeToHash(route: Route): string {
   const separator = route.view.indexOf(':')
-  const path = route.view === 'all'
+  const path = route.view === 'home'
     ? ''
-    : separator < 0
+    : route.view === 'all'
+      ? 'notes'
+      : separator < 0
       ? route.view
       : `${route.view.slice(0, separator)}/${encodeURIComponent(route.view.slice(separator + 1))}`
   const params = new URLSearchParams()
@@ -35,7 +38,7 @@ export function routeToHash(route: Route): string {
 
 /** The route in an address's hash; null when the hash is not a page address. */
 export function hashToRoute(hash: string): Route | null {
-  if (hash === '' || hash === '#') return { view: 'all' }
+  if (hash === '' || hash === '#') return { view: 'home' }
   if (!hash.startsWith('#/')) return null
   const rest = hash.slice(2)
   const questionMark = rest.indexOf('?')
@@ -43,8 +46,8 @@ export function hashToRoute(hash: string): Route | null {
   const params = new URLSearchParams(questionMark < 0 ? '' : rest.slice(questionMark + 1))
   const parts = path.split('/').filter(Boolean)
   let view: View | undefined
-  if (parts.length === 0) view = 'all'
-  else if (parts.length === 1 && PAGES.has(parts[0])) view = parts[0] as View
+  if (parts.length === 0) view = 'home'
+  else if (parts.length === 1 && PAGES.has(parts[0])) view = (parts[0] === 'notes' ? 'all' : parts[0]) as View
   else if (parts.length === 2 && ITEMS.has(parts[0])) {
     try {
       view = `${parts[0]}:${decodeURIComponent(parts[1])}` as View
