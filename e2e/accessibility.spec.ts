@@ -22,8 +22,8 @@ async function expectNoViolations(page: Page, screen: string) {
 
 for (const theme of ['light', 'dark'] as const) {
   test(`main screens have no WCAG 2.2 AA problems axe can find (${theme} theme)`, async ({ page }) => {
-    // Nine screens checked in turn; WebKit on Windows is the slowest.
-    test.setTimeout(120_000)
+    // Eleven screens checked in turn; WebKit on Windows is the slowest.
+    test.setTimeout(150_000)
     await page.emulateMedia({ colorScheme: theme })
     await openWorkspace(page)
     await createNote(page, 'Accessible note', '# Heading\n\n- [ ] A task\n\nSee [[Welcome to your Knowledge Library]] and **bold** text.\n\n| A | B |\n|---|---|\n| 1 | 2 |')
@@ -62,6 +62,14 @@ for (const theme of ['light', 'dark'] as const) {
 
     await page.getByRole('button', { name: /^Trash \d+$/ }).click()
     await expectNoViolations(page, 'Trash')
+
+    await page.getByRole('navigation', { name: 'Handbooks' }).getByRole('button', { name: /^Health & Wellbeing/ }).click()
+    await expect(page.getByRole('button', { name: 'Open shelf Nutrition' })).toBeVisible()
+    await expectNoViolations(page, 'a handbook library')
+    await page.getByRole('navigation', { name: 'Handbooks' }).getByRole('button', { name: /^Everyday Nutrition/ }).click()
+    await page.getByRole('button', { name: 'Open note Staying hydrated' }).click()
+    await expect(page.getByRole('dialog', { name: 'Staying hydrated' })).toBeVisible()
+    await expectNoViolations(page, 'a handbook note')
   })
 }
 

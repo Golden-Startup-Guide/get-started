@@ -63,7 +63,7 @@ describe('IndexedDB storage and backup', () => {
       'Work',
     ])
     const db = await storage.openNotesDatabase()
-    expect(db.version).toBe(6)
+    expect(db.version).toBe(storage.DATABASE_VERSION)
     expect([...db.objectStoreNames]).toEqual(expect.arrayContaining(['notes', 'notebooks', 'libraries', 'shelves', 'settings', 'tags', 'history', 'attachments', 'noteLinks']))
     expect(await storage.getLibraries()).toContainEqual(expect.objectContaining({ id: 'starter-library', name: 'Personal Library' }))
     expect(await storage.getShelves()).toContainEqual(expect.objectContaining({ id: 'starter-shelf', libraryId: 'starter-library', name: 'General' }))
@@ -757,6 +757,6 @@ describe('IndexedDB storage and backup', () => {
     expect(await storage.getNoteAttachments(note.id)).toEqual([])
     expect(await storage.getNotebooks()).toContainEqual(expect.objectContaining({ id: 'starter-personal', shelfId: 'starter-shelf' }))
     expect(await (await storage.openNotesDatabase()).get('notes', note.id)).toEqual(note)
-    expect((await storage.openNotesDatabase()).version).toBe(6)
+    expect((await storage.openNotesDatabase()).version).toBe(storage.DATABASE_VERSION)
   })
 })

@@ -1,5 +1,5 @@
 /**
- * Captures sample databases made by past versions of My Notes, for the upgrade tests
+ * Captures sample databases made by past versions of the app, for the upgrade tests
  * (src/test/databaseFixtures/upgrades.test.ts). Each version's own storage code builds a small
  * library with everything that version could store, and the database is saved as JSON.
  *
@@ -72,6 +72,7 @@ async function populate(storage: Storage) {
   if (has(storage, 'saveTheme')) await call(storage, 'saveTheme', 'dark')
   if (has(storage, 'saveEditorMode')) await call(storage, 'saveEditorMode', 'source')
   if (has(storage, 'saveSearch')) await call(storage, 'saveSearch', 'Open tasks', 'has:task')
+  if (has(storage, 'recordReading')) await call(storage, 'recordReading', 'fixture-garden')
 }
 
 async function capture(source: string, label: string, description: string) {

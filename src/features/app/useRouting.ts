@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { hashToRoute, isNewHistoryStep, routeToHash, type Route } from '../../lib/routes'
 import { useEditorStore } from '../../state/editorStore'
 import { useLibraryStore } from '../../state/libraryStore'
+import { CORE_CATALOG, useCoreStore } from '../../state/coreStore'
+import { isCoreId } from '../../lib/core'
 import { useWorkspaceStore, type View } from '../../state/workspaceStore'
 import { t } from '../../i18n/i18n'
 
@@ -11,7 +13,11 @@ function viewExists(view: View): boolean {
   if (separator < 0) return true
   const { libraries, shelves, notebooks, tags } = useLibraryStore.getState()
   const id = view.slice(separator + 1)
-  const items: Array<{ id: string }> = view.startsWith('library:') ? libraries : view.startsWith('shelf:') ? shelves : view.startsWith('notebook:') ? notebooks : tags
+  const items: Array<{ id: string }> = view.startsWith('library:')
+    ? [...CORE_CATALOG.libraries, ...libraries]
+    : view.startsWith('shelf:')
+      ? [...CORE_CATALOG.shelves, ...shelves]
+      : view.startsWith('notebook:') ? [...CORE_CATALOG.notebooks, ...notebooks] : tags
   return items.some((item) => item.id === id)
 }
 
@@ -43,6 +49,12 @@ export function useRouting({ ready, onHistoryMove }: { ready: boolean; onHistory
       const route = hashToRoute(window.location.hash)
       // A link to a heading inside a note, not a page.
       if (!route) return
+      // A handbook note's text loads separately; show the address once it has.
+      const core = useCoreStore.getState()
+      if (isCoreId(route.note) && !core.loaded && !core.failed) {
+        void core.load().then(() => show(fromHistory))
+        return
+      }
       const workspace = useWorkspaceStore.getState()
       const editor = useEditorStore.getState()
       // On opening the app, the address only adds what it names: a search typed or a note opened
@@ -54,7 +66,9 @@ export function useRouting({ ready, onHistoryMove }: { ready: boolean; onHistory
       if (!keepCurrent || route.query) workspace.setQuery(route.query ?? '')
       if (route.note !== editor.activeNote?.id && (!keepCurrent || route.note)) {
         const { notes, trash } = useLibraryStore.getState()
-        const found = route.note ? notes.find((item) => item.id === route.note) ?? trash.find((item) => item.id === route.note) : undefined
+        const found = route.note
+          ? notes.find((item) => item.id === route.note) ?? trash.find((item) => item.id === route.note) ?? useCoreStore.getState().notes.find((item) => item.id === route.note)
+          : undefined
         if (found) editor.open(found)
         else {
           // Closing the editor saves the note it had open.

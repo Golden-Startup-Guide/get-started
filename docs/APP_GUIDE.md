@@ -153,6 +153,40 @@ Tags are attached to notes as labels. Existing tags are suggested while
 editing, and a tag can be selected to filter the note list. Tag counts reflect
 active notes rather than notes in Trash.
 
+#### Built-in handbooks
+
+The app ships with curated **handbooks**, listed under **Handbooks** in the
+sidebar above your own libraries: libraries such as Health & Wellbeing,
+Agriculture, and Financial Literacy, each with shelves and notebooks, as in your
+own library. They are part of the app, not your data:
+
+- They are there from the first launch and readable **offline**: each library's
+  notes are a file of the app, cached when it installs.
+- They are **read-only**. A handbook page has no rename, move, or delete
+  controls, handbook cards have no pin or favourite buttons, and the storage
+  refuses any change to them or any note filed in them.
+- They are never in backups or Markdown exports, and app updates replace them.
+- A handbook library page shows what it covers and its shelves; a shelf or
+  notebook lists its notes in order. Search on those pages searches the
+  handbook notes.
+
+Opening a handbook note shows it for reading: where it sits, its type (Article,
+Guide, Chapter, or Handbook), title, summary, and a **Draft: not yet reviewed**
+label while its text is not final (or who reviewed it). `[[Links]]` in it open
+other notes, and Back returns. To work with one:
+
+- **Make a personal copy** opens a new personal note with the same title and
+  text, ending with a link back to the handbook note; edit it like any note.
+- **Write a note about this** opens a new personal note, "Notes on …", that
+  starts with a link to the handbook note.
+
+Personal notes can link to handbook notes with `[[Title]]` (suggested while
+typing) or **Linked notes**, and the start-up check keeps those links. Handbook
+content is written in the `content/` folder ([content/README.md](../content/README.md));
+the build checks it and stops on any mistake. The handbooks shipped so far are
+short drafts, to be replaced by reviewed handbooks (see
+[KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md), phase 9).
+
 ### 2.3 Search
 
 Use the workspace search field to find notes by title, note content, tags,
@@ -664,7 +698,7 @@ export may take a moment.
 ### IndexedDB database
 
 The application uses the `my-notes` IndexedDB database through the `idb`
-library. The current schema version is **6** and has stores for:
+library. The current schema version is **7** and has stores for:
 
 | Store | Purpose |
 |---|---|
@@ -677,6 +711,10 @@ library. The current schema version is **6** and has stores for:
 | `history` | Timestamped note snapshots |
 | `attachments` | Attachment metadata and binary data |
 | `noteLinks` | Stable-ID relationships between notes |
+| `reading` | The notes opened, and when, for "Continue reading" (version 7); not in backups |
+
+Built-in handbooks are not stored here: they ship with the app (see
+[Built-in handbooks](#built-in-handbooks)).
 
 ### Existing-user migrations
 

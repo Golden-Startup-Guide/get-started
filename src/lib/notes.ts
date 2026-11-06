@@ -1,8 +1,10 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase, type IDBPObjectStore, type IDBPTransaction, type StoreNames } from 'idb'
 import { themeSettings } from './theme'
+import { isCoreId } from './core'
 import type {
   AppSettings,
   Note,
+  ReadingRecord,
   NoteAttachment,
   NoteLink,
   Library,
@@ -65,6 +67,12 @@ interface NotesDatabase extends DBSchema {
     value: NoteLink
     indexes: { 'by-source': string; 'by-target': string }
   }
+  /** What the reader opened, and when: for "Continue reading". Not part of backups. */
+  reading: {
+    key: string
+    value: ReadingRecord
+    indexes: { 'by-opened': number }
+  }
 }
 
 const starterNotebooks = [
@@ -76,7 +84,7 @@ const starterNotebooks = [
 ] as const
 
 
-export const DATABASE_VERSION = 6
+export const DATABASE_VERSION = 7
 
 export type StorageEvent =
   /** Another tab changed data. An empty noteIds list means anything may have changed. */
@@ -218,12 +226,21 @@ async function upgradeDatabase(db: IDBPDatabase<NotesDatabase>, oldVersion: numb
     }
   }
 
+  if (oldVersion < 7) {
+    db.createObjectStore('reading', { keyPath: 'noteId' }).createIndex('by-opened', 'openedAt')
+  }
+
   // A brand-new library only (never an upgrade of existing data): one starter note per
   // starter notebook. They carry no tags, so the tags store needs no update.
   if (oldVersion === 0 && withStarterNotes) {
     const notes = transaction.objectStore('notes')
     for (const note of starterNotes(now)) notes.put(note)
   }
+}
+
+/** Handbooks are read-only: nothing may save, move, or delete them, or put personal items in them. */
+function refuseHandbookChange(...ids: Array<string | undefined>) {
+  if (ids.some(isCoreId)) throw new Error(t('Handbooks are read-only. Make a personal copy to change one.'))
 }
 
 export async function openNotesDatabase(): Promise<IDBPDatabase<NotesDatabase>> {
@@ -322,6 +339,7 @@ export async function getAllNoteLinks(): Promise<NoteLink[]> {
 }
 
 export async function linkNotes(sourceNoteId: string, targetNoteId: string): Promise<void> {
+  refuseHandbookChange(sourceNoteId)
   if (sourceNoteId === targetNoteId) throw new Error(t("A note cannot link to itself."))
   const db = await database
   const transaction = db.transaction(['notes', 'noteLinks'], 'readwrite')
@@ -330,11 +348,12 @@ export async function linkNotes(sourceNoteId: string, targetNoteId: string): Pro
     notes.get(sourceNoteId),
     notes.get(targetNoteId),
   ])
-  if (!source || !target) {
+  // A handbook note ships with the app rather than being stored, so it counts as existing.
+  if (!source || !(target || isCoreId(targetNoteId))) {
     await transaction.done
     throw new Error(t("Both notes must exist before they can be linked."))
   }
-  if (source.deletedAt !== undefined || target.deletedAt !== undefined) {
+  if (source.deletedAt !== undefined || target?.deletedAt !== undefined) {
     await transaction.done
     throw new Error(t("Restore notes from Trash before linking them."))
   }
@@ -362,6 +381,7 @@ export const HISTORY_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000
 export const MAX_HISTORY_PER_NOTE = 50
 
 export async function saveNote(input: Note, options: { forceHistory?: boolean } = {}): Promise<void> {
+  refuseHandbookChange(input.id, input.notebookId)
   const db = await database
   const transaction = db.transaction(['notes', 'notebooks', 'tags', 'history'], 'readwrite')
   const existing = await transaction.objectStore('notes').get(input.id)
@@ -435,6 +455,7 @@ export async function addNoteAttachment(
   file: Blob,
   name: string,
 ): Promise<NoteAttachment> {
+  refuseHandbookChange(noteId)
   validateAttachmentDetails(name, file.size)
   const data = await readBlob(file)
   const db = await database
@@ -503,6 +524,7 @@ export async function deleteNoteAttachment(id: string): Promise<void> {
 }
 
 export async function trashNote(id: string): Promise<void> {
+  refuseHandbookChange(id)
   const db = await database
   const transaction = db.transaction(['notes', 'tags'], 'readwrite')
   const store = transaction.objectStore('notes')
@@ -522,6 +544,7 @@ export async function trashNote(id: string): Promise<void> {
 }
 
 export async function restoreNote(id: string): Promise<void> {
+  refuseHandbookChange(id)
   const db = await database
   const transaction = db.transaction(['notes', 'tags'], 'readwrite')
   const store = transaction.objectStore('notes')
@@ -542,8 +565,9 @@ export async function restoreNote(id: string): Promise<void> {
 }
 
 export async function permanentlyDeleteNote(id: string): Promise<void> {
+  refuseHandbookChange(id)
   const db = await database
-  const transaction = db.transaction(['notes', 'tags', 'history', 'attachments', 'noteLinks'], 'readwrite')
+  const transaction = db.transaction(['notes', 'tags', 'history', 'attachments', 'noteLinks', 'reading'], 'readwrite')
   const noteStore = transaction.objectStore('notes')
   const note = await noteStore.get(id)
   if (!note) {
@@ -569,12 +593,14 @@ export async function permanentlyDeleteNote(id: string): Promise<void> {
   for (const link of [...outgoing, ...backlinks]) {
     await linkStore.delete([link.sourceNoteId, link.targetNoteId])
   }
+  await transaction.objectStore('reading').delete(id)
   await refreshTags(transaction.objectStore('notes'), transaction.objectStore('tags'))
   await transaction.done
   announceChange([id])
 }
 
 export async function deleteNote(id: string): Promise<void> {
+  refuseHandbookChange(id)
   await trashNote(id)
 }
 
@@ -621,6 +647,7 @@ export async function createLibrary(name: string): Promise<Library> {
 }
 
 export async function renameLibrary(id: string, name: string): Promise<void> {
+  refuseHandbookChange(id)
   const cleaned = name.trim()
   if (!cleaned) throw new Error(t("Library name cannot be empty."))
   const db = await database
@@ -642,6 +669,7 @@ export async function renameLibrary(id: string, name: string): Promise<void> {
 }
 
 export async function createShelf(libraryId: string, name: string): Promise<Shelf> {
+  refuseHandbookChange(libraryId)
   const cleaned = name.trim()
   if (!cleaned) throw new Error(t("Shelf name cannot be empty."))
   const db = await database
@@ -664,6 +692,7 @@ export async function createShelf(libraryId: string, name: string): Promise<Shel
 }
 
 export async function renameShelf(id: string, name: string): Promise<void> {
+  refuseHandbookChange(id)
   const cleaned = name.trim()
   if (!cleaned) throw new Error(t("Shelf name cannot be empty."))
   const db = await database
@@ -685,6 +714,7 @@ export async function renameShelf(id: string, name: string): Promise<void> {
 }
 
 export async function deleteShelf(id: string, destinationId: string): Promise<void> {
+  refuseHandbookChange(id, destinationId)
   const db = await database
   const transaction = db.transaction(['shelves', 'notebooks'], 'readwrite')
   const shelves = transaction.objectStore('shelves')
@@ -708,6 +738,7 @@ export async function deleteShelf(id: string, destinationId: string): Promise<vo
 }
 
 export async function deleteLibrary(id: string, destinationId: string): Promise<void> {
+  refuseHandbookChange(id, destinationId)
   const db = await database
   const transaction = db.transaction(['libraries', 'shelves', 'notebooks'], 'readwrite')
   const libraries = transaction.objectStore('libraries')
@@ -746,6 +777,7 @@ export async function deleteLibrary(id: string, destinationId: string): Promise<
 }
 
 export async function moveNotebook(notebookId: string, shelfId: string): Promise<void> {
+  refuseHandbookChange(notebookId, shelfId)
   const db = await database
   const transaction = db.transaction(['notebooks', 'shelves'], 'readwrite')
   const notebooks = transaction.objectStore('notebooks')
@@ -774,6 +806,7 @@ async function duplicateNotebookMessage(existing: Notebook, getShelf: (id: strin
 }
 
 export async function createNotebook(name: string, shelfId?: string): Promise<Notebook> {
+  refuseHandbookChange(shelfId)
   const cleaned = name.trim()
   if (!cleaned) throw new Error(t("Notebook name cannot be empty."))
   const db = await database
@@ -800,6 +833,7 @@ export async function createNotebook(name: string, shelfId?: string): Promise<No
 }
 
 export async function renameNotebook(id: string, name: string): Promise<void> {
+  refuseHandbookChange(id)
   const cleaned = name.trim()
   if (!cleaned) throw new Error(t("Notebook name cannot be empty."))
   const db = await database
@@ -823,6 +857,7 @@ export async function renameNotebook(id: string, name: string): Promise<void> {
 }
 
 export async function deleteNotebook(id: string, destinationId: string): Promise<void> {
+  refuseHandbookChange(id, destinationId)
   const db = await database
   const transaction = db.transaction(['notebooks', 'notes', 'history'], 'readwrite')
   const notebooks = transaction.objectStore('notebooks')
@@ -859,6 +894,7 @@ export async function deleteNotebook(id: string, destinationId: string): Promise
 }
 
 export async function moveNote(noteId: string, notebookId: string): Promise<void> {
+  refuseHandbookChange(noteId, notebookId)
   const db = await database
   const transaction = db.transaction(['notes', 'notebooks'], 'readwrite')
   const notes = transaction.objectStore('notes')
@@ -940,10 +976,27 @@ export async function setNoteFlag(
   flag: 'pinned' | 'favorite',
   value: boolean,
 ): Promise<void> {
+  refuseHandbookChange(id)
   const db = await database
   const note = await db.get('notes', id)
   if (!note) throw new Error(t("Note not found."))
   await saveNote({ ...note, [flag]: value, updatedAt: Date.now() })
+}
+
+/** Records that a note, personal or handbook, was opened now, keeping its reading position. */
+export async function recordReading(noteId: string): Promise<void> {
+  const db = await database
+  const transaction = db.transaction('reading', 'readwrite')
+  const existing = await transaction.store.get(noteId)
+  await transaction.store.put({ ...existing, noteId, openedAt: Date.now() })
+  await transaction.done
+}
+
+/** The note opened most recently, if any. */
+export async function getLastReading(): Promise<ReadingRecord | undefined> {
+  const db = await database
+  const cursor = await db.transaction('reading').store.index('by-opened').openCursor(null, 'prev')
+  return cursor?.value
 }
 
 export async function getNoteHistory(noteId: string): Promise<NoteHistoryEntry[]> {

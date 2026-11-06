@@ -104,7 +104,7 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
   - Editing actions are hidden for core items, and the stores reject edits to them.
   - Backups and Markdown export include personal content only. A separate **Save this handbook** export is possible later.
 - **Reading data:** a new `reading` store holds the last note opened, the reading position per note, and the reader settings. This is a database version bump with a migration fixture, following the current upgrade-fixture practice.
-- **First launch:** new libraries no longer get the five starter notes. They get one personal **Welcome** note that explains writing, inside a personal library called **My notes**.
+- **First launch:** moved to phase 4, with the new Home page: new libraries will no longer get the five starter notes, but one personal **Welcome** note that explains writing, inside a personal library called **My notes**.
 - **Done when:**
   - content validation runs in CI;
   - an offline end-to-end test opens a handbook note with the network off;
@@ -112,6 +112,8 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
   - personal notes can link to handbook notes.
 
 ### Phase 4: Home, the library entrance
+
+- **Also:** the first-launch change moved here from phase 3 (one Welcome note in **My notes** instead of five starter notes), and the opening screen's largest paint (about 3.2 s on Lighthouse's mobile preset) is brought down, since Lighthouse performance sits close to its 0.9 minimum.
 
 - **Result:** the opening screen answers four questions: where am I, what can I explore, what was I reading, and what is new.
 - **Sections, from section 4 of the spec:**

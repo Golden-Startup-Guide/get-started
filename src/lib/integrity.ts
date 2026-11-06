@@ -1,4 +1,5 @@
 import type { Library, Note, Notebook, NoteLink, Shelf, Tag } from '../types'
+import { isCoreId } from './core'
 import { cleanTags, findOrphans, repairLibrary, type LibraryProblems, type LibraryRepairs } from './notes'
 import { t, tp } from '../i18n/i18n'
 
@@ -47,7 +48,8 @@ export function findLibraryProblems(library: LibrarySnapshot, orphans: Orphans):
     || library.tags.some((tag) => expectedTags.get(tag.id) !== tag.count)
 
   return {
-    links: library.links.filter((link) => !noteIds.has(link.sourceNoteId) || !noteIds.has(link.targetNoteId)),
+    // A link to a handbook note is kept: handbooks ship with the app rather than being stored.
+    links: library.links.filter((link) => !noteIds.has(link.sourceNoteId) || !(noteIds.has(link.targetNoteId) || isCoreId(link.targetNoteId))),
     notesWithoutNotebook: [...library.notes, ...library.trash]
       .filter((note) => !note.notebookId || !notebookIds.has(note.notebookId))
       .map((note) => note.id),
