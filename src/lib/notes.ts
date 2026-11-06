@@ -1,4 +1,5 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase, type IDBPObjectStore, type IDBPTransaction, type StoreNames } from 'idb'
+import { themeSettings } from './theme'
 import type {
   AppSettings,
   Note,
@@ -11,7 +12,7 @@ import type {
   Shelf,
   Tag,
   EditorMode,
-  ThemePreference,
+  ThemeChoice,
 } from '../types'
 import {
   MAX_ATTACHMENT_SIZE_BYTES,
@@ -895,8 +896,8 @@ async function saveSettings(change: Partial<Omit<AppSettings, 'id'>>): Promise<v
   announceChange()
 }
 
-export async function saveTheme(theme: ThemePreference): Promise<void> {
-  await saveSettings({ theme })
+export async function saveTheme(choice: ThemeChoice): Promise<void> {
+  await saveSettings(themeSettings(choice))
 }
 
 export async function saveEditorMode(editorMode: EditorMode): Promise<void> {

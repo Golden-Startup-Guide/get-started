@@ -1,13 +1,13 @@
-# My Notes - Complete App Guide
+# The Personal Knowledge Library - Complete App Guide
 
-This guide describes the current implementation of My Notes: how to use it,
+This guide describes the current implementation of the app: how to use it,
 where it stores data, how to preserve that data, and how the application is
 organized for development. It covers shipped functionality, not every idea in
 the product roadmap.
 
 ## 1. Product overview
 
-My Notes is a responsive, offline-first Progressive Web App (PWA) for taking
+The Personal Knowledge Library is a responsive, offline-first Progressive Web App (PWA) for taking
 notes and building a personal knowledge library. It is designed around local
 ownership of data, quick capture, flexible organization, and safe recovery.
 
@@ -496,9 +496,15 @@ importing a backup.
 
 ### 2.9 Themes and Settings
 
-Choose **Light**, **Dark**, or **System** in Settings. The preference is stored
-locally; System follows the browser or operating system color-scheme
-preference.
+Choose **Light**, **Soft paper**, **Dark**, or **System** in Settings. Soft paper
+is a warmer, lower-glare light theme for long reading. The preference is stored
+locally; System follows the browser or operating system color-scheme preference.
+The colours come from the design specification
+([design/peoples-home-spec.md](design/peoples-home-spec.md)): warm paper, forest
+green for actions and links, and a blue focus ring. Every text and background
+pairing in each theme is checked against WCAG 2.2 AA by a unit test
+(`src/lib/theme.test.ts`). Titles and note text use a serif from the device;
+controls use the device's sans-serif, so no fonts are downloaded.
 
 Settings also provides backup import and export, storage estimates and
 category counts, and About information. Storage estimates are informational
@@ -534,7 +540,7 @@ site has not been opened for 7 days and is not on the Home Screen. **Settings �
 Automatic backups** keeps copies elsewhere:
 
 - **In Chrome and Edge on a computer**, select **Choose a backup folder…** and
-  pick a folder, ideally one a cloud drive keeps in sync. My Notes writes a
+  pick a folder, ideally one a cloud drive keeps in sync. The Personal Knowledge Library writes a
   backup there at once, then again once a day (or once a week, or only when you
   select **Back up now**) while the app is open and the notes have changed.
   Each backup is a normal JSON backup named `my-notes-backup-2026-11-04.json`;
@@ -545,13 +551,13 @@ Automatic backups** keeps copies elsewhere:
   banner offers **Allow access**, and backups continue once allowed. A failed
   backup is reported in a banner with **Try again**, and retried every quarter
   of an hour.
-- **In other browsers**, which cannot write to a folder, My Notes reminds you
+- **In other browsers**, which cannot write to a folder, the app reminds you
   instead: a week (or a day, as chosen) after your notes change without a
   backup, a banner offers **Download a backup**. **Later** hides it for a day,
   and **never** in Settings turns reminders off.
 
 **Every backup is checked by restoring it.** After a backup is written to the
-folder, My Notes reads the file back as saved and restores it, with the same
+folder, the app reads the file back as saved and restores it, with the same
 code as **Import**, into an empty test database laid out like a new device's.
 It then checks that every note came back with its text unchanged, along with
 every attachment at its full size, every history entry, link, notebook, shelf,
@@ -605,12 +611,12 @@ everything.
 ### Importing from other apps
 
 **Settings → Markdown and other apps → Import from** adds notes from another
-app as new notes; nothing already in My Notes is changed. Choose the app, then
+app as new notes; nothing already in the app is changed. Choose the app, then
 its files (or, for Markdown and Apple Notes, a folder):
 
 | From | What to choose | What comes across |
 |---|---|---|
-| Markdown files or an Obsidian vault | the vault folder, a `.zip`, or `.md` files | folders become notebooks; front matter title, tags, dates, pinned, and favorite; inline `#tags`; files embedded (`![[photo.png]]`) or linked locally become attachments; `[[wikilinks]]` stay as they are. A My Notes Markdown export comes back with its notebooks, tags, flags, Trash, and attachments. |
+| Markdown files or an Obsidian vault | the vault folder, a `.zip`, or `.md` files | folders become notebooks; front matter title, tags, dates, pinned, and favorite; inline `#tags`; files embedded (`![[photo.png]]`) or linked locally become attachments; `[[wikilinks]]` stay as they are. A Markdown export from the app comes back with its notebooks, tags, flags, Trash, and attachments. |
 | Notion | the `.zip` from Export → Markdown & CSV | pages become notes in a **Notion** notebook, without Notion's ID in their titles or the repeated title heading; links between pages become `[[links]]`; images and files become attachments. Databases (CSV) are not imported. |
 | Evernote | `.enex` files (one per notebook) | each file becomes a notebook; titles, tags, created and updated times, formatting, checklists, tables, and attachments |
 | Google Keep | the Takeout `.zip` | text and checklists, labels as tags, pins, images; archived notes get the tag `archived`, and notes in Keep's trash go to Trash |
@@ -681,7 +687,7 @@ code.
 
 ### Start-up integrity check
 
-Shortly after My Notes starts (in idle time, so start-up never waits), it
+Shortly after the app starts (in idle time, so start-up never waits), it
 checks the library for damage, such as an interrupted write in an older
 version, a bug, or an edited backup might leave, and repairs it:
 
@@ -718,7 +724,7 @@ opened offline before that first time shows the TeX or diagram source instead.
 
 **Updates.** While the app is open it checks for a new version every hour (and
 whenever it starts). A new version downloads in the background and then waits:
-a banner says **A new version of My Notes is ready**, with **Reload to update**
+a banner says **A new version of the app is ready**, with **Reload to update**
 and **Later**. Reloading saves the open note first, and if the note cannot be
 saved the update waits, so nothing typed is lost. **Later** hides the banner
 until the next visit, and the new version is used from then on. The app never
@@ -731,8 +737,8 @@ missing. It does not automatically synchronize between browsers or devices.
 
 ### Installing, shortcuts, and the web clipper
 
-My Notes installs as an app on computers and phones (**Settings → Install and
-clip**): with **Install My Notes** in Chrome, Edge, and on Android, from the
+The Personal Knowledge Library installs as an app on computers and phones (**Settings → Install and
+clip**): with **Install The Personal Knowledge Library** in Chrome, Edge, and on Android, from the
 browser's Install option, or on iPhone and iPad with Share → **Add to Home
 Screen**. Installed, it opens in its own window and works offline. Its icon's
 menu (right-click, or long-press on a phone) offers **New note**, **Quick
@@ -740,8 +746,8 @@ note**, and **Today's note**. On Android, the installed app appears in other
 apps' **Share** menus: what is shared (a page's title and link, or text) is
 saved as a note in **Inbox**.
 
-The **web clipper** is a bookmarklet: drag **Clip to My Notes** from Settings
-to the bookmarks bar, then click it on any page. It opens My Notes with the
+The **web clipper** is a bookmarklet: drag **Clip to Knowledge Library** from Settings
+to the bookmarks bar, then click it on any page. It opens the app with the
 page's title and link, and any text selected on the page (up to 4,000
 characters), and saves them as a note in **Inbox**: a link to the page, then
 the selection as a quote. Only `http` and `https` links are kept, and the
@@ -775,7 +781,7 @@ does not apply it, because Vite injects an inline refresh script.
 By default, browsers treat site data as "best-effort" and may clear it when the
 device runs low on space; Safari can also clear data for sites that are not
 installed after seven days without use. After the first note is saved in a
-session, My Notes asks the browser to make its storage persistent. Settings →
+session, the app asks the browser to make its storage persistent. Settings →
 Storage on this device shows whether persistent storage is on and, when it is
 off, offers **Keep notes on this device** to ask again. Browsers decide whether
 to grant it (installing the app usually helps), so keep exporting backups.
@@ -786,7 +792,7 @@ site data. Do not clear browser storage as a troubleshooting step.
 
 ## 5. Technology and architecture
 
-My Notes is a TypeScript single-page application built with React and Vite.
+The Personal Knowledge Library is a TypeScript single-page application built with React and Vite.
 Tailwind CSS and project styles provide the responsive interface. Markdown is
 rendered with `react-markdown` and `remark-gfm`; icons use `lucide-react`.
 IndexedDB access is centralized in `src/lib/notes.ts`. The PWA manifest and

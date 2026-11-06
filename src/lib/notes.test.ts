@@ -448,7 +448,7 @@ describe('IndexedDB storage and backup', () => {
 
   it('persists theme preference and exports/imports a full backup without overwrites', async () => {
     await storage.saveTheme('dark')
-    expect(await storage.getSettings()).toEqual({ id: 'preferences', theme: 'dark' })
+    expect(await storage.getSettings()).toEqual({ id: 'preferences', theme: 'dark', paper: false })
     const note: Note = {
       id: 'backup-note',
       title: 'Backup me',
@@ -468,7 +468,7 @@ describe('IndexedDB storage and backup', () => {
       version: 4,
       libraries: expect.arrayContaining([expect.objectContaining({ id: 'starter-library' })]),
       shelves: expect.arrayContaining([expect.objectContaining({ id: 'starter-shelf' })]),
-      settings: { id: 'preferences', theme: 'dark' },
+      settings: { id: 'preferences', theme: 'dark', paper: false },
     }))
     expect(backup.notes).toContainEqual(expect.objectContaining({ id: note.id, favorite: true, pinned: true }))
     expect(backup.tags).toContainEqual(expect.objectContaining({ id: 'archive' }))

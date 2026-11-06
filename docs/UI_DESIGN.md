@@ -1,8 +1,8 @@
-# My Notes - Personal Knowledge Library UI Design
+# The Personal Knowledge Library - UI Design
 
 ## Purpose
 
-My Notes is evolving from a personal note editor into a **Personal Knowledge
+The Personal Knowledge Library is evolving from a personal note editor into a **Personal Knowledge
 Library platform**. This document defines a durable interface direction for
 that product so that new libraries, content, and capabilities can grow without
 turning the workspace into a crowded notes dashboard.

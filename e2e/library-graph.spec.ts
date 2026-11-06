@@ -26,6 +26,6 @@ test('draws the whole library, narrows it with search, and selects a note to exp
 
   await page.getByRole('button', { name: 'Explore around it' }).click()
   await expect(page.getByRole('button', { name: 'Around a note' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('combobox', { name: 'Explore note' }).locator('option:checked')).toHaveText(/^Welcome to My Notes/)
+  await expect(page.getByRole('combobox', { name: 'Explore note' }).locator('option:checked')).toHaveText(/^Welcome to your Knowledge Library/)
   await expect(page.getByRole('region', { name: 'Links from this note' }).getByRole('button')).toHaveCount(1)
 })

@@ -37,7 +37,7 @@ test('shows no English text on the main screens in Spanish', async ({ page, brow
   await sweep('workspace')
   await page.getByRole('button', { name: 'Crear una nota nueva', exact: true }).click()
   await page.getByRole('textbox', { name: 'Título de la nota' }).fill('Prueba')
-  await page.locator('.cm-content').fill('# Uno\n\n- [ ] tarea\n\n[[Welcome to My Notes]]')
+  await page.locator('.cm-content').fill('# Uno\n\n- [ ] tarea\n\n[[Welcome to your Knowledge Library]]')
   await page.waitForTimeout(1500)
   await sweep('editor')
   await page.getByRole('button', { name: 'Cerrar editor' }).first().click()

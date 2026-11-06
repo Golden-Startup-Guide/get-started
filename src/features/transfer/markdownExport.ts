@@ -20,7 +20,7 @@ const iso = (time: number | undefined) => (time === undefined ? undefined : new 
  * The library as a folder of Markdown files, zipped: Library/Shelf/Notebook/Title.md, each with
  * its details (tags, dates, pinned, favorite) in front matter and its attachments in a folder
  * beside it. Notes in Trash are in a Trash folder. Obsidian and most Markdown apps open it as it
- * is, and My Notes imports it back ("Markdown files or an Obsidian vault").
+ * is, and the app imports it back ("Markdown files or an Obsidian vault").
  */
 export function buildMarkdownZip(library: NotesBackup): Uint8Array {
   const files: Record<string, Uint8Array> = {}

@@ -24,8 +24,8 @@ export function ProblemsLog() {
     <div className="mt-3">
       <p className="text-sm" aria-live="polite">
         {problems.length
-          ? tp(problems.length, '{count} problem since My Notes opened.', '{count} problems since My Notes opened.')
-          : t('No problems since My Notes opened.')}
+          ? tp(problems.length, '{count} problem since the app opened.', '{count} problems since the app opened.')
+          : t('No problems since the app opened.')}
       </p>
       {problems.length > 0 && (
         <ul className="mt-2 max-h-32 space-y-1 overflow-auto text-xs text-[var(--muted)]">
@@ -43,7 +43,7 @@ export function ProblemsLog() {
         <a className="secondary-button" href={ISSUES} target="_blank" rel="noopener noreferrer">{t('Report a problem')}</a>
       </div>
       <p className="mt-2 text-xs text-[var(--muted)]">
-        {t('My Notes sends no error reports. Copy the details into a report if you want to; they include the version, the browser, and the error messages, which can name a note or notebook, so check them first.')}
+        {t('The app sends no error reports. Copy the details into a report if you want to; they include the version, the browser, and the error messages, which can name a note or notebook, so check them first.')}
       </p>
     </div>
   )

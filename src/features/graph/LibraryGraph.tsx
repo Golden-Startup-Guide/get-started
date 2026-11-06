@@ -44,7 +44,8 @@ const MAX_LISTED_MATCHES = 50
 // ...and this few, names them all in the graph.
 const NAME_ALL_BELOW = 15
 
-const ACCENT = '#d77762'
+// Ochre: visible on both the light and dark canvases.
+const ACCENT = '#a56722'
 
 const edgeKey = (a: string, b: string) => (a < b ? `${a}\n${b}` : `${b}\n${a}`)
 

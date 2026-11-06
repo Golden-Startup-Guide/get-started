@@ -20,7 +20,7 @@ describe('starter notes in a brand-new library', () => {
     const notebooks = await storage.getNotebooks()
     expect(notes).toHaveLength(notebooks.length)
     expect(new Set(notes.map((note) => note.notebookId))).toEqual(new Set(notebooks.map((notebook) => notebook.id)))
-    expect(notes[0]).toEqual(expect.objectContaining({ id: 'starter-note-welcome', notebookId: 'starter-personal', title: 'Welcome to My Notes' }))
+    expect(notes[0]).toEqual(expect.objectContaining({ id: 'starter-note-welcome', notebookId: 'starter-personal', title: 'Welcome to your Knowledge Library' }))
     expect(notes.every((note) => note.tags?.length === 0 && !note.pinned && !note.favorite && note.content.length > 0)).toBe(true)
     expect(await storage.getTags()).toEqual([])
   })

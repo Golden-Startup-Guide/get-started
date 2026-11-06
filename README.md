@@ -1,13 +1,13 @@
-# My Notes
+# The Personal Knowledge Library
 
 **A private, offline-first home for notes and personal knowledge.**
 
-My Notes is an installable web app for capturing ideas, organizing them into a
+The Personal Knowledge Library is an installable web app for capturing ideas, organizing them into a
 personal library, and connecting related notes. It runs in the browser and
 stores your content on your device. There is no account, cloud sync, or
 AI-powered processing.
 
-![Illustration of the My Notes workspace with library navigation, searchable notes, and a Markdown editor](docs/images/my-notes-workspace.svg)
+![Illustration of the workspace with library navigation, searchable notes, and a Markdown editor](docs/images/my-notes-workspace.svg)
 
 *Illustrative view of the workspace and its main areas.*
 
@@ -53,7 +53,7 @@ npm run preview
 ```
 
 The production build includes a web app manifest and a service worker that
-precaches the app shell. Install My Notes from the browser's install control on
+precaches the app shell. Install the app from the browser's install control on
 supported devices. Production service workers require HTTPS; localhost is
 supported for development.
 
@@ -69,7 +69,7 @@ notebook.
 ## Your data and privacy
 
 Notes, relationships, attachments, settings, and history are stored in the
-browser's IndexedDB database on the current device and browser profile. My Notes
+browser's IndexedDB database on the current device and browser profile. The Personal Knowledge Library
 has no account and sends your notes nowhere; see the [privacy policy](PRIVACY.md).
 It does not synchronize between devices: use automatic backups to a folder your
 cloud drive syncs, or export and import, to move notes between them.
@@ -126,4 +126,4 @@ and `vite-plugin-pwa`. Tests use Vitest, React Testing Library, and
 
 ## Licence
 
-My Notes is free software under the [MIT licence](LICENSE).
+The Personal Knowledge Library is free software under the [MIT licence](LICENSE).

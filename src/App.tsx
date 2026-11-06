@@ -1,4 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { themeChoice } from './lib/theme'
 import {
   FileText,
   Menu,
@@ -207,7 +208,9 @@ function App() {
   const textLinks = useMemo(() => (needsTextLinks ? deriveWikilinks(notes) : NO_LINKS), [needsTextLinks, notes])
   const graphLinks = useMemo(() => mergeLinks(links, textLinks), [links, textLinks])
 
-  const theme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
+  const resolvedTheme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
+  // Soft paper replaces the light colours; 'system' follows the device between light and dark.
+  const theme = resolvedTheme === 'light' && settings.paper ? 'paper' : resolvedTheme
 
   // Sorting depends only on the notes, not the search, so typing never re-sorts the library.
   const sortedNotes = useMemo(() => sortNotes(notes), [notes])
@@ -746,7 +749,7 @@ function App() {
       )}
       {paletteOpen && (
         <CommandPalette
-          sources={{ notes, libraries, shelves, notebooks, tags, savedSearches: settings.savedSearches ?? [], theme: settings.theme, sidebarCollapsed: isCompactNavigation ? undefined : sidebarCollapsed }}
+          sources={{ notes, libraries, shelves, notebooks, tags, savedSearches: settings.savedSearches ?? [], theme: themeChoice(settings), sidebarCollapsed: isCompactNavigation ? undefined : sidebarCollapsed }}
           handlers={{
             newNote: openNewNote,
             openSettings,

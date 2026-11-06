@@ -2,9 +2,9 @@
 
 *Last updated: November 5, 2026*
 
-My Notes is built so that your notes stay yours. In short: **we collect nothing.**
+The Personal Knowledge Library is built so that your notes stay yours. In short: **we collect nothing.**
 
-## What My Notes stores, and where
+## What the app stores, and where
 
 Everything you create (notes, attachments, history, links, libraries,
 notebooks, tags, settings, and saved searches) is stored **only in your
@@ -16,7 +16,7 @@ Your notes leave the device only when you move them yourself: by exporting a
 backup or Markdown files, or by choosing a backup folder, which may be one a
 cloud drive syncs. That copy is then governed by wherever you put it.
 
-## What My Notes does not do
+## What the app does not do
 
 - No analytics, tracking, or advertising.
 - No cookies.
@@ -48,7 +48,7 @@ Backups and exports you saved elsewhere must be deleted where you saved them.
 
 ## Children
 
-My Notes collects no personal information from anyone, including children.
+The Personal Knowledge Library collects no personal information from anyone, including children.
 
 ## Changes
 

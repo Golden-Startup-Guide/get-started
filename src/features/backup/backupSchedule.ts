@@ -35,7 +35,7 @@ export interface BackupTiming {
   frequency: BackupFrequency
   /** When the last backup (to the folder, or downloaded) was made. */
   lastBackupAt?: number
-  /** When My Notes first ran on this device; reminders count from here until the first backup. */
+  /** When the app first ran on this device; reminders count from here until the first backup. */
   firstSeenAt: number
   /** The newest change to the library. */
   lastChangeAt: number

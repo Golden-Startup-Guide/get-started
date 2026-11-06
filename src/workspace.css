@@ -2,35 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens, from the design specification (docs/design/peoples-home-spec.md, section 6).
+ * Components use these names only; contrast for every real pairing is checked in theme.test.ts.
+ */
 :root {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Reading text: a comfortable serif from the system, with no font download. */
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+  font-family: var(--font-sans);
 }
 
 .workspace {
-  --canvas: #f8f7f4;
-  --surface: #fffefa;
-  --surface-alt: #f1efe9;
-  --text: #292824;
-  --muted: #65645e;
-  --border: #dedbd2;
-  --accent: #9f493b;
+  --canvas: #f7f5f0;
+  --surface: #ffffff;
+  --surface-alt: #eeeae2;
+  --text: #20241f;
+  --muted: #5c625a;
+  --border: #dad8d0;
+  /* Forest: actions, links, and the current location. */
+  --accent: #285847;
+  --accent-hover: #1f493b;
+  --accent-soft: #e1e9e1;
+  --on-accent: #ffffff;
+  /* Ochre: a small accent, never the only sign of anything. */
+  --ochre: #a56722;
+  --focus: #146c94;
   min-height: 100vh;
   background: var(--canvas);
   color: var(--text);
   transition: background-color 150ms ease, color 150ms ease;
 }
 
+/* Soft paper: a warmer, lower-glare light theme for long reading. */
+.workspace[data-theme='paper'] {
+  --canvas: #f1e9d8;
+  --surface: #f9f3e6;
+  --surface-alt: #e9dfca;
+  --text: #2b2822;
+  --muted: #5d584c;
+  --border: #d5c9b1;
+  --accent: #2b5644;
+  --accent-hover: #214536;
+  --accent-soft: #e2e2cd;
+  --on-accent: #ffffff;
+  --ochre: #93591a;
+  --focus: #135f84;
+}
+
 .workspace[data-theme='dark'],
 html[data-theme='dark'] .workspace {
   color-scheme: dark;
-  --canvas: #171816;
-  --surface: #22231f;
-  --surface-alt: #2d2e29;
-  --text: #f4f2eb;
-  --muted: #c1beb4;
-  --border: #41423b;
-  --accent: #f29a83;
+  --canvas: #171a17;
+  --surface: #202520;
+  --surface-alt: #2a302a;
+  --text: #f2f0e8;
+  --muted: #c1c5bc;
+  --border: #424941;
+  --accent: #9cc9af;
+  --accent-hover: #b7d9c5;
+  --accent-soft: #2c3d33;
+  --on-accent: #14241c;
+  --ochre: #e7b876;
+  --focus: #82d5f2;
 }
 
 .workspace-sidebar {
@@ -80,7 +115,7 @@ html[data-theme='dark'] .workspace {
 }
 
 .workspace-breadcrumb button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -229,17 +264,12 @@ html[data-theme='dark'] .workspace {
 }
 
 .primary-button {
-  background: #9f493b;
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .primary-button:hover {
-  background: #843b30;
-}
-
-.workspace[data-theme='dark'] .primary-button,
-html[data-theme='dark'] .workspace .primary-button {
-  background: #9f493b;
+  background: var(--accent-hover);
 }
 
 .secondary-button {
@@ -289,19 +319,19 @@ html[data-theme='dark'] .workspace .primary-button {
 .secondary-button:focus-visible,
 .danger-button:focus-visible,
 .nav-button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .icon-button.is-selected,
 .card-action-active {
-  color: #a04b3d;
-  background: #f7e5df;
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .icon-button.is-favorite,
 .card-action-favorite {
-  color: #a04b3d;
+  color: var(--accent);
 }
 
 .small-input {
@@ -319,7 +349,7 @@ html[data-theme='dark'] .workspace .primary-button {
 .tag-input:focus,
 .title-input:focus,
 .content-input:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -433,7 +463,7 @@ html[data-theme='dark'] .workspace .primary-button {
 
 .note-link-open:focus-visible,
 .note-link-remove:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -687,7 +717,7 @@ html[data-theme='dark'] .workspace .primary-button {
 }
 
 .markdown-editor .cm-editor.cm-focused {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -726,7 +756,7 @@ html[data-theme='dark'] .workspace .primary-button {
   max-height: 16rem;
   min-width: 14rem;
   padding: 0.25rem;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .markdown-editor .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
@@ -757,6 +787,7 @@ html[data-theme='dark'] .workspace .primary-button {
 
 .prose-notes {
   color: var(--text);
+  font-family: var(--font-serif);
   font-size: 0.9rem;
   line-height: 1.7;
 }
@@ -786,7 +817,7 @@ html[data-theme='dark'] .workspace .primary-button {
 .prose-notes a { color: var(--accent); text-decoration: underline; }
 /* [[Wikilinks]]: a dotted underline marks links to other notes; dimmed when no note has that title. */
 .prose-notes .wikilink { text-decoration-style: dotted; text-underline-offset: 3px; }
-.prose-notes .wikilink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0.2rem; }
+.prose-notes .wikilink:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 0.2rem; }
 .prose-notes .wikilink-missing { color: var(--muted); text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .prose-notes blockquote { border-inline-start: 3px solid var(--border); padding-inline-start: 0.85rem; color: var(--muted); }
 .prose-notes pre { overflow-x: auto; border-radius: 0.6rem; background: var(--surface-alt); padding: 0.8rem; }
@@ -1053,7 +1084,7 @@ html[data-theme='dark'] .workspace .primary-button {
 }
 
 .palette-trigger:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -1269,7 +1300,7 @@ html[data-theme='dark'] .workspace .primary-button {
 }
 
 .graph-match:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -1312,13 +1343,13 @@ html[data-theme='dark'] .workspace .primary-button {
 }
 
 .segmented button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
 /* Live preview: Markdown formatted outside the lines being edited (see livePreview.ts). */
 .markdown-editor .cm-live-preview .cm-scroller {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.7;
 }
 
@@ -1493,7 +1524,7 @@ html[data-theme='dark'] .workspace {
 }
 
 .note-contents-toggle:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -1631,7 +1662,7 @@ html[data-theme='dark'] .workspace {
 }
 
 .quick-capture-input:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -1733,7 +1764,7 @@ html[data-theme='dark'] .workspace {
 }
 
 .formatting-button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
@@ -1836,4 +1867,19 @@ html[data-theme='dark'] .workspace {
   background: var(--surface-alt);
   padding: 0.05rem 0.5rem;
   font-size: 0.75rem;
+}
+
+/* Titles use the reading serif, as in the design mockups; controls and labels stay sans. */
+.workspace h1,
+.workspace h2 {
+  font-family: var(--font-serif);
+}
+
+/* The name is long, so it wraps onto two lines instead of being cut off. */
+.brand-name {
+  color: var(--accent);
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
 }

@@ -36,7 +36,7 @@ try {
   await check('refuses to run in a frame', async () => {
     const framing = await context.newPage()
     await framing.setContent(`<iframe src="${url}" width="600" height="300"></iframe>`)
-    await framing.frameLocator('iframe').getByText('My Notes does not run inside other pages.').waitFor({ timeout: 30_000 })
+    await framing.frameLocator('iframe').getByText('The Personal Knowledge Library does not run inside other pages.').waitFor({ timeout: 30_000 })
     await framing.close()
   })
   if (problems.length) throw new Error(`Console errors:\n${problems.join('\n')}`)

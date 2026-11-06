@@ -28,7 +28,7 @@ import {
 import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templates'
 import { notesLinkingTo, renameWikilinks } from '../lib/wikilinks'
 import { shelfForNewNotebook } from '../features/library/placement'
-import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemePreference } from '../types'
+import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemeChoice } from '../types'
 import { readText } from '../features/backup/backupFolder'
 import { checkBackup, describeCheck } from '../lib/backupCheck'
 import type { ImportSource } from '../features/transfer/importSources'
@@ -91,9 +91,9 @@ export function startStorageSync(): () => void {
       if (activeId && event.noteIds.includes(activeId)) useEditorStore.getState().markChangedElsewhere()
       library().refresh().catch(() => workspace().showError(t("Changes from another tab could not be loaded. Please refresh.")))
     } else if (event.type === 'blocked') {
-      workspace().showError(t("Close other My Notes tabs or windows so this one can finish updating your notes."))
+      workspace().showError(t("Close other tabs or windows of this app so this one can finish updating your notes."))
     } else if (event.type === 'version-change') {
-      workspace().showError(t("My Notes was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved."))
+      workspace().showError(t("The app was updated in another tab. Reload this page to keep working; unsaved changes here cannot be saved."))
     } else {
       workspace().showError(t("The browser closed the connection to your notes. Reload this page to keep working."))
     }
@@ -318,7 +318,7 @@ export async function deleteStructure(target: StructureItem, destinationId: stri
 
 // --- Settings ---------------------------------------------------------------------------
 
-export async function changeTheme(theme: ThemePreference) {
+export async function changeTheme(theme: ThemeChoice) {
   try {
     await saveTheme(theme)
     library().setTheme(theme)
@@ -376,7 +376,7 @@ export async function restoreBackup(file: File) {
 export async function requestPersistenceFromSettings() {
   const status = await usePersistenceStore.getState().requestNow()
   if (status !== 'persisted') {
-    workspace().showNotice(t("The browser did not grant persistent storage. Installing My Notes as an app, or bookmarking it, can help. Keep exporting backups."))
+    workspace().showNotice(t("The browser did not grant persistent storage. Installing the app, or bookmarking it, can help. Keep exporting backups."))
   }
 }
 

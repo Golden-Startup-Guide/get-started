@@ -47,6 +47,12 @@ export interface Tag {
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 
+/**
+ * The theme a person picks: the three stored preferences, or soft paper. Soft paper is stored as
+ * `theme: 'light'` with `paper: true`, so backups stay readable by versions without it.
+ */
+export type ThemeChoice = ThemePreference | 'paper'
+
 /** How the Markdown editor shows text: formatted outside the line being edited, or as typed. */
 export type EditorMode = 'live' | 'source'
 
@@ -61,6 +67,8 @@ export interface SavedSearch {
 export interface AppSettings {
   id: 'preferences'
   theme: ThemePreference
+  /** With the light theme, use soft paper colours instead. Absent means plain light. */
+  paper?: boolean
   /** Absent in libraries from before live preview, which means 'live'. */
   editorMode?: EditorMode
   /** Absent until a search is first saved. */

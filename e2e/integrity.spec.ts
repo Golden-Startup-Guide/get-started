@@ -27,7 +27,7 @@ test('repairs a damaged library at start-up and says what it did', async ({ page
   await page.reload()
 
   const notice = page.getByRole('status').filter({ hasText: 'checked your library' })
-  await expect(notice).toHaveText(/My Notes checked your library and repaired it: removed 1 link to notes that no longer exist; removed 1 attachment left behind by deleted notes; moved 1 note whose notebook was missing to “Personal”\./)
+  await expect(notice).toHaveText(/The app checked your library and repaired it: removed 1 link to notes that no longer exist; removed 1 attachment left behind by deleted notes; moved 1 note whose notebook was missing to “Personal”\./)
   // The rescued note is in Personal, with its text.
   await page.getByRole('button', { name: /^Personal \d+$/ }).click()
   await expect(page.getByRole('heading', { name: 'Lost and found' })).toBeVisible()

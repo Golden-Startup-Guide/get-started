@@ -12,7 +12,7 @@ import './index.css'
 listenForInstall()
 listenForProblems()
 
-// Inside another site's frame, show only a link to open My Notes on its own: a frame could trick
+// Inside another site's frame, show only a link to open the app on its own: a frame could trick
 // people into clicking or typing into the app (GitHub Pages cannot send the header that forbids
 // framing, and a policy in a <meta> tag cannot either).
 const framed = (() => {
@@ -33,8 +33,8 @@ if (framed) {
   link.href = window.location.href
   link.target = '_blank'
   link.rel = 'noopener'
-  link.textContent = 'Open My Notes in its own tab'
-  message.append('My Notes does not run inside other pages. ', link, '.')
+  link.textContent = 'Open The Personal Knowledge Library in its own tab'
+  message.append('The Personal Knowledge Library does not run inside other pages. ', link, '.')
   root.replaceChildren(message)
 } else void applyLanguageChoice(choice)
   .catch(() => applyLanguageChoice('en'))

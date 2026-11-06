@@ -29,7 +29,7 @@ export async function runIntegrityCheck() {
     await useLibraryStore.getState().refresh()
     const worthTelling = repaired.filter((phrase) => phrase !== t('rebuilt the tag list'))
     if (worthTelling.length) {
-      useWorkspaceStore.getState().showNotice(t("My Notes checked your library and repaired it: {value}.", { value: worthTelling.join('; ') }))
+      useWorkspaceStore.getState().showNotice(t("The app checked your library and repaired it: {value}.", { value: worthTelling.join('; ') }))
     }
   } catch (reason) {
     useIntegrityStore.setState({ checkedAt: Date.now(), failed: reason instanceof Error ? reason.message : t('The check could not run.') })

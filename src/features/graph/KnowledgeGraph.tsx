@@ -166,7 +166,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
             >
               <defs>
                 <marker id="graph-arrow-out" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L7,3 z" fill="#d77762" />
+                  <path d="M0,0 L0,6 L7,3 z" fill="var(--accent)" />
                 </marker>
                 <marker id="graph-arrow-in" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
                   <path d="M0,0 L0,6 L7,3 z" fill="var(--muted)" />
@@ -181,7 +181,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
                       key={`${neighbor.note.id}-outgoing`}
                       d={getEdgePath(graphCenter, position, bidirectional ? 12 : 0)}
                       fill="none"
-                      stroke="#d77762"
+                      stroke="var(--accent)"
                       strokeWidth="2"
                       markerEnd="url(#graph-arrow-out)"
                     />
@@ -201,7 +201,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
               })}
             </svg>
             <button
-              className="absolute z-10 flex min-h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border-2 border-[#d77762] bg-[var(--surface)] px-2 py-2 text-center text-xs font-semibold shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b45d4d]"
+              className="absolute z-10 flex min-h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border-2 border-[var(--accent)] bg-[var(--surface)] px-2 py-2 text-center text-xs font-semibold shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
               style={{ left: `${(graphCenter.x / 600) * 100}%`, top: `${(graphCenter.y / 400) * 100}%` }}
               aria-label={t("Explore {label}", { label })}
               aria-pressed="true"
@@ -212,7 +212,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
             {visibleNeighbors.map((neighbor, index) => (
               <button
                 key={neighbor.note.id}
-                className="absolute z-10 flex min-h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-center text-xs shadow-sm hover:border-[#d77762] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b45d4d]"
+                className="absolute z-10 flex min-h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-center text-xs shadow-sm hover:border-[var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
                 style={{ left: `${(positions[index].x / 600) * 100}%`, top: `${(positions[index].y / 400) * 100}%` }}
                 aria-label={t("Explore {noteLabel}", { noteLabel: noteLabel(neighbor.note) })}
                 aria-pressed="false"
@@ -283,7 +283,7 @@ function RelationshipList({
           {notes.map(({ note }) => (
             <li key={note.id}>
               <button
-                className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-[var(--surface-alt)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#b45d4d]"
+                className="w-full rounded-lg px-2 py-2 text-left text-sm hover:bg-[var(--surface-alt)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
                 onClick={() => onExplore(note)}
                 aria-label={t("Explore {noteLabel}", { noteLabel: noteLabel(note) })}
               >

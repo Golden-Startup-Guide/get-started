@@ -2,7 +2,7 @@ import { backupFileName, backupsToRemove } from './backupSchedule'
 
 /**
  * A folder on the device that backups are written to, through the File System Access API
- * (Chrome and Edge on computers). Only what My Notes uses is described, so tests can stand in
+ * (Chrome and Edge on computers). Only what the app uses is described, so tests can stand in
  * for it.
  */
 export interface BackupFolder {
@@ -37,7 +37,7 @@ export async function chooseBackupFolder(): Promise<BackupFolder | undefined> {
 }
 
 /**
- * Whether My Notes may write to the folder. After a restart the browser may want to ask again
+ * Whether the app may write to the folder. After a restart the browser may want to ask again
  * ('prompt'), which needs a click; `ask` does that, so call it only from one.
  */
 export async function folderPermission(folder: BackupFolder, ask = false): Promise<PermissionState> {

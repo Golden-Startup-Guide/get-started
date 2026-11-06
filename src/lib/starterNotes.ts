@@ -21,7 +21,7 @@ export function starterNotes(now: number): Note[] {
   })
 
   return [
-    note('starter-note-welcome', 'starter-personal', 'Welcome to My Notes', `Your notes stay in this browser. Nothing is sent anywhere, and the app works offline.
+    note('starter-note-welcome', 'starter-personal', 'Welcome to your Knowledge Library', `Your notes stay in this browser. Nothing is sent anywhere, and the app works offline.
 
 ## Getting around
 - **Libraries, shelves, and notebooks** in the sidebar organize your notes, from broad to specific.

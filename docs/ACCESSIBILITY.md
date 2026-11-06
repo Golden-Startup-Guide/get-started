@@ -1,6 +1,6 @@
 # Accessibility
 
-My Notes aims to meet **WCAG 2.2 level AA**: usable with a keyboard alone,
+The Personal Knowledge Library aims to meet **WCAG 2.2 level AA**: usable with a keyboard alone,
 with a screen reader, at 200% zoom and on small screens, and in light and dark
 themes.
 

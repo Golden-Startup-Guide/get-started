@@ -26,7 +26,7 @@ for (const theme of ['light', 'dark'] as const) {
     test.setTimeout(120_000)
     await page.emulateMedia({ colorScheme: theme })
     await openWorkspace(page)
-    await createNote(page, 'Accessible note', '# Heading\n\n- [ ] A task\n\nSee [[Welcome to My Notes]] and **bold** text.\n\n| A | B |\n|---|---|\n| 1 | 2 |')
+    await createNote(page, 'Accessible note', '# Heading\n\n- [ ] A task\n\nSee [[Welcome to your Knowledge Library]] and **bold** text.\n\n| A | B |\n|---|---|\n| 1 | 2 |')
     await expectNoViolations(page, 'the workspace')
 
     await page.getByRole('button', { name: 'Open note Accessible note' }).click()
