@@ -98,7 +98,7 @@ describe('Knowledge Library workspace', () => {
     await user.click(screen.getByRole('radio', { name: /dark/i }))
     expect(screen.getByRole('radio', { name: /dark/i })).toHaveAttribute('aria-checked', 'true')
     await user.click(screen.getByRole('button', { name: 'Close settings' }))
-    await expect((await import('./lib/notes')).getSettings()).resolves.toEqual({ id: 'preferences', theme: 'dark' })
+    await expect((await import('./lib/notes')).getSettings()).resolves.toEqual({ id: 'preferences', theme: 'dark', paper: false })
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, libraries, shelves, notebooks, and tags' }), { target: { value: 'Work' } })
     expect(await screen.findByText('Work', { selector: 'mark' })).toBeInTheDocument()
