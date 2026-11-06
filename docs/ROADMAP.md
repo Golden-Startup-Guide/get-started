@@ -18,6 +18,8 @@ Core principles:
 - No Mandatory Cloud Dependencies
 - Scalable Architecture
 
+**Next:** the reading-first redesign, *The Personal Knowledge Library*, is planned in [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md).
+
 ## Roadmap conventions
 
 - **Completed** means the capability exists in the current application.
