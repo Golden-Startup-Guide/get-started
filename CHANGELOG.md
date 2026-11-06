@@ -5,6 +5,13 @@ a **major** version may need something from you (a new backup format, say), a **
 adds features, and a **patch** fixes problems. The app updates itself, asking first; see
 [docs/RELEASING.md](docs/RELEASING.md) for how releases are made.
 
+## [Unreleased]
+
+### Changed
+- Note cards show the start of each note formatted, as headings, bullets, and checkboxes, instead of its raw text with `#`, `**`, and `|` marks. Tables, code, formulas, diagrams, and images appear as a labelled chip.
+- In the editor, a formatting mark shows only while the cursor touches it, not on the whole line being edited, so writing a heading or after a bold word no longer reveals the `#` or `**`.
+- The Welcome note explains writing with the formatting buttons and `/` instead of Markdown syntax.
+
 ## [1.0.0] - 2026-11-05
 
 The first complete release: a private, offline-first notes app with no account or server.

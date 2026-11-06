@@ -8,7 +8,8 @@ import {
 import type {
   Note,
 } from '../../types'
-import { CARD_PREVIEW_LENGTH, highlight, formatDate } from './noteDisplay'
+import { highlight, formatDate } from './noteDisplay'
+import { CardPreview } from './CardPreview'
 import { t } from '../../i18n/i18n'
 
 // Memoized: the grid can hold thousands of cards, and they must not re-render when unrelated
@@ -51,7 +52,7 @@ export const NoteCard = memo(function NoteCard({
           </div>}
         </div>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug">{highlight(note.title || t('Untitled note'), highlights)}</h2>
-        <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-relaxed text-[var(--muted)]">{highlight(note.content.slice(0, CARD_PREVIEW_LENGTH), highlights) || t("No content yet.")}</p>
+        <CardPreview content={note.content} highlights={highlights} />
         <div className="mt-4 flex flex-wrap gap-1.5">
           {(note.tags ?? []).map((tag) => <span className="tag-chip" key={tag}>{highlight(tag, highlights)}</span>)}
           {note.pinned && <span className="tag-chip tag-chip-pin"><Pin size={11} /> {t("Pinned")}</span>}

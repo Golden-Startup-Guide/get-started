@@ -16,8 +16,11 @@ test('formats Markdown as you write, ticks tasks in the editor, and remembers So
   await expect(lines.nth(0)).toHaveClass(/cm-lp-h1/)
   await expect(lines.nth(1)).toHaveText('Buy compost soon')
 
-  // The line being edited shows its Markdown.
+  // Marks show only where the cursor is: inside the bold word, not elsewhere on its line.
   await lines.nth(1).click()
+  await page.keyboard.press('End')
+  await expect(lines.nth(1)).toHaveText('Buy compost soon')
+  await lines.nth(1).getByText('compost').click()
   await expect(lines.nth(1)).toHaveText('Buy **compost** soon')
 
   // Ticking the checkbox edits the text and saves.

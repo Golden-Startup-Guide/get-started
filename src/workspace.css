@@ -1756,3 +1756,84 @@ html[data-theme='dark'] .workspace {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* The start of a note on its card (CardPreview.tsx): formatted, never raw Markdown. The height
+   is fixed, so the grid's rows stay even; longer notes fade out. */
+.card-preview,
+.card-preview-empty {
+  position: relative;
+  margin-top: 0.5rem;
+  max-height: 7.6rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.card-preview::after {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1.5rem;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+  content: '';
+  pointer-events: none;
+}
+
+.card-preview p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+/* Sentences may take two lines; headings and list items keep to one. */
+.card-preview p:not([class]) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+}
+
+.card-preview .card-preview-heading {
+  margin-top: 0.15rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.card-preview .card-preview-quote {
+  border-inline-start: 2px solid var(--border);
+  padding-inline-start: 0.5rem;
+  font-style: italic;
+}
+
+.card-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.card-preview-marker {
+  display: inline-flex;
+  flex-shrink: 0;
+  min-width: 0.75rem;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.card-preview-done {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.card-preview-object {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.15rem 0.3rem 0.15rem 0;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+}

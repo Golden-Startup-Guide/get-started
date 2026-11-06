@@ -29,11 +29,11 @@ export function starterNotes(now: number): Note[] {
 - **Favorites** and **pins** keep important notes close.
 
 ## Writing
-Notes use Markdown: \`**bold**\`, \`*italic*\`, \`# headings\`, and lists. The preview beside the editor shows the result as you type.
+Just type. The buttons above the note make text **bold** or *italic* and add headings, lists, and checklists. You can also type / at the start of a line to pick one.
 
-- [ ] Tick this box in the preview to try a checklist
+- [ ] Tick this box to try a checklist
 - [ ] Add a tag to this note
-- [ ] Link to another note: type \`[[\` and pick a title, like [[Weekly plan]]
+- [ ] Link to another note with the **Link to a note** button, like [[Weekly plan]]
 
 ## Keeping your notes safe
 Export a backup from **Settings** now and then, and keep it somewhere other than this browser.

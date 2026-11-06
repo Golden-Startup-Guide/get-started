@@ -36,6 +36,10 @@ update timestamps. The workspace provides the global **All Notes** view as
 well as narrower views for favorites, Trash, notebooks, tags, libraries, and
 shelves.
 
+Each card shows the start of its note as it reads, without formatting marks:
+headings in bold, bullets, numbered items, and checkboxes, with tables, code,
+formulas, diagrams, and images shown as a labelled chip ("Table").
+
 Pinned notes are prioritized at the top of the note list. Favorites have a
 dedicated view. Notes can be moved between notebooks, and notebooks can be
 organized into shelves and libraries.
@@ -206,12 +210,13 @@ Underneath, notes are still Markdown, so export, import, backups, and other
 Markdown apps work as before. The interface avoids the word: the editor is
 **Note text**, and the switch above it chooses how the text is shown:
 
-- **Formatted** (the default) formats the text as you write, outside the line you are
-  editing: headings are larger, bold, italic, strikethrough, and code lose
-  their markers, links and `[[wikilinks]]` show just their text, list bullets
-  become dots, and task markers become checkboxes you can tick right in the
-  editor. The line with the cursor, and every line in a selection, shows its
-  Markdown so you can change it. Code blocks and inline code are never
+- **Formatted** (the default) formats the text as you write: headings are
+  larger, bold, italic, strikethrough, and code lose their markers, links and
+  `[[wikilinks]]` show just their text, list bullets become dots, and task
+  markers become checkboxes you can tick right in the editor. A mark shows only
+  while the cursor or a selection touches it (the `#` of a heading, the `**`
+  around a bold word, a link), so it can be changed or removed; typing anywhere
+  else on the line keeps it hidden. Code blocks and inline code are never
   formatted, and tables stay as text.
 - **Plain text** shows the text exactly as typed, with its formatting marks, in a monospace font.
 
