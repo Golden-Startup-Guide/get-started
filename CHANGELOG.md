@@ -8,6 +8,8 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 ## [Unreleased]
 
 ### Added
+- **Library, shelf, and notebook pages** made for reading: counts that name what they count, shelves and notebooks with their descriptions, Continue reading where you left off, related shelves and notebooks, and a handbook notebook's numbered contents with your last-read note marked. Managing your own libraries and shelves moves to a **Manage** section at the end of their pages.
+- The sidebar opens the branch you are on and small libraries; large ones start closed, so it stays short as the library grows.
 - **Home**, the new start page: Continue reading (the note you opened last, and where it sits), tiles to explore the libraries, Recently added, and whether the app is available offline. All Notes moves to its own address, `#/notes`, and the breadcrumb starts at Home.
 - **Built-in handbooks**: Health & Wellbeing, Agriculture, and Financial Literacy, listed under Handbooks in the sidebar and readable offline from the first launch. They are read-only; **Make a personal copy** or **Write a note about this** to work with one, and link to them from your notes with `[[Title]]`. The first handbooks are short drafts, labelled as such.
 - The app remembers the note you opened last, for "Continue reading" on the coming Home page (database version 7; upgrades are automatic).

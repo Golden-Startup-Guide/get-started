@@ -128,6 +128,8 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
 
 ### Phase 5: Library, shelf, and notebook pages
 
+- **As built:** the optional featured item on a library page is left out until handbooks carry editorial data to choose it from. Personal notebooks keep their card grid with search (their notes have no reading order); handbook notebooks get the ordered contents. The tree opens the current branch and small libraries (up to 8 notebooks) or shelves (up to 12), and draws nothing inside closed ones.
+
 - **Result:** each level has the content order from section 4 of the spec.
   - A **library** has an introduction, an optional featured item, its shelves, and recent content, with counts that name what they count ("6 shelves").
   - A **shelf** has an introduction, notebooks with natural-height cards, continue reading, and related shelves.

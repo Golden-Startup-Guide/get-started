@@ -34,8 +34,8 @@ interface WorkspaceState {
   /** Compact screens: the navigation drawer is open. */
   navigationOpen: boolean
   isCompactNavigation: boolean
-  collapsedLibraries: string[]
-  collapsedShelves: string[]
+  /** Libraries and shelves the reader opened or closed in the sidebar; others follow the default. */
+  treeChoices: Record<string, boolean>
   error: string | null
   notice: string | null
   /** The library, shelf, or notebook the delete dialog is open for. */
@@ -45,15 +45,10 @@ interface WorkspaceState {
   toggleSidebar: () => void
   setNavigationOpen: (open: boolean) => void
   setCompactNavigation: (compact: boolean) => void
-  toggleLibrary: (libraryId: string) => void
-  toggleShelf: (shelfId: string) => void
+  setTreeOpen: (id: string, open: boolean) => void
   showError: (message: string | null) => void
   showNotice: (message: string | null) => void
   askToDelete: (target: StructureItem | null) => void
-}
-
-function toggle(ids: string[], id: string): string[] {
-  return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
@@ -62,8 +57,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
   sidebarCollapsed: false,
   navigationOpen: false,
   isCompactNavigation: matchesCompactNavigation(),
-  collapsedLibraries: [],
-  collapsedShelves: [],
+  treeChoices: {},
   error: null,
   notice: null,
   structureToDelete: null,
@@ -74,8 +68,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
   // Leaving compact layout always closes the drawer.
   setCompactNavigation: (isCompactNavigation) =>
     set((state) => ({ isCompactNavigation, navigationOpen: isCompactNavigation && state.navigationOpen })),
-  toggleLibrary: (libraryId) => set((state) => ({ collapsedLibraries: toggle(state.collapsedLibraries, libraryId) })),
-  toggleShelf: (shelfId) => set((state) => ({ collapsedShelves: toggle(state.collapsedShelves, shelfId) })),
+  setTreeOpen: (id, open) => set((state) => ({ treeChoices: { ...state.treeChoices, [id]: open } })),
   showError: (error) => {
     if (error) recordProblem(error, 'shown')
     set({ error })

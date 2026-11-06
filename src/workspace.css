@@ -2273,3 +2273,210 @@ html[data-theme='dark'] .workspace {
   color: var(--muted);
   font-size: 0.8rem;
 }
+
+/* Library, shelf, and notebook pages: reading order first, management last. */
+.level-page {
+  display: grid;
+  max-width: 64rem;
+  gap: 2.25rem;
+}
+
+.level-counts {
+  margin-top: -1.25rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.workspace .level-section-title {
+  margin-bottom: 0.9rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+/* Natural heights: descriptions are never cut off to make boxes match. */
+.level-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  align-items: start;
+  gap: 0.9rem;
+}
+
+.level-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 1.1rem 1.2rem;
+}
+
+.workspace .level-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.level-card-title svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.level-card-text {
+  font-size: 0.9rem;
+}
+
+.level-card-list,
+.level-card-count {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.level-card-progress {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.level-card-action {
+  align-self: flex-start;
+  margin-top: 0.4rem;
+}
+
+.level-empty {
+  max-width: 36rem;
+  color: var(--muted);
+}
+
+/* A handbook notebook's contents, in reading order. */
+.contents-list {
+  border-top: 1px solid var(--border);
+}
+
+.contents-list li {
+  border-bottom: 1px solid var(--border);
+}
+
+.contents-item {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.85rem 0.5rem;
+  text-align: start;
+}
+
+.contents-item:hover .contents-title {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.contents-item:focus-visible,
+.related-item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.contents-number {
+  min-width: 1.75rem;
+  color: var(--muted);
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.contents-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.contents-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.contents-summary {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* The place the reader left off: a bar and a label, not colour alone. */
+.contents-current {
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: var(--accent-soft);
+}
+
+[dir='rtl'] .contents-current {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+
+.contents-here {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  padding: 0.1rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.related-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.related-item {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.25rem;
+  text-align: start;
+}
+
+.related-item:hover .home-recent-title {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.manage-section {
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+
+.contents-draft {
+  align-self: flex-start;
+  border: 1px solid var(--ochre);
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+}
+
+/* Unavailable actions look unavailable; a note beside them says why. */
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* The page heading takes focus after navigation, so the new page is announced; it is not a control,
+   so it shows no focus ring. */
+.workspace h1[tabindex='-1']:focus {
+  outline: none;
+}

@@ -11,11 +11,15 @@ test('reads a built-in handbook, follows its links, and cannot change it', async
 
   await page.getByRole('button', { name: 'Open shelf Nutrition' }).click()
   await expect(page).toHaveURL(/#\/shelf\/core-nutrition$/)
-  const card = page.getByRole('article').filter({ hasText: 'Staying hydrated' })
-  await expect(card.getByText('Draft', { exact: true })).toBeVisible()
-  await expect(card.getByRole('button', { name: 'Pin note' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Open notebook Everyday Nutrition' }).click()
+  // The notebook lists its notes in order, each labelled while it is a draft.
+  const contents = page.getByRole('region', { name: 'Contents' })
+  await expect(contents.getByRole('listitem')).toHaveCount(2)
+  const first = contents.getByRole('button', { name: /^1? ?Staying hydrated/ })
+  await expect(first.getByText('Draft', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pin note' })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Open note Staying hydrated' }).click()
+  await first.click()
   const reader = page.getByRole('dialog', { name: 'Staying hydrated' })
   await expect(reader.getByText('Draft: not yet reviewed')).toBeVisible()
   await expect(reader.getByText('Health & Wellbeing / Nutrition / Everyday Nutrition')).toBeVisible()

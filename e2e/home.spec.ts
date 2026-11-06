@@ -10,7 +10,7 @@ test('opens on Home, invites a first read, and then offers to continue where the
   await libraries.getByRole('button', { name: /^Health & Wellbeing/ }).click()
   await expect(page.getByRole('heading', { name: 'Health & Wellbeing', level: 1 })).toBeVisible()
   await page.getByRole('navigation', { name: 'Handbooks' }).getByRole('button', { name: /^Everyday Nutrition/ }).click()
-  await page.getByRole('button', { name: 'Open note Water through the day' }).click()
+  await page.getByRole('region', { name: 'Contents' }).getByRole('button', { name: /Water through the day/ }).click()
   await page.getByRole('dialog', { name: 'Water through the day' }).getByRole('button', { name: 'Close note' }).first().click()
 
   // Home names the note and its place in the notebook, and opens it again.
