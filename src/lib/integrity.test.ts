@@ -45,7 +45,7 @@ describe('start-up integrity check', () => {
     const repairs = await integrity.checkAndRepairLibrary(await snapshot())
     expect(repairs).toEqual(expect.objectContaining({
       linksRemoved: 1, attachmentsRemoved: 1, historyRemoved: 1, notesMoved: 1, notebooksMoved: 1, shelvesMoved: 1, tagsRebuilt: true,
-      notebookName: 'Personal', shelfName: 'General', libraryName: 'Personal Library',
+      notebookName: 'Personal', shelfName: 'General', libraryName: 'My notes',
     }))
     expect(integrity.describeRepairs(repairs!)).toEqual([
       'removed 1 link to notes that no longer exist',
@@ -53,7 +53,7 @@ describe('start-up integrity check', () => {
       'removed 1 history entry left behind by deleted notes',
       'moved 1 note whose notebook was missing to “Personal”',
       'moved 1 notebook whose shelf was missing to “General”',
-      'moved 1 shelf whose library was missing to “Personal Library”',
+      'moved 1 shelf whose library was missing to “My notes”',
       'rebuilt the tag list',
     ])
     expect(await db.get('attachments', 'orphan-file')).toBeUndefined()

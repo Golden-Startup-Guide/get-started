@@ -26,8 +26,9 @@ export const test = base.extend({
 
 export { expect }
 
+/** Opens All Notes (Home is the start page; tests about Home open "/"). */
 export async function openWorkspace(page: Page) {
-  await page.goto('/')
+  await page.goto('/#/notes')
   await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
 }
 

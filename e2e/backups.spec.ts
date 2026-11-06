@@ -18,7 +18,7 @@ test('backs up to a chosen folder at once and remembers the folder', async ({ pa
   await expect(section).toContainText('Backing up to the folder Backups')
   await expect(section).toContainText(/Last backup: .+ \(my-notes-backup-\d{4}-\d{2}-\d{2}\.json\)\./)
   // Each backup is proven by restoring the saved file into a test database.
-  await expect(section).toContainText(/Checked .+: a test restore brought back 5 notes, 0 attachments, 0 history entries, and 0 links\./)
+  await expect(section).toContainText(/Checked .+: a test restore brought back 1 note, 0 attachments, 0 history entries, and 0 links\./)
 
   const saved = () => page.evaluate(async () => {
     const folder = await (await navigator.storage.getDirectory()).getDirectoryHandle('Backups')
@@ -27,7 +27,7 @@ test('backs up to a chosen folder at once and remembers the folder', async ({ pa
     const backup = JSON.parse(await (await (await folder.getFileHandle(names[0])).getFile()).text())
     return { names, notes: backup.notes.length as number }
   })
-  expect(await saved()).toEqual({ names: [expect.stringMatching(/^my-notes-backup-/)], notes: 5 })
+  expect(await saved()).toEqual({ names: [expect.stringMatching(/^my-notes-backup-/)], notes: 1 })
 
   // The folder is remembered, and Back up now writes again.
   await page.reload()
@@ -62,7 +62,7 @@ test('reminds to back up a week after changes, and a download or Later clears it
   await reminder.getByRole('button', { name: 'Download a backup' }).click()
   expect((await download).suggestedFilename()).toMatch(/^my-notes-backup-\d{4}-\d{2}-\d{2}\.json$/)
   // The downloaded backup is restored as a test, and the result reported.
-  await expect(page.getByRole('status').filter({ hasText: 'downloaded and checked' })).toContainText(/a test restore brought back 6 notes, 0 attachments, \d+ history entr(y|ies), and 0 links\./)
+  await expect(page.getByRole('status').filter({ hasText: 'downloaded and checked' })).toContainText(/a test restore brought back 2 notes, 0 attachments, \d+ history entr(y|ies), and 0 links\./)
   await expect(reminder).toHaveCount(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Worth keeping' })).toBeVisible()

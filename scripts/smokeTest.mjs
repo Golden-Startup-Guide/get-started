@@ -22,15 +22,18 @@ const check = async (name, action) => {
 try {
   await check('opens', async () => {
     await page.goto(url)
-    await page.getByRole('heading', { name: 'All Notes', level: 1 }).waitFor({ timeout: 30_000 })
+    await page.getByRole('heading', { name: 'Welcome to your library', level: 1 }).waitFor({ timeout: 30_000 })
   })
   await check('the service worker takes control', () => page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30_000 }))
-  await check('opens offline, with the editor', async () => {
+  await check('opens offline, with the editor and the handbooks', async () => {
     await context.setOffline(true)
     await page.reload()
-    await page.getByRole('heading', { name: 'All Notes', level: 1 }).waitFor({ timeout: 30_000 })
+    await page.getByRole('heading', { name: 'Welcome to your library', level: 1 }).waitFor({ timeout: 30_000 })
     await page.getByRole('button', { name: 'Create a new note', exact: true }).click()
     await page.getByRole('textbox', { name: 'Note title' }).waitFor({ timeout: 30_000 })
+    // A built-in handbook note, from the install, never opened online.
+    await page.goto(`${url}#/notebook/core-everyday-nutrition?note=core-staying-hydrated`)
+    await page.getByRole('dialog', { name: 'Staying hydrated' }).waitFor({ timeout: 30_000 })
     await context.setOffline(false)
   })
   await check('refuses to run in a frame', async () => {

@@ -15,7 +15,7 @@ describe('importing notes from other apps', () => {
     const before = (await storage.getNotes()).length
     const big = new Uint8Array(5 * 1024 * 1024 + 1)
     const summary = await storage.importNotes([
-      incoming('Kept in Work', { notebook: 'work', tags: [' Errands', 'errands', 'home'], pinned: true }),
+      incoming('Kept in Personal', { notebook: 'personal', tags: [' Errands', 'errands', 'home'], pinned: true }),
       incoming('In a new notebook', { notebook: 'Travel', favorite: true, attachments: [
         { name: 'map.png', type: 'image/png', data: new Uint8Array([1, 2, 3]) },
         { name: 'huge.bin', type: '', data: big },
@@ -32,9 +32,9 @@ describe('importing notes from other apps', () => {
     const trash = await storage.getTrash()
     const named = async (title: string) => [...notes, ...trash].find((note) => note.title === title)!
     const nameOf = (id: string | undefined) => notebooks.find((notebook) => notebook.id === id)?.name
-    const work = await named('Kept in Work')
-    expect(work).toEqual(expect.objectContaining({ content: 'Kept in Work text', tags: ['Errands', 'home'], pinned: true, createdAt: 10, updatedAt: 20 }))
-    expect(nameOf(work.notebookId)).toBe('Work')
+    const work = await named('Kept in Personal')
+    expect(work).toEqual(expect.objectContaining({ content: 'Kept in Personal text', tags: ['Errands', 'home'], pinned: true, createdAt: 10, updatedAt: 20 }))
+    expect(nameOf(work.notebookId)).toBe('Personal')
     const travel = await named('In a new notebook')
     expect(nameOf(travel.notebookId)).toBe('Travel')
     expect(travel.favorite).toBe(true)

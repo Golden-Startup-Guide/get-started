@@ -4,6 +4,7 @@ import { hashToRoute, isNewHistoryStep, routeToHash, type Route } from './routes
 describe('page addresses', () => {
   it('round-trips every kind of page, with an open note and a search', () => {
     const routes: Route[] = [
+      { view: 'home' },
       { view: 'all' },
       { view: 'favorites' },
       { view: 'trash' },
@@ -17,14 +18,15 @@ describe('page addresses', () => {
   })
 
   it('writes short, readable addresses', () => {
-    expect(routeToHash({ view: 'all' })).toBe('#/')
+    expect(routeToHash({ view: 'home' })).toBe('#/')
+    expect(routeToHash({ view: 'all' })).toBe('#/notes')
     expect(routeToHash({ view: 'notebook:nb-1', note: 'n1' })).toBe('#/notebook/nb-1?note=n1')
-    expect(routeToHash({ view: 'all', query: 'basil' })).toBe('#/?q=basil')
+    expect(routeToHash({ view: 'all', query: 'basil' })).toBe('#/notes?q=basil')
   })
 
-  it('treats no hash as the start page and leaves other hashes alone', () => {
-    expect(hashToRoute('')).toEqual({ view: 'all' })
-    expect(hashToRoute('#')).toEqual({ view: 'all' })
+  it('treats no hash as Home and leaves other hashes alone', () => {
+    expect(hashToRoute('')).toEqual({ view: 'home' })
+    expect(hashToRoute('#')).toEqual({ view: 'home' })
     // A link to a heading inside a note.
     expect(hashToRoute('#watering')).toBeNull()
     expect(hashToRoute('#/unknown')).toBeNull()

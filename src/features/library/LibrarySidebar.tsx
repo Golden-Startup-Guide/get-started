@@ -6,6 +6,7 @@ import {
   ChevronDown,
   FileText,
   Heart,
+  Home,
   Layers3,
   LibraryBig,
   Network,
@@ -140,7 +141,7 @@ export function LibrarySidebar({
       <div className="mb-6 flex items-center justify-between gap-2">
         <a href="#/" onClick={(event) => {
           event.preventDefault()
-          onNavigate('all')
+          onNavigate('home')
         }} className="brand-link flex min-w-0 items-center gap-3 px-2" aria-label={t("The Personal Knowledge Library home")}>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-[var(--on-accent)]">
             <LibraryBig size={20} aria-hidden="true" />
@@ -161,6 +162,7 @@ export function LibrarySidebar({
         <Plus size={17} aria-hidden="true" /> {t("New note")}
       </button>
       <nav aria-label={t("Note views")} className="space-y-1">
+        <NavButton active={view === 'home'} label={t("Home")} onClick={() => onNavigate('home')} icon={<Home size={16} />} />
         <NavButton active={view === 'all'} label={t("All Notes")} count={notes.length} onClick={() => onNavigate('all')} icon={<FileText size={16} />} />
         <NavButton active={view === 'favorites'} label={t("Favorites")} count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
         <NavButton active={view === 'trash'} label={t("Trash")} count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />

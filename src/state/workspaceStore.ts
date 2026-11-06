@@ -3,6 +3,9 @@ import type { StructureItem } from './actions'
 import { recordProblem } from './problemStore'
 
 export type View =
+  /** The library entrance: continue reading, libraries, recently added. */
+  | 'home'
+  /** Every personal note. */
   | 'all'
   | 'favorites'
   | 'trash'
@@ -54,7 +57,7 @@ function toggle(ids: string[], id: string): string[] {
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
-  view: 'all',
+  view: 'home',
   query: '',
   sidebarCollapsed: false,
   navigationOpen: false,

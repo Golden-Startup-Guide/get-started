@@ -9,11 +9,11 @@ test('opens in a saved language, switches to Arabic right to left, and keeps not
       sessionStorage.setItem('language-set', 'yes')
     }
   })
-  await page.goto('/')
+  await page.goto('/#/notes')
   await expect(page.getByRole('heading', { name: 'Todas las notas', level: 1 })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'es')
   await expect(page.getByRole('button', { name: 'Crear una nota nueva', exact: true })).toBeVisible()
-  await expect(page.locator('#note-count')).toHaveText(/^[\d.,]+ notas$/)
+  await expect(page.locator('#note-count')).toHaveText(/^[\d.,]+ notas?$/)
 
   // Switching to Arabic from Settings: the page turns right to left, and Settings stays open.
   await page.getByRole('button', { name: 'Abrir ajustes' }).first().click()

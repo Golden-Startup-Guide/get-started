@@ -28,11 +28,29 @@ Search remains local text matching; note content is not sent to an AI service.
 
 ## 2. Feature guide
 
-### 2.1 Notes and the workspace
+### 2.1 Home, notes, and the workspace
+
+The app opens on **Home** (address `#/`), the library entrance:
+
+- a welcome, and **Continue reading**: the note opened last, personal or
+  handbook, with where it sits ("Health & Wellbeing / Nutrition / Everyday
+  Nutrition · Note 2 of 2") and a **Continue reading** button. With nothing read
+  yet, it invites you to choose a library instead.
+- **Explore libraries**: a tile for each handbook library, with what it covers,
+  then your own libraries.
+- **Recently added**: the five newest handbook notes and personal notes, with
+  where they sit and the date.
+- **Available offline** once the app is installed for offline use, or **You are
+  offline** when there is no connection; nothing is shown when neither is known.
+
+There are no counts styled as scores, feeds, or charts. Home is drawn straight
+away, before your notes have loaded, since the handbooks need no database. It
+is the first item in the sidebar and the collapsed rail, the start of every
+breadcrumb, and where the app's name in the sidebar leads.
 
 Create a note from the workspace's **New note** action. Edit its title and
 Markdown content in the note editor. Notes are saved locally with creation and
-update timestamps. The workspace provides the global **All Notes** view as
+update timestamps. The workspace provides the global **All Notes** view (address `#/notes`) as
 well as narrower views for favorites, Trash, notebooks, tags, libraries, and
 shelves.
 
@@ -131,13 +149,13 @@ Library
         └── Notes
 ```
 
-New installations start with **Personal Library**, a **General** shelf, and the
-starter notebooks **Personal**, **Work**, **Ideas**, **Research**, and
-**Health Handbook**. Each starter notebook holds one short note to begin with:
-a welcome tour in Personal and a template in each of the others (a weekly plan,
-idea capture, research notes, and a health handbook). They are ordinary notes
-that can be edited or deleted. Starter notes are created only for a brand-new
-library; upgrading an existing library never adds them. **All Notes** remains a virtual, flat view across the
+New installations start with the built-in handbooks to read, and a personal
+library, **My notes**, with a **General** shelf, a **Personal** notebook, and
+one note, **Welcome to your Knowledge Library**, which explains the two parts
+and how to write. It is an ordinary note that can be edited or deleted. It is
+created only for a brand-new library; upgrading an existing library never adds
+it. (Before 1.2, new libraries were called **Personal Library** and started with
+five notebooks and notes; libraries made then keep them.) **All Notes** remains a virtual, flat view across the
 workspace.
 
 Create, rename, and navigate libraries, shelves, and notebooks from the

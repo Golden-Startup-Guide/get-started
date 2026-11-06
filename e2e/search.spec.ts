@@ -19,10 +19,12 @@ test('searches with words in any order, phrases, exclusions, and tag and noteboo
   await expect(count).toHaveText('1 note')
   await expect(page.getByRole('heading', { name: 'Seed order' })).toBeVisible()
 
-  // The starter "Weekly plan" note is the only one in the Work notebook.
-  await search.fill('notebook:work')
+  // Three notes in the Personal notebook: the Welcome note and the two above.
+  await search.fill('notebook:personal')
+  await expect(count).toHaveText('3 notes')
+  await search.fill('notebook:personal welcome')
   await expect(count).toHaveText('1 note')
-  await expect(page.getByRole('heading', { name: 'Weekly plan' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome to your Knowledge Library' })).toBeVisible()
 
   // The tips explain the operators and add an example to the search.
   await search.fill('basil')

@@ -28,7 +28,7 @@ const urlFor = (route: Route) => `${window.location.pathname}${window.location.s
  * pages and notes, a reload stays on the same page, and an address can be bookmarked.
  *
  * Once the library has loaded, the address is read and shown: a page or note no longer in the
- * library falls back to All Notes, with a notice saying so. From then on, each move to another page
+ * library falls back to Home, with a notice saying so. From then on, each move to another page
  * or note adds a step to the browser's history, and typing a search updates the current step.
  * `onHistoryMove` runs after Back or Forward, with the route now shown.
  */
@@ -60,9 +60,9 @@ export function useRouting({ ready, onHistoryMove }: { ready: boolean; onHistory
       // On opening the app, the address only adds what it names: a search typed or a note opened
       // while the library loaded is kept. Back and Forward show exactly the step in history.
       const keepCurrent = !fromHistory
-      const view = viewExists(route.view) ? route.view : 'all'
+      const view = viewExists(route.view) ? route.view : 'home'
       if (view !== route.view) workspace.showNotice(t('That page is no longer in your library.'))
-      if (!keepCurrent || route.view !== 'all' || view !== route.view) workspace.setView(view)
+      if (!keepCurrent || route.view !== 'home' || view !== route.view) workspace.setView(view)
       if (!keepCurrent || route.query) workspace.setQuery(route.query ?? '')
       if (route.note !== editor.activeNote?.id && (!keepCurrent || route.note)) {
         const { notes, trash } = useLibraryStore.getState()
