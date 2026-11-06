@@ -30,11 +30,11 @@ export function AutoBackupSettings() {
             {' '}{t("The newest 14 backups are kept.")}
           </p>
         ) : (
-          <p className="text-sm">{t("Choose a folder, such as one your cloud drive keeps in sync, and My Notes will save a backup there while it is open.")}</p>
+          <p className="text-sm">{t("Choose a folder, such as one your cloud drive keeps in sync, and the app will save a backup there while it is open.")}</p>
         )
       ) : (
         <p className="text-sm">
-          {t("This browser cannot save backups to a folder by itself (Chrome and Edge on a computer can), so My Notes reminds you to download one instead. Browsers can clear a site’s data, and Safari does so for sites not opened for 7 days unless My Notes is added to the Home Screen.")}
+          {t("This browser cannot save backups to a folder by itself (Chrome and Edge on a computer can), so the app reminds you to download one instead. Browsers can clear a site’s data, and Safari does so for sites not opened for 7 days unless the app is added to the Home Screen.")}
         </p>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">

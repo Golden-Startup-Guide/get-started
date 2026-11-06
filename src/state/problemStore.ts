@@ -15,7 +15,7 @@ interface ProblemState {
 }
 
 /**
- * Problems seen since My Notes opened, kept in memory only: nothing is stored or sent. Settings
+ * Problems seen since the app opened, kept in memory only: nothing is stored or sent. Settings
  * offers to copy them, with the version and browser, for a report the user chooses to send.
  */
 export const useProblemStore = create<ProblemState>()(() => ({ problems: [] }))
@@ -38,7 +38,7 @@ export function listenForProblems() {
 /** The details to paste into a report: version, browser, language, and the problems. */
 export function problemReport(problems: readonly Problem[], version: string): string {
   return [
-    `My Notes ${version}`,
+    `The Personal Knowledge Library ${version}`,
     `Browser: ${navigator.userAgent}`,
     `Language: ${document.documentElement.lang || 'en'}`,
     '',

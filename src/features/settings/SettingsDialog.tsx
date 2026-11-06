@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
+  BookOpen,
   Download,
   Moon,
   Settings,
@@ -16,6 +17,8 @@ import { InstallSettings } from '../app/InstallSettings'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { changeTheme, downloadBackup, requestPersistenceFromSettings, restoreBackup } from '../../state/actions'
 import { useLibraryStore } from '../../state/libraryStore'
+import { themeChoice } from '../../lib/theme'
+import type { ThemeChoice } from '../../types'
 import { useIntegrityStore } from '../../state/integrityStore'
 import { usePersistenceStore } from '../../state/persistenceStore'
 import { changeLanguage, useLanguageStore } from '../../state/languageStore'
@@ -62,7 +65,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
     }
   }, [notes, trash, notebooks, tags, links])
 
-  const onTheme = (theme: typeof settings.theme) => void changeTheme(theme)
+  const onTheme = (theme: ThemeChoice) => void changeTheme(theme)
+  const currentTheme = themeChoice(settings)
   const onExport = (options: { attachments: boolean; history: boolean }) => void downloadBackup(options)
   const onRequestPersistence = () => void requestPersistenceFromSettings()
   const onDismissError = () => showError(null)
@@ -92,8 +96,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         </header>
         <section>
           <h3 className="mb-3 text-sm font-semibold">{t("Appearance")}</h3>
-          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t("Color theme")}>
-            {(['light', 'dark', 'system'] as const).map((choice, index, choices) => <button key={choice} id={`theme-${choice}`} role="radio" aria-checked={settings.theme === choice} tabIndex={settings.theme === choice ? 0 : -1} className={`theme-option ${settings.theme === choice ? 'theme-option-active' : ''}`} onKeyDown={(event) => {
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={t("Color theme")}>
+            {(['light', 'paper', 'dark', 'system'] as const).map((choice, index, choices) => <button key={choice} id={`theme-${choice}`} role="radio" aria-checked={currentTheme === choice} tabIndex={currentTheme === choice ? 0 : -1} className={`theme-option ${currentTheme === choice ? 'theme-option-active' : ''}`} onKeyDown={(event) => {
               const nextIndex = event.key === 'ArrowRight' || event.key === 'ArrowDown'
                 ? (index + 1) % choices.length
                 : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
@@ -105,8 +109,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
                 document.getElementById(`theme-${choices[nextIndex]}`)?.focus()
               }
             }} onClick={() => onTheme(choice)}>
-              {choice === 'light' ? <Sun size={18} /> : choice === 'dark' ? <Moon size={18} /> : <Settings size={18} />}
-              <span>{choice === 'light' ? t('Light') : choice === 'dark' ? t('Dark') : t('System')}</span>
+              {choice === 'light' ? <Sun size={18} /> : choice === 'paper' ? <BookOpen size={18} /> : choice === 'dark' ? <Moon size={18} /> : <Settings size={18} />}
+              <span>{choice === 'light' ? t('Light') : choice === 'paper' ? t('Soft paper') : choice === 'dark' ? t('Dark') : t('System')}</span>
             </button>)}
           </div>
           <label className="mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -149,7 +153,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
             {integrity.failed
               ? t("The library check at start-up could not run: {failed}", { failed: integrity.failed })
               : !integrity.checkedAt
-                ? t("The library is checked for damage shortly after My Notes starts.")
+                ? t("The library is checked for damage shortly after the app starts.")
                 : integrity.repaired.length
                   ? t("The library check at start-up repaired it: {value}.", { value: integrity.repaired.join('; ') })
                   : t("The library check at start-up found no problems.")}
@@ -168,9 +172,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
         </section>
         <section className="mt-7 border-t border-[var(--border)] pt-5">
-          <h3 className="text-sm font-semibold">{t("About My Notes")}</h3>
+          <h3 className="text-sm font-semibold">{t("About The Personal Knowledge Library")}</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">{t("An offline-first, private notes app. Your notes stay in this browser’s local storage; no account or network connection is required.")}</p>
-          <p className="mt-2 text-xs text-[var(--muted)]">{t('My Notes {version} · Database version {schema} · Backup format 4 · Data stored locally', { version: APP_VERSION, schema: DATABASE_VERSION })}</p>
+          <p className="mt-2 text-xs text-[var(--muted)]">{t('The Personal Knowledge Library {version} · Database version {schema} · Backup format 4 · Data stored locally', { version: APP_VERSION, schema: DATABASE_VERSION })}</p>
           <ProblemsLog />
         </section>
       </section>

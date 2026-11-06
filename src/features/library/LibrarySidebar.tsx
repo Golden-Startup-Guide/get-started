@@ -119,11 +119,11 @@ export function LibrarySidebar({
       onKeyDown={isDrawer ? (event) => keepFocusInDialog(event, onCloseNavigation) : undefined}
     >
       <div className="mb-6 flex items-center justify-between gap-2">
-        <a href="/" className="flex min-w-0 items-center gap-3 px-2 text-lg font-semibold" aria-label={t("My Notes home")}>
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#d77762] text-white">
-            <FileText size={20} aria-hidden="true" />
+        <a href={import.meta.env.BASE_URL} className="brand-link flex min-w-0 items-center gap-3 px-2" aria-label={t("The Personal Knowledge Library home")}>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-[var(--on-accent)]">
+            <LibraryBig size={20} aria-hidden="true" />
           </span>
-          <span className="truncate">{t("My Notes")}</span>
+          <span className="brand-name">{t("The Personal Knowledge Library")}</span>
         </a>
         <button
           ref={closeButtonRef}

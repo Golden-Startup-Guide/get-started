@@ -8,7 +8,7 @@ export const IMPORT_SOURCES: Record<ImportSource, { label: string; accept: strin
   markdown: {
     label: msg('Markdown files or an Obsidian vault'),
     accept: '.md,.markdown,.txt,.zip',
-    hint: msg('Choose the vault folder, a .zip of it, or Markdown files. Folders become notebooks; front matter tags, #tags, and embedded files are kept. A My Notes Markdown export imports this way too.'),
+    hint: msg('Choose the vault folder, a .zip of it, or Markdown files. Folders become notebooks; front matter tags, #tags, and embedded files are kept. A Markdown export from this app imports this way too.'),
     folders: true,
   },
   notion: {

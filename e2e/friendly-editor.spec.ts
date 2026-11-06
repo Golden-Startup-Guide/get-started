@@ -47,8 +47,8 @@ test('formats notes without Markdown: buttons, shortcuts, links, paste, and a fi
   // A link to another note, chosen from the list.
   await page.keyboard.press('Enter')
   await bar.getByRole('button', { name: 'Link to a note' }).click()
-  await page.getByRole('option', { name: /Welcome to My Notes/ }).click()
-  await expect(preview.getByRole('link', { name: /Welcome to My Notes/ })).toBeVisible()
+  await page.getByRole('option', { name: /Welcome to your Knowledge Library/ }).click()
+  await expect(preview.getByRole('link', { name: /Welcome to your Knowledge Library/ })).toBeVisible()
 
   // Pasting formatted text keeps its formatting. (Firefox drops the data of a synthetic paste
   // event, though real pastes carry it; formatting.test.ts covers the conversion.)

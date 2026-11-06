@@ -6,7 +6,7 @@ import type { Note } from './types'
 import { FakeBroadcastChannel } from './test/fakeBroadcastChannel'
 import { getMarkdown, setMarkdown } from './test/markdownEditor'
 
-describe('My Notes workspace', () => {
+describe('Knowledge Library workspace', () => {
   // The editor is lazy-loaded. Compiling it the first time takes longer than a query waits, so
   // compile it once here; each test still loads it fresh after vi.resetModules().
   beforeAll(async () => {
@@ -98,7 +98,7 @@ describe('My Notes workspace', () => {
     await user.click(screen.getByRole('radio', { name: /dark/i }))
     expect(screen.getByRole('radio', { name: /dark/i })).toHaveAttribute('aria-checked', 'true')
     await user.click(screen.getByRole('button', { name: 'Close settings' }))
-    await expect((await import('./lib/notes')).getSettings()).resolves.toEqual({ id: 'preferences', theme: 'dark' })
+    await expect((await import('./lib/notes')).getSettings()).resolves.toEqual({ id: 'preferences', theme: 'dark', paper: false })
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search notes, libraries, shelves, notebooks, and tags' }), { target: { value: 'Work' } })
     expect(await screen.findByText('Work', { selector: 'mark' })).toBeInTheDocument()
@@ -562,7 +562,7 @@ describe('My Notes workspace', () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByRole('heading', { name: 'All Notes' })
-    await user.click(await screen.findByRole('button', { name: /^Open note Welcome to My Notes/ }))
+    await user.click(await screen.findByRole('button', { name: /^Open note Welcome to your Knowledge Library/ }))
     await screen.findByRole('textbox', { name: 'Note title' })
 
     // Hold back the frame in which closing the editor restores focus, as a slow browser might.

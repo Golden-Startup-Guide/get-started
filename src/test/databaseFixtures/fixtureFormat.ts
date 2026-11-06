@@ -1,6 +1,6 @@
 /**
  * A saved IndexedDB database: its version, every store and index exactly as created, and every
- * record. Used to keep sample libraries made by past versions of My Notes, so each upgrade is
+ * record. Used to keep sample libraries made by past versions of the app, so each upgrade is
  * tested against what those versions really stored (see upgrades.test.ts).
  */
 export interface DatabaseFixture {

@@ -25,6 +25,6 @@ test('saves a clipped page to Inbox, opens app shortcuts, and offers the clipper
 
   // Settings offers the clipper as a bookmarklet to drag to the bookmarks bar.
   await page.getByRole('button', { name: 'Open settings' }).first().click()
-  const clipper = page.getByRole('dialog', { name: 'Settings' }).getByRole('link', { name: 'Clip to My Notes' })
+  const clipper = page.getByRole('dialog', { name: 'Settings' }).getByRole('link', { name: 'Clip to Knowledge Library' })
   await expect(clipper).toHaveAttribute('href', /^javascript:\(\(\)=>\{.*clip-title=/)
 })

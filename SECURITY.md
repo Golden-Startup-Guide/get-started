@@ -18,7 +18,7 @@ published, with credit to you unless you prefer otherwise.
 
 ## Scope
 
-My Notes runs entirely in the browser and stores data only on the user's
+The Personal Knowledge Library runs entirely in the browser and stores data only on the user's
 device, so the most important risks are:
 
 - running script inside the app (for example through Markdown, HTML, SVG,

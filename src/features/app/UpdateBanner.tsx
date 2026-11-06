@@ -17,7 +17,7 @@ export function UpdateBanner() {
 
   return (
     <div role="region" aria-label={t("Update available")} className="notice backup-reminder mb-5">
-      <p className="min-w-0 flex-1">{t("A new version of My Notes is ready. Reload to use it; your open note is saved first.")}</p>
+      <p className="min-w-0 flex-1">{t("A new version of the app is ready. Reload to use it; your open note is saved first.")}</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="secondary-button" disabled={updating} onClick={() => void update()}>
           <RefreshCw size={15} aria-hidden="true" /> {updating ? t("Updating…") : t("Reload to update")}

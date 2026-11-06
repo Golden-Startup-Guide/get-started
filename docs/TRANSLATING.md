@@ -1,6 +1,6 @@
-# Translating My Notes
+# Translating The Personal Knowledge Library
 
-My Notes is available in **English**, **Spanish** (Español), and **Arabic**
+The Personal Knowledge Library is available in **English**, **Spanish** (Español), and **Arabic**
 (العربية, right to left). Choose a language in **Settings → Appearance →
 Language**, or keep **Same as this device** to follow the device's language
 (English when it is not one of these). The choice is kept on the device.

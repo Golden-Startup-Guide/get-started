@@ -1,6 +1,6 @@
 import { findTemplates } from '../../lib/templates'
 import type { View } from '../../state/workspaceStore'
-import type { Library, Note, Notebook, SavedSearch, Shelf, Tag, ThemePreference } from '../../types'
+import type { Library, Note, Notebook, SavedSearch, Shelf, Tag, ThemeChoice } from '../../types'
 import type { PaletteItem } from './paletteSearch'
 import { t } from '../../i18n/i18n'
 
@@ -13,7 +13,7 @@ export interface PaletteSources {
   notebooks: readonly Notebook[]
   tags: readonly Tag[]
   savedSearches: readonly SavedSearch[]
-  theme: ThemePreference
+  theme: ThemeChoice
   /** Undefined on compact screens, where the sidebar is a drawer rather than collapsible. */
   sidebarCollapsed: boolean | undefined
 }
@@ -21,7 +21,7 @@ export interface PaletteSources {
 export interface PaletteHandlers {
   newNote: () => void
   openSettings: () => void
-  setTheme: (theme: ThemePreference) => void
+  setTheme: (theme: ThemeChoice) => void
   toggleSidebar: () => void
   goTo: (view: View) => void
   runSearch: (query: string) => void
@@ -58,7 +58,7 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
   if (!templates.length) {
     actions.push({ id: 'action:create-template', group: 'Actions', label: t('Create a template'), keywords: 'template new note from', run: handlers.createTemplate })
   }
-  for (const [value, label] of [['light', t('Use light theme')], ['dark', t('Use dark theme')], ['system', t('Use system theme')]] as const) {
+  for (const [value, label] of [['light', t('Use light theme')], ['paper', t('Use soft paper theme')], ['dark', t('Use dark theme')], ['system', t('Use system theme')]] as const) {
     if (value !== theme) actions.push({ id: `action:theme-${value}`, group: 'Actions', label, keywords: 'appearance colour color mode', keepsEditor: true, run: () => handlers.setTheme(value) })
   }
   if (sidebarCollapsed !== undefined) {

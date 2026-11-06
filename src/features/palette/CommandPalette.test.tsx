@@ -46,6 +46,7 @@ describe('CommandPalette', () => {
       'Open settingsAction',
       'Create a templateAction',
       'Use light themeAction',
+      'Use soft paper themeAction',
       'Use dark themeAction',
       'Collapse sidebarAction',
       'Garden plan — WorkNote',

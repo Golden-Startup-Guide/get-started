@@ -17,7 +17,7 @@ describe('update banner', () => {
     render(<UpdateBanner />)
     expect(screen.queryByRole('region', { name: 'Update available' })).not.toBeInTheDocument()
     updateReady(vi.fn(async () => undefined))
-    expect(await screen.findByRole('region', { name: 'Update available' })).toHaveTextContent('A new version of My Notes is ready.')
+    expect(await screen.findByRole('region', { name: 'Update available' })).toHaveTextContent('A new version of the app is ready.')
     await user.click(screen.getByRole('button', { name: 'Later' }))
     expect(screen.queryByRole('region', { name: 'Update available' })).not.toBeInTheDocument()
   })

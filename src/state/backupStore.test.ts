@@ -28,7 +28,7 @@ describe('automatic backups', () => {
     const state = useBackupStore.getState()
     expect(state).toEqual(expect.objectContaining({ loaded: true, supported: false, frequency: 'weekly' }))
     const now = Date.now()
-    // Nothing changed since My Notes first ran: no reminder.
+    // Nothing changed since the app first ran: no reminder.
     expect(backupReminder(state, state.firstSeenAt - 1)).toBeUndefined()
     useBackupStore.setState({ firstSeenAt: now - 8 * DAY, checkedAt: now })
     expect(backupReminder(useBackupStore.getState(), now - DAY)).toBe('overdue')

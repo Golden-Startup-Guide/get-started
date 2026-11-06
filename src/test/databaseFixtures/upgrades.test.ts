@@ -6,7 +6,7 @@ import { readText } from '../../features/backup/backupFolder'
 import { fixtureRecords, restoreDatabase, type DatabaseFixture } from './fixtureFormat'
 
 /**
- * Upgrade tests: each sample database made by a past version of My Notes (captured with
+ * Upgrade tests: each sample database made by a past version of the app (captured with
  * scripts/captureDatabaseFixtures.test.ts) is opened with today's code, which upgrades it.
  * Nothing may be lost or damaged: every note keeps its text and times, every notebook,
  * attachment, history entry, link, and setting is still there, the result passes the start-up

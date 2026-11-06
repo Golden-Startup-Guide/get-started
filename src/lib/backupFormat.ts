@@ -167,6 +167,7 @@ function validSettings(value: unknown): value is AppSettings {
     isRecord(value) &&
     value.id === 'preferences' &&
     ['light', 'dark', 'system'].includes(String(value.theme)) &&
+    (value.paper === undefined || typeof value.paper === 'boolean') &&
     (value.editorMode === undefined || value.editorMode === 'live' || value.editorMode === 'source') &&
     (value.savedSearches === undefined ||
       (Array.isArray(value.savedSearches) && value.savedSearches.length <= MAX_SAVED_SEARCHES && value.savedSearches.every(validSavedSearch)))

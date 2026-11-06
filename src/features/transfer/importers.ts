@@ -55,7 +55,7 @@ export function fromMarkdownFiles(files: readonly InputFile[], defaultNotebook: 
       content = htmlToMarkdown(text, { attachmentName: (element) => attach(element.getAttribute('src') ?? '') ? baseName(element.getAttribute('src') ?? '') : undefined })
     } else {
       content = body
-        // Obsidian embeds of files: ![[photo.png]] (a [[note]] embed is left for My Notes to show).
+        // Obsidian embeds of files: ![[photo.png]] (a [[note]] embed is left for the app to show).
         .replace(/!\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g, (embed, target: string) => (attach(target.trim()) ? `*(attachment: ${baseName(target.trim())})*` : embed))
         // Markdown images and links to local files: ![alt](images/photo.png), [report](files/report.pdf)
         // (a link in <…> may contain spaces).
@@ -64,7 +64,7 @@ export function fromMarkdownFiles(files: readonly InputFile[], defaultNotebook: 
           if (/^[a-z][\w+.-]*:/i.test(href) || href.startsWith('#') || /\.(md|markdown)$/i.test(href)) return link
           return attach(href) ? `*(attachment: ${text || baseName(href)})*` : link
         })
-        // The list of attachments a My Notes export adds at the end; they are attached again.
+        // The list of attachments an export from this app adds at the end; they are attached again.
         .replace(/\n*## Attachments\n\n(?:- \*\(attachment: [^)\n]*\)\*\n?)+$/, '\n')
     }
     const fileTime = (key: string) => parseTime(data[key] as string | undefined)

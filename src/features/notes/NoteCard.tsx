@@ -42,7 +42,7 @@ export const NoteCard = memo(function NoteCard({
 }) {
   return (
     <article className="note-card group relative" aria-posinset={position} aria-setsize={setSize}>
-      <button onClick={() => onOpen(note)} className="absolute inset-0 z-0 rounded-2xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b45d4d]" aria-label={t('Open note {title}', { title: note.title || t('Untitled note') })} />
+      <button onClick={() => onOpen(note)} className="absolute inset-0 z-0 rounded-2xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]" aria-label={t('Open note {title}', { title: note.title || t('Untitled note') })} />
       <div className="relative z-10 pointer-events-none">
         <div className="mb-3 flex items-start justify-between gap-2">
           <span className="text-xs text-[var(--muted)]">{highlight(notebook, highlights)}</span>

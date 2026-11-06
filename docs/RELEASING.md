@@ -2,7 +2,7 @@
 
 ## Versions
 
-My Notes uses [semantic versioning](https://semver.org/): `major.minor.patch`.
+The Personal Knowledge Library uses [semantic versioning](https://semver.org/): `major.minor.patch`.
 
 - **Patch** (1.0.1): fixes only.
 - **Minor** (1.1.0): new features that need nothing from the user.
@@ -37,7 +37,7 @@ dependencies that ship (`npm audit --omit=dev`).
 
 ## Error reporting
 
-My Notes sends no error reports and has no analytics. Instead, **Settings → About
+The Personal Knowledge Library sends no error reports and has no analytics. Instead, **Settings → About
 → Problems** lists the errors seen since the app opened (messages shown to the
 user, and uncaught errors), kept in memory only. **Copy details** puts the version,
 browser, language, and those messages on the clipboard for an issue the user

@@ -50,5 +50,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          (cd dist && zip -qr "../my-notes-$GITHUB_REF_NAME.zip" .)
-          gh release create "$GITHUB_REF_NAME" "my-notes-$GITHUB_REF_NAME.zip" --title "My Notes ${GITHUB_REF_NAME#v}" --notes-file release-notes.md --verify-tag
+          (cd dist && zip -qr "../knowledge-library-$GITHUB_REF_NAME.zip" .)
+          gh release create "$GITHUB_REF_NAME" "knowledge-library-$GITHUB_REF_NAME.zip" --title "The Personal Knowledge Library ${GITHUB_REF_NAME#v}" --notes-file release-notes.md --verify-tag

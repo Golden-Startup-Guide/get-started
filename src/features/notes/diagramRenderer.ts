@@ -19,7 +19,7 @@ export async function renderDiagram(source: string, theme: 'light' | 'dark'): Pr
       securityLevel: 'strict',
       theme: theme === 'dark' ? 'dark' : 'default',
       suppressErrorRendering: true,
-      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     })
     initializedFor = theme
   }
