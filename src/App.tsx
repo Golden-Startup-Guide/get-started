@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { themeChoice } from './lib/theme'
 import {
   FileText,
@@ -26,21 +26,21 @@ import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
-import { LibraryHome } from './features/library/LibraryHome'
+import { LibraryPage } from './features/library/LibraryPage'
+import { ShelfPage } from './features/library/ShelfPage'
+import { HandbookNotebookPage } from './features/library/HandbookNotebookPage'
 import { HomePage } from './features/home/HomePage'
-import { HandbookLibraryHome } from './features/library/HandbookLibraryHome'
 import { LazyHandbookNote } from './features/notes/LazyHandbookNote'
 import { CORE_CATALOG, useCoreStore } from './state/coreStore'
 import { isCoreId } from './lib/core'
-import { recordReading } from './lib/notes'
+import { useReadingStore } from './state/readingStore'
 import { LibrarySidebar } from './features/library/LibrarySidebar'
 import { Breadcrumb, type Crumb } from './features/library/Breadcrumb'
 import { CollapsedRail } from './features/library/CollapsedRail'
 import { useRouting } from './features/app/useRouting'
-import { isHandbookView, notebookForNewNote, shelfForNewNotebook } from './features/library/placement'
+import { isHandbookView, notebookForNewNote } from './features/library/placement'
 import {
   changeTheme,
-  createNotebookOnShelf,
   createSampleTemplate,
   ensureNotebook,
   saveClip,
@@ -95,7 +95,6 @@ function App() {
   const settings = useLibraryStore((state) => state.settings)
   const isLoading = useLibraryStore((state) => state.isLoading)
   const coreNotes = useCoreStore((state) => state.notes)
-  const coreLoaded = useCoreStore((state) => state.loaded)
   const coreFailed = useCoreStore((state) => state.failed)
   const refresh = useLibraryStore((state) => state.refresh)
   const view = useWorkspaceStore((state) => state.view)
@@ -125,7 +124,6 @@ function App() {
   const [quickDraft, setQuickDraft] = useState('')
   const quickReturnRef = useRef<HTMLElement | null>(null)
   const paletteReturnRef = useRef<HTMLElement | null>(null)
-  const [shelfNotebookName, setShelfNotebookName] = useState('')
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false,
   )
@@ -390,7 +388,7 @@ function App() {
   // Remember what was opened, for "Continue reading". A new note counts from when it is next opened.
   const openedNoteId = activeNote && !isCreating ? activeNote.id : undefined
   useEffect(() => {
-    if (openedNoteId) void recordReading(openedNoteId).catch(() => undefined)
+    if (openedNoteId) void useReadingStore.getState().opened(openedNoteId)
   }, [openedNoteId])
 
   useRouting({
@@ -656,14 +654,6 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
   }, [otherDialogOpen, editorOpen, paletteOpen])
 
 
-  async function addNotebookOnShelfPage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    await createNotebookOnShelf(shelfNotebookName, shelfForNewNotebook(view, notebooks, shelves), (created) => {
-      setShelfNotebookName('')
-      navigateToView(`notebook:${created.id}`)
-    })
-  }
-
   return (
     <div className="workspace" data-theme={theme} data-navigation-open={navigationOpen && isCompactNavigation}>
       {isCompactNavigation && navigationOpen && (
@@ -737,13 +727,6 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
           <UpdateBanner />
           <BackupReminder onOpenSettings={openSettings} />
           {notice && <div role="status" className="notice mb-5">{notice}<button onClick={() => showNotice(null)} aria-label={t("Dismiss notice")}><X size={15} /></button></div>}
-          {view.startsWith('shelf:') && !handbookView && (
-            <form className="mb-5 flex max-w-xl gap-2" onSubmit={(event) => void addNotebookOnShelfPage(event)}>
-              <label className="sr-only" htmlFor="shelf-new-notebook">{t('New notebook in {name}', { name: viewLabel })}</label>
-              <input id="shelf-new-notebook" className="small-input min-w-0 flex-1" value={shelfNotebookName} onChange={(event) => setShelfNotebookName(event.target.value)} placeholder={t("New notebook in {viewLabel}", { viewLabel })} />
-              <button className="secondary-button" type="submit"><Plus size={15} /> {t("Add notebook")}</button>
-            </form>
-          )}
           {view.startsWith('notebook:') && !handbookView && (
             <div className="mb-5 max-w-xl md:hidden">
               <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mobile-notebook-shelf">{t("Move notebook to shelf")}</label>
@@ -758,7 +741,8 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
             </div>
           )}
           <div className="mb-5 flex min-w-0 items-center gap-3">
-            {!view.startsWith('library:') && view !== 'home' && (
+            {/* Library, shelf, and handbook pages are for reading and choosing; notes are searched where they are listed. */}
+            {!view.startsWith('library:') && !view.startsWith('shelf:') && !handbookView && view !== 'home' && (
               <>
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
@@ -783,9 +767,15 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
           ) : isLoading ? (
             <p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading your notes…")}</p>
           ) : view.startsWith('library:') ? (
-            handbookView
-              ? <HandbookLibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
-              : <LibraryHome libraryId={view.slice(8)} onNavigate={navigateToView} />
+            <LibraryPage libraryId={view.slice(8)} onNavigate={navigateToView} onOpenNote={openNote} />
+          ) : view.startsWith('shelf:') ? (
+            <ShelfPage shelfId={view.slice(6)} onNavigate={navigateToView} onOpenNote={openNote} />
+          ) : handbookView && coreFailed ? (
+            <p role="status" className="py-16 text-center text-[var(--muted)]">
+              {t('The handbooks could not be loaded. Connect to the internet once so the app can finish installing, then reload.')}
+            </p>
+          ) : handbookView ? (
+            <HandbookNotebookPage notebookId={view.slice(9)} onNavigate={navigateToView} onOpenNote={openNote} />
           ) : view === 'graph' ? (
             <KnowledgeGraph
               notes={graphNotes}
@@ -795,10 +785,6 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
               noteLabel={noteLabel}
               onOpenNote={openNote}
             />
-          ) : handbookView && !coreLoaded ? (
-            <p role="status" className="py-16 text-center text-[var(--muted)]">
-              {coreFailed ? t('The handbooks could not be loaded. Connect to the internet once so the app can finish installing, then reload.') : t('Loading the handbooks…')}
-            </p>
           ) : filteredNotes.length ? (
             <NoteGrid
               notes={filteredNotes}

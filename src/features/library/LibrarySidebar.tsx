@@ -37,6 +37,10 @@ import { shelfForNewNotebook } from './placement'
 import { TreeItemMenu } from './TreeItemMenu'
 import { t } from '../../i18n/i18n'
 
+/** Libraries with up to this many notebooks, and shelves with up to this many, start open. */
+const SMALL_LIBRARY = 8
+const SMALL_SHELF = 12
+
 export function LibrarySidebar({
   onNavigate,
   onNewNote,
@@ -71,15 +75,23 @@ export function LibrarySidebar({
   const sidebarCollapsed = useWorkspaceStore((state) => state.sidebarCollapsed)
   const navigationOpen = useWorkspaceStore((state) => state.navigationOpen)
   const isCompactNavigation = useWorkspaceStore((state) => state.isCompactNavigation)
-  const collapsedLibraries = useWorkspaceStore((state) => state.collapsedLibraries)
-  const collapsedShelves = useWorkspaceStore((state) => state.collapsedShelves)
-  const toggleLibrary = useWorkspaceStore((state) => state.toggleLibrary)
-  const toggleShelf = useWorkspaceStore((state) => state.toggleShelf)
+  const treeChoices = useWorkspaceStore((state) => state.treeChoices)
+  const setTreeOpen = useWorkspaceStore((state) => state.setTreeOpen)
   const askToDelete = useWorkspaceStore((state) => state.askToDelete)
   const [libraryName, setLibraryName] = useState('')
   const [notebookName, setNotebookName] = useState('')
   const [shelfNames, setShelfNames] = useState<Record<string, string>>({})
   const isDrawer = isCompactNavigation && navigationOpen
+  // The tree shows the branch of the page open, and small libraries and shelves, unless the reader
+  // chose otherwise; a large library stays closed, so the sidebar never lists everything at once.
+  const allShelves = [...CORE_CATALOG.shelves, ...shelves]
+  const allNotebooks = [...CORE_CATALOG.notebooks, ...notebooks]
+  const viewId = view.slice(view.indexOf(':') + 1)
+  const currentShelfId = view.startsWith('shelf:') ? viewId : view.startsWith('notebook:') ? allNotebooks.find((notebook) => notebook.id === viewId)?.shelfId : undefined
+  const currentLibraryId = view.startsWith('library:') ? viewId : allShelves.find((shelf) => shelf.id === currentShelfId)?.libraryId
+  const libraryOpen = (libraryId: string) => treeChoices[libraryId] ?? (libraryId === currentLibraryId
+    || allNotebooks.filter((notebook) => allShelves.some((shelf) => shelf.id === notebook.shelfId && shelf.libraryId === libraryId)).length <= SMALL_LIBRARY)
+  const shelfOpen = (shelfId: string) => treeChoices[shelfId] ?? (shelfId === currentShelfId || allNotebooks.filter((notebook) => notebook.shelfId === shelfId).length <= SMALL_SHELF)
   const coreNotes = useCoreStore((state) => state.notes)
   const coreLoaded = useCoreStore((state) => state.loaded)
   // Handbook note counts per library, shelf, and notebook, once their notes have loaded.
@@ -196,7 +208,7 @@ export function LibrarySidebar({
         <nav aria-label={t("Handbooks")} className="min-w-0 space-y-3">
           {CORE_CATALOG.libraries.map((library) => {
             const libraryShelves = CORE_CATALOG.shelves.filter((shelf) => shelf.libraryId === library.id)
-            const libraryExpanded = !collapsedLibraries.includes(library.id)
+            const libraryExpanded = libraryOpen(library.id)
             return (
               <div key={library.id} className="min-w-0">
                 <div className="flex min-w-0 items-center gap-1">
@@ -205,7 +217,7 @@ export function LibrarySidebar({
                     aria-label={libraryExpanded ? t('Collapse {name}', { name: library.name }) : t('Expand {name}', { name: library.name })}
                     aria-expanded={libraryExpanded}
                     aria-controls={`library-contents-${library.id}`}
-                    onClick={() => toggleLibrary(library.id)}
+                    onClick={() => setTreeOpen(library.id, !libraryExpanded)}
                   >
                     <ChevronDown size={15} aria-hidden="true" />
                   </button>
@@ -219,7 +231,7 @@ export function LibrarySidebar({
                   />
                 </div>
                 <div id={`library-contents-${library.id}`} role="group" aria-label={`${library.name} shelves`} hidden={!libraryExpanded} className="ms-3 min-w-0 border-s border-[var(--border)] ps-2">
-                  {libraryShelves.map((shelf) => (
+                  {libraryExpanded && libraryShelves.map((shelf) => (
                     <div key={shelf.id} className="mb-2">
                       <NavButton
                         active={view === `shelf:${shelf.id}`}
@@ -257,7 +269,7 @@ export function LibrarySidebar({
         <nav aria-label={t("Libraries")} className="min-w-0 space-y-3">
           {libraries.map((library) => {
             const libraryShelves = shelves.filter((shelf) => shelf.libraryId === library.id)
-            const libraryExpanded = !collapsedLibraries.includes(library.id)
+            const libraryExpanded = libraryOpen(library.id)
             return (
               <div key={library.id} className="min-w-0">
                 <div className="group flex min-w-0 items-center gap-1">
@@ -266,7 +278,7 @@ export function LibrarySidebar({
                     aria-label={libraryExpanded ? t('Collapse {name}', { name: library.name }) : t('Expand {name}', { name: library.name })}
                     aria-expanded={libraryExpanded}
                     aria-controls={`library-contents-${library.id}`}
-                    onClick={() => toggleLibrary(library.id)}
+                    onClick={() => setTreeOpen(library.id, !libraryExpanded)}
                   >
                     <ChevronDown size={15} aria-hidden="true" />
                   </button>
@@ -292,8 +304,8 @@ export function LibrarySidebar({
                   hidden={!libraryExpanded}
                   className="ms-3 min-w-0 border-s border-[var(--border)] ps-2"
                 >
-                  {libraryShelves.map((shelf) => {
-                    const shelfExpanded = !collapsedShelves.includes(shelf.id)
+                  {libraryExpanded && libraryShelves.map((shelf) => {
+                    const shelfExpanded = shelfOpen(shelf.id)
                     return (
                       <div key={shelf.id} className="mb-2">
                         <div className="group flex min-w-0 items-center gap-1">
@@ -302,7 +314,7 @@ export function LibrarySidebar({
                             aria-label={shelfExpanded ? t('Collapse {name}', { name: shelf.name }) : t('Expand {name}', { name: shelf.name })}
                             aria-expanded={shelfExpanded}
                             aria-controls={`shelf-contents-${shelf.id}`}
-                            onClick={() => toggleShelf(shelf.id)}
+                            onClick={() => setTreeOpen(shelf.id, !shelfExpanded)}
                           >
                             <ChevronDown size={14} aria-hidden="true" />
                           </button>
@@ -322,7 +334,7 @@ export function LibrarySidebar({
                           />
                         </div>
                         <div id={`shelf-contents-${shelf.id}`} role="group" aria-label={`${shelf.name} notebooks`} hidden={!shelfExpanded}>
-                          {notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
+                          {shelfExpanded && notebooks.filter((notebook) => notebook.shelfId === shelf.id).map((notebook) => (
                             <div key={notebook.id} className="library-tree-notebook ms-3 min-w-0">
                               <div className="group flex min-w-0 items-center gap-1">
                                 <NavButton

@@ -995,6 +995,12 @@ export async function recordReading(noteId: string): Promise<void> {
   await transaction.done
 }
 
+/** Every note opened, with when; the most recent first. */
+export async function getReadingRecords(): Promise<ReadingRecord[]> {
+  const db = await database
+  return (await db.getAllFromIndex('reading', 'by-opened')).reverse()
+}
+
 /** The note opened most recently, if any. */
 export async function getLastReading(): Promise<ReadingRecord | undefined> {
   const db = await database

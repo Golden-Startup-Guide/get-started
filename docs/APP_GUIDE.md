@@ -167,6 +167,38 @@ belong to libraries. When deleting a shelf or library, choose a destination
 for its contents so notes and notebooks are not orphaned. Deleting a notebook
 also requires reassignment of its notes.
 
+#### Library, shelf, and notebook pages
+
+Each level has a page made for reading and choosing, in this order:
+
+- **A library**: what it holds, counted with names ("1 shelf · 3 notebooks · 12
+  notes"); its **Shelves**, each with its description, notebooks, and counts, and
+  an **Open shelf** button; and the three notes **Recently added** to it.
+- **A shelf**: its counts; **Continue reading** if you last read something on
+  this shelf; its **Notebooks**, each with its description and count, and for a
+  handbook notebook your progress in words ("Last read: note 2 of 3"); and the
+  **Other shelves in this library**.
+- **A handbook notebook**: what it is for; **Continue reading** with "Note 2 of
+  3"; its **Contents** in reading order, numbered, each with its summary and a
+  **Draft** label while it is one, and the note you read last marked **Last read**
+  by a label and a bar, not colour alone; then **Related notebooks** (the others
+  on its shelf, then elsewhere in its library).
+- **A personal notebook** lists its notes as cards, most recently changed first,
+  with search, since your own notes have no reading order.
+
+Cards keep their natural height, so descriptions are never cut off. Your own
+library and shelf pages end with **Manage this library** or **Manage this
+shelf**: add a shelf or notebook, rename, or delete. A delete that is not
+allowed (the last library, or a library's last shelf) is shown dimmed with the
+reason beside it. Handbook pages have no management. An empty level explains
+what belongs there and where to add the first item.
+
+In the sidebar, the tree opens the branch of the page you are on and any small
+library (up to 8 notebooks) or shelf (up to 12); larger ones start closed, and
+their contents are not drawn until opened, so the sidebar stays short and fast
+however much the library grows. Opening or closing one yourself is remembered
+while the app is open.
+
 Tags are attached to notes as labels. Existing tags are suggested while
 editing, and a tag can be selected to filter the note list. Tag counts reflect
 active notes rather than notes in Trash.

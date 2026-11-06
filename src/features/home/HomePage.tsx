@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, BookOpen, CloudOff, HardDrive, LibraryBig } from 'lucide-react'
-import { getLastReading } from '../../lib/notes'
 import { isCoreId } from '../../lib/core'
 import { CORE_CATALOG, useCoreStore } from '../../state/coreStore'
-import { useEditorStore } from '../../state/editorStore'
+import { useReadingStore } from '../../state/readingStore'
 import { useLibraryStore } from '../../state/libraryStore'
 import type { View } from '../../state/workspaceStore'
 import type { CoreNote, Note, ReadingRecord } from '../../types'
@@ -44,20 +43,13 @@ export function HomePage({ onNavigate, onOpenNote }: { onNavigate: (view: View) 
   const notebooks = useLibraryStore((state) => state.notebooks)
   const coreNotes = useCoreStore((state) => state.notes)
   const coreLoaded = useCoreStore((state) => state.loaded)
-  // Read again whenever a note closes, so Continue reading names the note just read.
-  const editorOpen = useEditorStore((state) => Boolean(state.activeNote))
-  const [lastReading, setLastReading] = useState<ReadingRecord | null>()
-  useEffect(() => {
-    if (editorOpen) return
-    let active = true
-    getLastReading().then(
-      (record) => { if (active) setLastReading(record ?? null) },
-      () => { if (active) setLastReading(null) },
-    )
-    return () => { active = false }
-  }, [editorOpen])
+  const readingLoaded = useReadingStore((state) => state.loaded)
+  const latestReading = useReadingStore((state) => state.records[0])
+  // Undefined until known, then the note opened last, or null when nothing has been read.
+  const lastReading: ReadingRecord | null | undefined = readingLoaded ? latestReading ?? null : undefined
   useEffect(() => {
     void useCoreStore.getState().load()
+    void useReadingStore.getState().refresh()
   }, [])
   const { online, installed } = useOfflineState()
 

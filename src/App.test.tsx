@@ -126,15 +126,15 @@ describe('Knowledge Library workspace', () => {
     const libraryNavigation = screen.getByRole('navigation', { name: 'Libraries' })
     await within(libraryNavigation).findByText('My notes')
     await user.click(within(libraryNavigation).getByRole('button', { name: 'My notes 1' }))
-    expect(await screen.findByRole('heading', { name: 'Library home' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Open General shelf' }))
-    expect(await screen.findByRole('heading', { name: 'General' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'My notes', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Shelves' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Open shelf General' }))
+    expect(await screen.findByRole('heading', { name: 'General', level: 1 })).toBeInTheDocument()
 
-    await user.click(within(libraryNavigation).getByRole('button', { name: 'My notes 1' }))
-    await screen.findByRole('heading', { name: 'Library home' })
     const main = screen.getByRole('main')
-    await user.type(within(main).getByRole('textbox', { name: 'New library name' }), 'Garden Library')
-    await user.click(within(main).getByRole('button', { name: 'Add library' }))
+    const sidebar = screen.getByRole('complementary', { name: 'Primary navigation' })
+    await user.type(within(sidebar).getByRole('textbox', { name: 'New library name' }), 'Garden Library')
+    await user.click(within(sidebar).getByRole('button', { name: 'Add library' }))
     await within(libraryNavigation).findByRole('button', { name: 'Garden Library 0' }, { timeout: 3000 })
     const newShelf = within(main).getByRole('textbox', { name: 'New shelf in Garden Library' })
     fireEvent.change(newShelf, { target: { value: 'Garden Shelf' } })
@@ -166,8 +166,10 @@ describe('Knowledge Library workspace', () => {
 
     // The Personal notebook moved here earlier, bringing its starter welcome note.
     await user.click(within(libraryNavigation).getByRole('button', { name: 'Garden Library 1' }))
-    await screen.findByRole('heading', { name: 'Library home' })
-    await user.click(within(main).getByRole('button', { name: 'Delete Garden Shelf' }))
+    await screen.findByRole('heading', { name: 'Garden Library', level: 1 })
+    await user.click(within(main).getByRole('button', { name: 'Open shelf Garden Shelf' }))
+    await screen.findByRole('heading', { name: 'Garden Shelf', level: 1 })
+    await user.click(within(main).getByRole('button', { name: 'Delete shelf' }))
     const dialog = screen.getByRole('dialog')
     const gardenLibrary = (await storage.getLibraries()).find((item) => item.name === 'Garden Library')!
     const destinationShelf = (await storage.getShelves()).find((item) => item.libraryId === gardenLibrary.id && item.name === 'General')!
@@ -629,6 +631,30 @@ describe('Knowledge Library workspace', () => {
     await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Saved searches' })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Save this search' })).toBeInTheDocument()
     await expect(storage.getSettings()).resolves.toEqual(expect.objectContaining({ savedSearches: [] }))
+  }, 15000)
+
+  it('keeps a large library closed in the sidebar, but opens the branch of the page shown', async () => {
+    const storage = await import('./lib/notes')
+    await storage.getNotes()
+    for (let index = 1; index <= 9; index += 1) await storage.createNotebook(`Topic ${index}`)
+    const { default: App } = await import('./App')
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'All Notes' })
+    const libraries = screen.getByRole('navigation', { name: 'Libraries' })
+    // Ten notebooks: closed by default, and its shelves are not drawn at all.
+    expect(await within(libraries).findByRole('button', { name: 'Expand My notes' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(libraries).queryByRole('button', { name: /^General/ })).not.toBeInTheDocument()
+    // Handbook libraries are small, so they start open.
+    expect(within(screen.getByRole('navigation', { name: 'Handbooks' })).getByRole('button', { name: /^Everyday Nutrition/ })).toBeInTheDocument()
+
+    // Showing a notebook opens its branch; the reader can still close it.
+    const notebook = (await storage.getNotebooks()).find((item) => item.name === 'Topic 4')!
+    window.history.pushState(null, '', `/#/notebook/${notebook.id}`)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    expect(await within(libraries).findByRole('button', { name: /^Topic 4/ })).toHaveAttribute('aria-current', 'page')
+    await user.click(within(libraries).getByRole('button', { name: 'Collapse My notes' }))
+    expect(within(libraries).queryByRole('button', { name: /^Topic 4/ })).not.toBeInTheDocument()
   }, 15000)
 
   it('opens on Home: an invitation to start, the libraries to explore, and then where to continue', async () => {
