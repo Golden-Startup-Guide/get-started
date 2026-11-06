@@ -52,14 +52,42 @@ find any note.
 
 #### Navigation on desktop, tablet, and phone
 
-On wide screens, the sidebar is visible by default. Its **Collapse sidebar**
-button (top right of the sidebar) hides it, and the **Expand sidebar** button
-that then appears in the application header brings it back. At the compact
-breakpoint (1023 pixels and below), the header's menu button opens a
-navigation drawer instead. The drawer closes with its close button, on Escape,
-when the backdrop is tapped, or when a destination is selected, and returns
-focus to the menu button when dismissed.
-Its contents scroll independently of the page.
+On wide screens (1200 pixels and above), the sidebar is visible by default,
+264 pixels wide. Its **Collapse sidebar** button (top right of the sidebar)
+narrows it to a 72-pixel rail of icons: **Expand sidebar**, **New note**, **All
+Notes**, **Favorites**, **Knowledge Graph**, **Today's note**, **Trash**, and
+**Settings**. Each icon has a name for screen readers and shows it in a tooltip
+on hover or keyboard focus, and the current page is marked by a bar as well as
+colour. On tablets and phones (1199 pixels and below), the header's menu button
+opens a navigation drawer instead. The drawer closes with its close button, on
+Escape, when the backdrop is tapped, or when a destination is selected, and
+returns focus to the menu button when dismissed. Its contents scroll
+independently of the page.
+
+A **Skip to main content** link comes first in the keyboard order (Option+Tab
+in Safari) and moves focus straight to the page.
+
+#### Page addresses, Back, and Forward
+
+Every page has its own address after `#` in the browser's address bar, for
+example `#/notebook/<id>` for a notebook. An open note adds `?note=<id>`, and a
+search adds `?q=<words>`. So:
+
+- **Back** and **Forward** move between the pages and notes you opened. After
+  Back or Forward, focus moves to the page's heading so screen readers announce
+  it.
+- **Reloading** keeps the same page, note, and search.
+- An address can be **bookmarked** or opened in a new tab; breadcrumb links can
+  be opened in a new tab too.
+- Typing a search updates the address without adding a step to the history for
+  each letter.
+- An address for a page or note no longer in the library opens All Notes, with
+  a notice saying the page is no longer in your library or the note could not
+  be found.
+
+The browser tab's title names the page or the open note, followed by the app's
+name. Addresses use the part after `#`, so they work on any static host and
+offline.
 
 #### Command palette
 
@@ -85,9 +113,12 @@ open.
 The sidebar groups All Notes, Favorites, Trash, and Knowledge Graph above the
 library hierarchy. Use the disclosure buttons to expand or collapse libraries
 and shelves. Tags and Settings are available below the hierarchy. When viewing
-a library, shelf, or notebook, the header shows breadcrumbs for its location.
-On compact screens, open the drawer with the menu button to reach these
-destinations.
+any page other than All Notes, the header shows a breadcrumb: each level above
+the page as a link (Knowledge Library, then its library and shelf), then the
+page itself. On phones, the breadcrumb becomes a link up one level and a **Page
+location** button that shows the whole path, and the page title gets the full
+width under the header buttons. On compact screens, open the drawer with the
+menu button to reach these destinations.
 
 ### 2.2 Libraries, shelves, notebooks, and tags
 

@@ -12,8 +12,9 @@ test('stores notes in real IndexedDB so they survive a reload', async ({ page })
   await page.getByRole('checkbox', { name: 'Mark task Water the seedlings complete' }).click()
   await expect(page.getByRole('progressbar', { name: 'Checklist progress' })).toHaveText('2 of 2 complete')
   await expectSaved(page)
+  // The open note is in the page's address, so the reload reads it back from storage and opens it.
   await page.reload()
-  await page.getByRole('button', { name: 'Open note Garden plan' }).click()
+  await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Garden plan')
   await expect.poll(() => markdownText(page)).toBe('- [x] Water the seedlings\n- [x] Buy compost')
 })
 

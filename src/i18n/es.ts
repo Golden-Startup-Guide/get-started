@@ -4,6 +4,10 @@ import type { Catalog } from './i18n'
 // reviewed by a native speaker: corrections are welcome. i18n.test.ts checks that every text
 // in the app is here.
 const catalog: Catalog = {
+  "Skip to main content": "Saltar al contenido principal",
+  "Page location": "Ubicación de la página",
+  "That note could not be found. It may have been deleted, or never saved.": "No se encontró esa nota. Puede que se haya eliminado o que nunca se guardara.",
+  "That page is no longer in your library.": "Esa página ya no está en tu biblioteca.",
   " Checked {formatTime}: a test restore brought back {summary}.": " Revisada {formatTime}: una restauración de prueba recuperó {summary}.",
   " It left out attachments and history to stay under 40 MiB.": " Se omitieron los adjuntos y el historial para no superar 40 MiB.",
   " It left out history to stay under 40 MiB.": " Se omitió el historial para no superar 40 MiB.",

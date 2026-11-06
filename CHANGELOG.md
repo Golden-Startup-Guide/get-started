@@ -1,9 +1,23 @@
 # Changelog
 
-All notable changes to My Notes. Versions follow [semantic versioning](https://semver.org/):
+All notable changes to The Personal Knowledge Library (called My Notes up to 1.1.0). Versions follow [semantic versioning](https://semver.org/):
 a **major** version may need something from you (a new backup format, say), a **minor** version
 adds features, and a **patch** fixes problems. The app updates itself, asking first; see
 [docs/RELEASING.md](docs/RELEASING.md) for how releases are made.
+
+## [Unreleased]
+
+### Added
+- Every page and note has its own address, so **Back** and **Forward** work, a reload keeps your place, and pages can be bookmarked. A missing page or note is explained rather than shown blank.
+- A breadcrumb on every page; on phones, a link up a level and a **Page location** button.
+- The collapsed sidebar becomes a rail of named icons instead of disappearing, and a **Skip to main content** link comes first.
+- A **Soft paper** theme for long reading. Older versions read its backups as the light theme.
+
+### Changed
+- The app is now **The Personal Knowledge Library**, the first step of the plan in [docs/KNOWLEDGE_LIBRARY_PLAN.md](docs/KNOWLEDGE_LIBRARY_PLAN.md). Messages say "the app" in place of the old name. Your notes, settings, and backups are unchanged.
+- New colours from the design specification: warm paper, forest green, and a blue focus ring, in light and dark. Every pairing is checked against WCAG 2.2 AA.
+- Titles and note text use a serif for easier reading.
+- The sidebar is 264 px wide; tablets up to 1199 px use the navigation drawer. On phones, the page title and its location sit under the header buttons with the full width.
 
 ## [1.1.0] - 2026-11-06
 

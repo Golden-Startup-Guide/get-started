@@ -3,7 +3,6 @@ import { themeChoice } from './lib/theme'
 import {
   FileText,
   Menu,
-  PanelLeftOpen,
   Plus,
   Search,
   Settings,
@@ -29,6 +28,9 @@ import type { PaletteItem } from './features/palette/paletteSearch'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
 import { LibraryHome } from './features/library/LibraryHome'
 import { LibrarySidebar } from './features/library/LibrarySidebar'
+import { Breadcrumb, type Crumb } from './features/library/Breadcrumb'
+import { CollapsedRail } from './features/library/CollapsedRail'
+import { useRouting } from './features/app/useRouting'
 import { notebookForNewNote, shelfForNewNotebook } from './features/library/placement'
 import {
   changeTheme,
@@ -309,9 +311,6 @@ function App() {
       : view.startsWith('notebook:')
         ? notebooks.find((item) => item.id === view.slice(9))?.name ?? t('Notebook')
         : tags.find((item) => item.id === view.slice(4))?.label ?? t('Tag')
-  const activeLibrary = view.startsWith('library:')
-    ? libraries.find((library) => library.id === view.slice(8))
-    : undefined
   const activeShelf = view.startsWith('shelf:')
     ? shelves.find((shelf) => shelf.id === view.slice(6))
     : undefined
@@ -321,30 +320,34 @@ function App() {
   const activeNotebookShelf = activeNotebook
     ? shelves.find((shelf) => shelf.id === activeNotebook.shelfId)
     : undefined
-  const breadcrumbItems: Array<{ label: string; view: View }> = activeLibrary
-    ? [{ label: t('Knowledge Library'), view: 'all' }]
-    : activeShelf
-      ? [
-          { label: t('Knowledge Library'), view: 'all' },
-          {
-            label: libraries.find((library) => library.id === activeShelf.libraryId)?.name ?? 'Library',
-            view: `library:${activeShelf.libraryId}`,
-          },
-        ]
-      : activeNotebook
-        ? [
-            { label: t('Knowledge Library'), view: 'all' },
-            ...(activeNotebookShelf
-              ? [
-                  {
-                    label: libraries.find((library) => library.id === activeNotebookShelf.libraryId)?.name ?? 'Library',
-                    view: `library:${activeNotebookShelf.libraryId}` as View,
-                  },
-                  { label: activeNotebookShelf.name, view: `shelf:${activeNotebookShelf.id}` as View },
-                ]
-              : []),
-          ]
-        : []
+  const libraryCrumb = (libraryId: string): Crumb => ({
+    label: libraries.find((library) => library.id === libraryId)?.name ?? t('Library'),
+    view: `library:${libraryId}`,
+  })
+  // The levels above the current page; the page itself is the heading.
+  const breadcrumbTrail: Crumb[] = view === 'all'
+    ? []
+    : [
+        { label: t('Knowledge Library'), view: 'all' },
+        ...(activeShelf ? [libraryCrumb(activeShelf.libraryId)] : []),
+        ...(activeNotebookShelf ? [libraryCrumb(activeNotebookShelf.libraryId), { label: activeNotebookShelf.name, view: `shelf:${activeNotebookShelf.id}` as View }] : []),
+      ]
+
+  useRouting({
+    ready: !isLoading,
+    // After Back or Forward, move focus to the page's heading so the new page is announced; an
+    // open note's editor takes focus itself.
+    onHistoryMove: (route) => {
+      if (!route.note) requestAnimationFrame(() => pageHeadingRef.current?.focus())
+    },
+  })
+
+  // The browser tab and history show the page, or the open note.
+  useEffect(() => {
+    const appName = t('The Personal Knowledge Library')
+    const page = activeNote ? activeNote.title.trim() || t('Untitled note') : view === 'all' ? '' : viewLabel
+    document.title = page ? `${page} — ${appName}` : appName
+  }, [activeNote, view, viewLabel])
 
   function closeNavigation() {
     setNavigationOpen(false)
@@ -580,7 +583,23 @@ function App() {
       {isCompactNavigation && navigationOpen && (
         <button className="navigation-backdrop" onClick={closeNavigation} aria-label={t("Close navigation")} tabIndex={-1} />
       )}
+      <a href="#main-content" className="skip-link" onClick={(event) => {
+        // The address holds the page, so move focus without following the link.
+        event.preventDefault()
+        document.getElementById('main-content')?.focus()
+      }}>{t('Skip to main content')}</a>
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
+        {!isCompactNavigation && sidebarCollapsed && (
+          <CollapsedRail
+            view={view}
+            expandRef={navigationToggleRef}
+            onExpand={openNavigation}
+            onNavigate={navigateToView}
+            onNewNote={openNewNote}
+            onOpenToday={() => void openTodayNote()}
+            onOpenSettings={openSettings}
+          />
+        )}
         <LibrarySidebar
           onNavigate={navigateToView}
           onNewNote={openNewNote}
@@ -592,40 +611,30 @@ function App() {
           closeButtonRef={navigationCloseRef}
         />
 
-        <main id="main-content" className="min-w-0 flex-1 p-4 sm:p-8 lg:p-10">
-          <header className="mb-8 flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              {/* Shown only while the navigation is hidden; the sidebar has its own close button. */}
-              {(isCompactNavigation ? !navigationOpen : sidebarCollapsed) && (
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 p-4 sm:p-8 lg:p-10">
+          <header className="workspace-header mb-8 flex items-center justify-between gap-4">
+            <div className="workspace-header-start flex min-w-0 items-center gap-3">
+              {/* On narrow screens, while the drawer is closed; wide screens use the sidebar or its rail. */}
+              {isCompactNavigation && !navigationOpen && (
                 <button
                   ref={navigationToggleRef}
                   className="icon-button navigation-toggle shrink-0"
                   onClick={openNavigation}
-                  aria-label={isCompactNavigation ? t("Open navigation") : t("Expand sidebar")}
+                  aria-label={t("Open navigation")}
                   aria-expanded={false}
                   aria-controls="workspace-navigation"
                 >
-                  {isCompactNavigation ? <Menu size={18} aria-hidden="true" /> : <PanelLeftOpen size={18} aria-hidden="true" />}
+                  <Menu size={18} aria-hidden="true" />
                 </button>
               )}
-              <div className="min-w-0">
-                <p className="section-label mb-1">{t("Personal Knowledge Library")}</p>
-                {breadcrumbItems.length > 0 && (
-                  <nav className="workspace-breadcrumb mb-1" aria-label={t("Breadcrumb")}>
-                    <ol>
-                      {breadcrumbItems.map((item, index) => (
-                        <li key={`${item.label}-${index}`}>
-                          <button onClick={() => navigateToView(item.view)}>{item.label}</button>
-                          <span aria-hidden="true">/</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </nav>
-                )}
+              <div className="workspace-title min-w-0">
+                {breadcrumbTrail.length > 0
+                  ? <Breadcrumb trail={breadcrumbTrail} current={viewLabel} onNavigate={navigateToView} />
+                  : <p className="section-label mb-1">{t("Personal Knowledge Library")}</p>}
                 <h1 ref={pageHeadingRef} tabIndex={-1} className="text-2xl font-semibold tracking-tight sm:text-3xl">{viewLabel}</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="workspace-actions flex items-center gap-2">
               {/* Named by its content, so the shortcut people see is part of the name voice control hears. */}
               <button className="palette-trigger" onClick={openPalette} aria-keyshortcuts="Control+K Meta+K" title={t("Command palette ({PALETTE_SHORTCUT})", { PALETTE_SHORTCUT })}>
                 <TextSearch size={16} aria-hidden="true" />

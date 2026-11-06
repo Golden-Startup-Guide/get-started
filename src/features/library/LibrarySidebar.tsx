@@ -119,7 +119,10 @@ export function LibrarySidebar({
       onKeyDown={isDrawer ? (event) => keepFocusInDialog(event, onCloseNavigation) : undefined}
     >
       <div className="mb-6 flex items-center justify-between gap-2">
-        <a href={import.meta.env.BASE_URL} className="brand-link flex min-w-0 items-center gap-3 px-2" aria-label={t("The Personal Knowledge Library home")}>
+        <a href="#/" onClick={(event) => {
+          event.preventDefault()
+          onNavigate('all')
+        }} className="brand-link flex min-w-0 items-center gap-3 px-2" aria-label={t("The Personal Knowledge Library home")}>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-[var(--on-accent)]">
             <LibraryBig size={20} aria-hidden="true" />
           </span>

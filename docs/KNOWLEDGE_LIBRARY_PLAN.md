@@ -83,7 +83,7 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
   - The current `View` state becomes a function of the address.
   - Old launch links, from shortcuts, the share target, and the clipper, keep working.
 - **Breadcrumb:** `Home / Library / Shelf / Notebook / Note`. On phones it collapses to a back-to-parent link plus a **Page location** disclosure.
-- **Rail:** the four sidebar modes from section 3 of the spec, with a skip link. After navigating, focus moves to the page heading. Disclosure buttons are separate from links in the tree, and the tree only renders the current branch.
+- **Rail:** the four sidebar modes from section 3 of the spec, with a skip link. After navigating, focus moves to the page heading. Disclosure buttons are separate from links in the tree. Rendering only the current branch moves to phase 5: today's tree lists libraries, shelves, and notebooks but never notes, so it stays small until handbooks add many more notebooks.
 - **Done when:** end-to-end tests cover Back and Forward, deep links that survive a reload, the drawer focus trap and focus return, and Escape closing the drawer.
 
 ### Phase 3: Built-in content
