@@ -9,6 +9,8 @@ draft: true
 ---
 Many things improve faster when neighbours work together: a food garden, a street clean-up, a reading club, a savings group, or a safety patrol.
 
+![Neighbours meeting together outdoors to plan a community project.](01-starting-a-community-group.svg)
+
 ## 1. Start with a shared need
 
 Talk to people. What problem or goal do several of you care about? A group with one clear purpose is easier to start and keep going than one that tries to do everything.

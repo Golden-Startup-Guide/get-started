@@ -9,6 +9,8 @@ draft: true
 ---
 Water is precious in much of South Africa. A few habits help your garden grow well while using less of it.
 
+![A gardener watering the soil at the base of plants in the early morning, next to mulch.](04-watering-wisely.svg)
+
 ## When to water
 
 - Water in the **early morning** or **late afternoon**, when less water is lost to the sun and wind.

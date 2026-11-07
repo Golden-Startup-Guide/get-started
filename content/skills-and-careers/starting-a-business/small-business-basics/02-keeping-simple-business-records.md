@@ -9,6 +9,8 @@ draft: true
 ---
 You cannot manage what you do not measure. Simple records show whether your business is making money, help you plan, and are needed for tax and for any loan.
 
+![A notebook of daily sales and costs next to a cash box and receipts.](02-keeping-simple-business-records.svg)
+
 ## Keep business money separate
 
 Use a separate bank account or at least a separate tin or pocket for business money. Pay yourself a fixed amount, rather than taking money whenever you need it.

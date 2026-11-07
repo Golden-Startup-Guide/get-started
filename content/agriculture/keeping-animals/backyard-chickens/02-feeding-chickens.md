@@ -9,6 +9,8 @@ draft: true
 ---
 Well-fed chickens grow faster, lay more eggs, and fight off disease better.
 
+![A woman scattering feed for hens, with a water container and fresh eggs.](02-feeding-chickens.svg)
+
 ## Water first
 
 - A chicken drinks about **1 litre of water a day**, and more in hot weather.

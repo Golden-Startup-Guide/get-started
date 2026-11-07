@@ -9,6 +9,8 @@ draft: true
 ---
 Preventing disease is much easier, and cheaper, than treating it.
 
+![A healthy hen next to a clean coop, a vaccine, and a check mark.](03-keeping-chickens-healthy.svg)
+
 ## Newcastle disease
 
 Newcastle disease is a virus that can kill most of a flock within days. It causes losses every year in townships and rural areas where chickens are not vaccinated. Signs include twisted necks, difficulty breathing, green diarrhoea, and sudden deaths.

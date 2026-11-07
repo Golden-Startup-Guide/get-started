@@ -9,6 +9,8 @@ draft: true
 ---
 Every municipality must have an **Integrated Development Plan (IDP)**: a five-year plan for what it will build, fix, and provide, such as roads, water, sanitation, refuse removal, parks, and community halls. It is reviewed every year, and the yearly **budget** must follow it.
 
+![Residents adding their ideas, like water, roads, and a clinic, to a plan on a board.](02-having-your-say-in-the-idp.svg)
+
 Residents have a right to take part in drawing up the IDP and budget.
 
 ## How to take part

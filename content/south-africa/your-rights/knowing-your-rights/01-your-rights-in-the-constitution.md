@@ -9,6 +9,8 @@ draft: true
 ---
 South Africa's **Constitution** (1996) is the highest law in the country. Its **Bill of Rights**, Chapter 2, sets out rights that apply to **everyone in South Africa**. The state must respect, protect, promote, and fulfil them.
 
+![An open Constitution book with the scales of justice, above people of different ages standing together.](01-your-rights-in-the-constitution.svg)
+
 ## Some of the rights in the Bill of Rights
 
 - **Equality:** everyone is equal before the law, and no one may be unfairly discriminated against, for example because of race, gender, pregnancy, disability, religion, language, or sexual orientation.

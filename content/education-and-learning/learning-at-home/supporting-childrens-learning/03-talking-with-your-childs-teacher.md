@@ -9,6 +9,8 @@ draft: true
 ---
 Children do better when their families and teachers work together.
 
+![A parent and a teacher talking about a child's progress in a classroom.](03-talking-with-your-childs-teacher.svg)
+
 ## Parent meetings
 
 Schools usually hold parent meetings each term, where you can see your child's work and progress. Go if you possibly can, and ask:

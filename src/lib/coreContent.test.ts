@@ -26,8 +26,9 @@ const levels = {
   'lib/library.md': header({ id: 'core-lib', name: 'Library', description: 'About.', order: 1 }),
   'lib/shelf/shelf.md': header({ id: 'core-shelf', name: 'Shelf', description: 'About.', order: 1 }),
   'lib/shelf/book/notebook.md': header({ id: 'core-book', name: 'Book', description: 'About.', order: 1 }),
+  'lib/shelf/book/picture.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
 }
-const note = (fields: Record<string, string | number | boolean> = {}, body = 'Text.') =>
+const note = (fields: Record<string, string | number | boolean> = {}, body = 'Text.\n\n![A picture](picture.svg)') =>
   header({ id: 'core-note', title: 'A note', summary: 'One line.', type: 'Guide', order: 1, added: '2026-11-06', ...fields }) + body
 
 describe('handbook content', () => {
@@ -42,13 +43,38 @@ describe('handbook content', () => {
   it('compiles libraries, shelves, notebooks, and notes, in order', () => {
     const content = compileContent(folder({
       ...levels,
-      'lib/shelf/book/b.md': note({ id: 'core-second', title: 'Second', order: 2, draft: true }, 'See [[First#Part]].'),
+      'lib/shelf/book/b.md': note({ id: 'core-second', title: 'Second', order: 2, draft: true }, 'See [[First#Part]].\n\n![A picture](picture.svg)'),
       'lib/shelf/book/a.md': note({ id: 'core-first', title: 'First', order: 1 }),
     }))
     expect(content.catalog.libraries).toEqual([expect.objectContaining({ id: 'core-lib', name: 'Library', source: 'core' })])
     expect(content.catalog.notebooks).toEqual([expect.objectContaining({ id: 'core-book', shelfId: 'core-shelf' })])
     expect(content.notes['core-lib'].map((item) => [item.title, item.notebookId, item.draft ?? false])).toEqual([['First', 'core-book', false], ['Second', 'core-book', true]])
     expect(content.catalog.version).toMatch(/^[0-9a-f]{12}$/)
+    expect(content.notes['core-lib'][0].content).toBe('Text.\n\n![A picture](core-picture:lib/shelf/book/picture.svg)')
+    expect(Object.keys(content.pictures)).toEqual(['core-picture:lib/shelf/book/picture.svg'])
+  })
+
+  it('needs a picture on every page, described, and stored next to the note', () => {
+    let message = ''
+    try {
+      compileContent(folder({
+        ...levels,
+        'lib/shelf/book/a.md': note({ id: 'core-a', title: 'A' }, 'No picture.'),
+        'lib/shelf/book/b.md': note({ id: 'core-b', title: 'B' }, '![](picture.svg)'),
+        'lib/shelf/book/c.md': note({ id: 'core-c', title: 'C' }, '![Remote](https://example.com/x.svg)'),
+        'lib/shelf/book/d.md': note({ id: 'core-d', title: 'D' }, '![Missing](gone.svg)'),
+        'lib/shelf/book/e.md': note({ id: 'core-e', title: 'E' }, '![Odd](picture.gif)'),
+      }))
+    } catch (error) {
+      message = (error as Error).message
+    }
+    for (const problem of [
+      'a.md: every page needs at least one picture',
+      'b.md: the picture picture.svg needs words saying what it shows',
+      'c.md: the picture https://example.com/x.svg must be a file in content/',
+      'd.md: the picture gone.svg is not in lib/shelf/book/',
+      'e.md: the picture picture.gif must be .svg, .png, .jpg, or .webp',
+    ]) expect(message).toContain(problem)
   })
 
   it('stops with every problem: bad ids, missing fields, duplicates, and links to nowhere', () => {
@@ -82,6 +108,8 @@ describe('handbook content', () => {
       const notes = await loaders[library.id]()
       expect(notes.length).toBeGreaterThan(0)
       expect(notes.every((item) => item.source === 'core' && item.id.startsWith('core-'))).toBe(true)
+      // Pictures are served from the app, never left as core-picture: addresses.
+      expect(notes.every((item) => /!\[[^\]]+\]\(\/[^)]+\.svg\)/.test(item.content) && !item.content.includes('core-picture:'))).toBe(true)
     }
   })
 })

@@ -9,6 +9,8 @@ draft: true
 ---
 Compost is decayed plant material. Mixed into the soil, it feeds plants, helps the soil hold water, and costs nothing to make.
 
+![A compost heap with layers of green kitchen scraps, dry leaves, and soil, and a spade.](02-making-compost.svg)
+
 ## What to put in
 
 Use a mix of **green** and **brown** material:

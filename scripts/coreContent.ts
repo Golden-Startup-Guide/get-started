@@ -17,6 +17,8 @@ export interface CompiledContent {
   catalog: CoreCatalog
   /** Each library's notes, in notebook order. */
   notes: Record<string, CoreNote[]>
+  /** Each picture's file, by the address its notes use for it (`core-picture:<path in content/>`). */
+  pictures: Record<string, string>
   /** Every file read, for the dev server to watch. */
   files: string[]
 }
@@ -24,6 +26,10 @@ export interface CompiledContent {
 const ID = /^core-[a-z0-9]+(?:-[a-z0-9]+)*$/
 const NOTE_TYPES: CoreNoteType[] = ['Article', 'Guide', 'Chapter', 'Handbook']
 const DATE = /^\d{4}-\d{2}-\d{2}$/
+/** A picture in a note: `![what it shows](file.svg)`, the file next to the note. */
+const PICTURE = /!\[([^\]]*)\]\(([^)\s]+)\)/g
+const PICTURE_TYPES = /\.(svg|png|jpe?g|webp)$/i
+export const PICTURE_PREFIX = 'core-picture:'
 
 type Header = Record<string, string | number | boolean>
 
@@ -58,6 +64,7 @@ export function compileContent(root: string): CompiledContent {
   const shelves: CoreShelf[] = []
   const notebooks: CoreNotebook[] = []
   const notes: CoreNote[] = []
+  const pictures: Record<string, string> = {}
   const hash = createHash('sha256')
 
   const relative = (file: string) => path.relative(root, file).split(path.sep).join('/')
@@ -140,6 +147,31 @@ export function compileContent(root: string): CompiledContent {
           if (added && !(DATE.test(added) && !Number.isNaN(Date.parse(added)))) problems.push(`${relative(file)}: added "${added}" must be a date, YYYY-MM-DD`)
           if (header.draft !== undefined && typeof header.draft !== 'boolean') problems.push(`${relative(file)}: draft must be true or false`)
           if (!body) problems.push(`${relative(file)}: the note has no text`)
+          // Every page has at least one picture, stored in content/ so it shows offline.
+          let pictureCount = 0
+          const content = body.replace(PICTURE, (whole, alt: string, source: string) => {
+            pictureCount += 1
+            if (!alt.trim()) problems.push(`${relative(file)}: the picture ${source} needs words saying what it shows, ![like this](${source})`)
+            if (/^[a-z][a-z0-9+.-]*:|^\//i.test(source)) {
+              problems.push(`${relative(file)}: the picture ${source} must be a file in content/, next to the note, so it shows offline`)
+              return whole
+            }
+            if (!PICTURE_TYPES.test(source)) problems.push(`${relative(file)}: the picture ${source} must be .svg, .png, .jpg, or .webp`)
+            const picture = path.join(notebookDirectory, source)
+            let bytes: Buffer
+            try {
+              bytes = readFileSync(picture)
+            } catch {
+              problems.push(`${relative(file)}: the picture ${source} is not in ${relative(notebookDirectory)}/`)
+              return whole
+            }
+            files.push(picture)
+            const address = PICTURE_PREFIX + relative(picture)
+            hash.update(relative(picture)).update('\0').update(bytes).update('\0')
+            pictures[address] = picture
+            return `![${alt}](${address})`
+          })
+          if (body && pictureCount === 0) problems.push(`${relative(file)}: every page needs at least one picture (see content/README.md)`)
           const time = Date.parse(added) || created
           notes.push({
             id: identity(file, header),
@@ -150,7 +182,7 @@ export function compileContent(root: string): CompiledContent {
             added,
             ...(header.draft === true ? { draft: true } : {}),
             ...(typeof header.reviewed === 'string' && header.reviewed ? { reviewed: header.reviewed } : {}),
-            content: body,
+            content,
             notebookId: notebook.id,
             createdAt: time,
             updatedAt: time,
@@ -193,6 +225,7 @@ export function compileContent(root: string): CompiledContent {
   return {
     catalog: { version: hash.digest('hex').slice(0, 12), libraries, shelves, notebooks },
     notes: byLibrary,
+    pictures,
     files,
   }
 }
@@ -206,8 +239,16 @@ const LIBRARY = `${CATALOG}/`
  * (assets/core-<library id>-<hash>.js), precached so handbooks open offline.
  */
 export function coreContentPlugin(root: string): Plugin {
+  let base = '/'
+  let building = false
+  let projectRoot = process.cwd()
   return {
     name: 'core-content',
+    configResolved(config) {
+      base = config.base
+      building = config.command === 'build'
+      projectRoot = config.root
+    },
     resolveId(id) {
       return id === CATALOG || id.startsWith(LIBRARY) ? `\0${id}` : undefined
     },
@@ -222,7 +263,22 @@ export function coreContentPlugin(root: string): Plugin {
         return `export const catalog = ${JSON.stringify(content.catalog)}\nexport const loaders = {\n${loaders}\n}\n`
       }
       const libraryId = id.slice(`\0${LIBRARY}`.length)
-      return `export default ${JSON.stringify(content.notes[libraryId] ?? [])}\n`
+      // Pictures become files of their own (assets/picture-<name>-<hash>.svg, precached with the
+      // handbooks); the dev server serves them from content/ as they are.
+      const address = (picture: string) => {
+        const file = content.pictures[picture]
+        if (!building) return base + path.relative(projectRoot, file).split(path.sep).join('/')
+        const source = readFileSync(file)
+        const { name, ext } = path.parse(file)
+        const fileName = `assets/picture-${name}-${createHash('sha256').update(source).digest('hex').slice(0, 8)}${ext}`
+        this.emitFile({ type: 'asset', fileName, source })
+        return base + fileName
+      }
+      const notes = (content.notes[libraryId] ?? []).map((note) => ({
+        ...note,
+        content: note.content.replace(/\]\((core-picture:[^)\s]+)\)/g, (_whole, picture: string) => `](${address(picture)})`),
+      }))
+      return `export default ${JSON.stringify(notes)}\n`
     },
   }
 }

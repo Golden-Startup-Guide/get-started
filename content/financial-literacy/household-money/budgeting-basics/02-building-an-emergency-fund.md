@@ -9,6 +9,8 @@ draft: true
 ---
 An emergency fund is money you set aside only for unexpected costs: a broken fridge, a funeral, a trip to hospital, or a month without work. Without one, an emergency often means borrowing at high interest.
 
+![A savings jar filling up with coins, ready for an emergency.](02-building-an-emergency-fund.svg)
+
 ## How much?
 
 - **Start small.** A first goal of R500 or R1,000 already helps with many emergencies.

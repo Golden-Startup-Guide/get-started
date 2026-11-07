@@ -9,6 +9,8 @@ draft: true
 ---
 Water, electricity (in many areas), refuse removal, roads, and streetlights are municipal services. When something goes wrong, reporting it properly helps get it fixed.
 
+![A resident photographing a leaking water pipe and reporting it to the municipality, getting a reference number.](03-reporting-a-service-problem.svg)
+
 ## How to report
 
 1. **Find the right number.** Most municipalities have a call centre, an SMS or WhatsApp line, or an app. The number is usually on your municipal account, the municipal website, or at the municipal office.

@@ -9,6 +9,8 @@ draft: true
 ---
 Paraffin is used in many homes for cooking, heating, and light. Used carelessly, it causes fires and burns, and children are often poisoned by drinking it.
 
+![A paraffin lamp standing on a steady table well away from the curtains, with the paraffin in a closed bottle on a high shelf, out of children's reach.](01-using-paraffin-safely.svg)
+
 ## Using a paraffin stove or heater
 
 - Stand it on a **flat, firm surface**, away from curtains, bedding, and anything that can burn.

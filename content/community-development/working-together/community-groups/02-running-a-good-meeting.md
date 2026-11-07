@@ -9,6 +9,8 @@ draft: true
 ---
 Good meetings are short, fair, and end with clear decisions. Poor meetings waste time and push people away.
 
+![A meeting with a chairperson, an agenda on the board, and members raising hands to speak.](02-running-a-good-meeting.svg)
+
 ## Before the meeting
 
 - Write an **agenda**: a short list of what will be discussed, in order.

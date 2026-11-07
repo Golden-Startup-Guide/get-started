@@ -9,6 +9,8 @@ draft: true
 ---
 Vaccines protect children from serious diseases such as measles, polio, whooping cough, and some causes of pneumonia and severe diarrhoea. In South Africa, the vaccines in the national schedule are free at public clinics.
 
+![A nurse vaccinating a baby held by a parent, with a clinic card showing the dates.](03-keeping-vaccinations-up-to-date.svg)
+
 ## The Road to Health booklet
 
 Every child gets a **Road to Health booklet** at birth. It records the child's vaccines, growth, and development. Bring it to every clinic visit, and keep it safe.

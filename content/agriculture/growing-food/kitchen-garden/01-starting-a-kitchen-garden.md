@@ -9,6 +9,8 @@ draft: true
 ---
 A kitchen garden can be a few containers by the door or a small bed in the yard. Start small: a garden you can look after is better than a big one that gets away from you.
 
+![A sunny backyard vegetable garden with beds of spinach, carrots, and tomatoes, and a gardener with a spade.](01-starting-a-kitchen-garden.svg)
+
 ## Choose a spot
 
 - At least six hours of sun a day.

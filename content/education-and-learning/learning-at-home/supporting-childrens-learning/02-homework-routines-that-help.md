@@ -9,6 +9,8 @@ draft: true
 ---
 You do not need to know every subject to help with homework. What helps most is a routine, interest, and encouragement.
 
+![A child doing homework at a tidy table after school, with a clock and a parent nearby.](02-homework-routines-that-help.svg)
+
 ## A time and a place
 
 - Choose a **regular time** each day, for example after a snack and a short break.

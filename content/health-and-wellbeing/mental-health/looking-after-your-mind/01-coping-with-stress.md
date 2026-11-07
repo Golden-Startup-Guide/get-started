@@ -9,6 +9,8 @@ draft: true
 ---
 Everyone feels stressed sometimes: about money, work, family, health, or safety. A little stress can help us act. Too much, for too long, can affect sleep, mood, and health.
 
+![A woman sitting calmly and breathing slowly, with a cup of tea, a plant, and a friend to talk to.](01-coping-with-stress.svg)
+
 ## Signs that stress is building up
 
 - Trouble sleeping, or sleeping much more than usual

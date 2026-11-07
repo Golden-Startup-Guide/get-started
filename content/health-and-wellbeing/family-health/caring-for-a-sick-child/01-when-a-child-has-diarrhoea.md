@@ -9,6 +9,8 @@ draft: true
 ---
 Diarrhoea is when a child passes three or more loose, watery stools in a day. The biggest danger is that the body loses too much water. Giving fluids early can prevent this.
 
+![A litre jug of clean water with eight level teaspoons of sugar and half a teaspoon of salt, to make a sugar-salt drink.](01-when-a-child-has-diarrhoea.svg)
+
 ## Make a sugar-salt drink
 
 This is the recipe adapted by the Department of Health:

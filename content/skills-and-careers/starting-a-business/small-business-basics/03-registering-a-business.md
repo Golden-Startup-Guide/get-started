@@ -9,6 +9,8 @@ draft: true
 ---
 You do not always need to register to start trading. Choose what fits your business.
 
+![A small business owner registering online, receiving an official certificate.](03-registering-a-business.svg)
+
 ## Sole proprietor: nothing to register
 
 If you work on your own, as a freelancer or a one-person business, you are a **sole proprietor** by default. There is **nothing to register with the Companies and Intellectual Property Commission (CIPC)**. You and the business are the same person: you keep the profits, and you are personally responsible for its debts.

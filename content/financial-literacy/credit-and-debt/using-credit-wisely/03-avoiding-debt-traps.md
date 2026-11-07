@@ -9,6 +9,8 @@ draft: true
 ---
 When money runs out before month end, a quick loan can look like the only way. Some lenders take advantage of that.
 
+![A person stepping back from a pit of debt, with a warning sign and a stack of unpaid bills.](03-avoiding-debt-traps.svg)
+
 ## Loan sharks (mashonisas)
 
 Informal moneylenders often charge interest of 30 to 50 percent **a month**, far more than the law allows. A loan from an unregistered lender is illegal, and the National Credit Regulator says such debt cannot be enforced in court.

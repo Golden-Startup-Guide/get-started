@@ -9,6 +9,8 @@ draft: true
 ---
 Burns from hot water, stoves, paraffin, and fires are common, especially among young children. The right first aid in the first minutes makes a big difference.
 
+![Cooling a burnt hand under cool running water from a tap for twenty minutes.](02-first-aid-for-burns.svg)
+
 ## What to do
 
 1. **Stop the burning.** Move away from the heat. If clothes are on fire: stop, drop, and roll, or smother the flames with a blanket.

@@ -9,6 +9,8 @@ draft: true
 ---
 A few chickens can give a household eggs, meat, and manure for the garden. They need daily care, so start small: five to ten birds is a good beginning.
 
+![A small wooden chicken coop with three hens in a fenced yard.](01-starting-with-chickens.svg)
+
 ## Before you start
 
 - **Check the rules.** Some municipalities limit how many chickens you may keep in town, and do not allow roosters. Ask at the municipal office.

@@ -9,6 +9,8 @@ draft: true
 ---
 Criminals take advantage of people who need work. They promise jobs and then ask for money or personal details.
 
+![A phone showing a job offer that asks for money, crossed out, with a warning sign.](03-spotting-job-scams.svg)
+
 ## The golden rule
 
 **Never pay for a job.** In South Africa it is illegal to ask someone to pay for a job, and the Department of Employment and Labour warns work seekers not to pay any "fee", even one that is called "fully refundable".

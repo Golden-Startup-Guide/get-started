@@ -9,6 +9,7 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 
 ### Added
 - **The handbooks**: eight libraries (Health & Wellbeing, Agriculture, Financial Literacy, Education & Learning, Community Development, Skills & Careers, Home & Family, South Africa), 49 practical, South African pages, each listing its sources. They are marked as drafts until reviewed by qualified people.
+- **A picture on every handbook page**: 49 simple drawings showing what the page explains, each described for people who cannot see it, downloaded with the handbooks so they show offline. The build refuses a handbook page without one.
 - **Relationships** on handbook pages: **Mentioned in** (what links to the page) and **Related notes**, each with a plain reason, and **Show on the note map**.
 - **The note map** (formerly Knowledge Graph) opens around a note, with handbook notes included, zoom and reset buttons, and **Skip to the list**; the same notes are always listed below it. The whole-library view is offered second. "Backlinks" are now called **Mentioned in**.
 - A third placeholder page in Everyday Nutrition, "Signs of dehydration" (a draft, with a warning to get help).

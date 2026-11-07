@@ -137,8 +137,9 @@ export default defineConfig({
           // Loaded by the service worker registration in main.tsx, on every start.
           'assets/workbox-window*.js',
           // The built-in handbooks, one file per library (scripts/coreContent.ts): readable offline
-          // from the first launch.
+          // from the first launch, with their pictures.
           'assets/core-*.js',
+          'assets/picture-*.{svg,png,jpg,jpeg,webp}',
         ],
         runtimeCaching: [
           {

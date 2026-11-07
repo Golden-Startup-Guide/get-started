@@ -9,6 +9,8 @@ draft: true
 ---
 To vote in South Africa's elections, you must first be **registered** on the voters' roll, in the voting district where you live.
 
+![A voter putting a ballot paper into a ballot box, with the South African flag.](03-registering-to-vote.svg)
+
 ## Who can register
 
 - South African citizens with an **ID**: a smart ID card, green bar-coded ID book, or a valid temporary identity certificate; see [[Getting your ID]].

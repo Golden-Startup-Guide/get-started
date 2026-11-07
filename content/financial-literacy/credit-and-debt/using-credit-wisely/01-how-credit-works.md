@@ -9,6 +9,8 @@ draft: true
 ---
 Credit means using someone else's money now and paying it back later, with extra on top. Store accounts, credit cards, personal loans, cellphone contracts, and home loans are all credit.
 
+![A loan with an arrow showing it grows with interest and fees before it is paid back.](01-how-credit-works.svg)
+
 ## What credit costs
 
 - **Interest:** a percentage charged on what you owe, usually shown as a yearly rate.

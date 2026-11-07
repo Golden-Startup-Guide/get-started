@@ -9,6 +9,8 @@ draft: true
 ---
 A budget is a plan for your money. It shows what comes in, what goes out, and what is left.
 
+![A family at a table writing their monthly budget: money in, and money for food, transport, and saving.](01-understanding-household-budgets.svg)
+
 ## Start with what you know
 
 1. Write down the money that comes in each month: wages, grants, or other income.

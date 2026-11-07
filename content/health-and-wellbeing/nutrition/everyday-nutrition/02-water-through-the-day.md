@@ -9,6 +9,8 @@ draft: true
 ---
 A routine is easier to keep than a target. These are moments many people find easy to remember.
 
+![Glasses of water through the day: one at sunrise, one at midday, and one in the evening.](02-water-through-the-day.svg)
+
 1. When you wake up.
 2. With breakfast, lunch, and supper.
 3. When you take a break from work or chores.

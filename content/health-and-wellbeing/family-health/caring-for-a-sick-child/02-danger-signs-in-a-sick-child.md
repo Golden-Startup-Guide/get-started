@@ -9,6 +9,8 @@ draft: true
 ---
 Most childhood illnesses can be cared for at home with rest, fluids, and food. But some signs show that a child is seriously ill and will quickly get sicker without treatment. Health workers call these **danger signs**.
 
+![A mother carrying her sick child to the clinic, with a thermometer and a warning sign.](02-danger-signs-in-a-sick-child.svg)
+
 ## Go to a clinic or hospital at once if the child
 
 - **cannot drink or breastfeed**,
