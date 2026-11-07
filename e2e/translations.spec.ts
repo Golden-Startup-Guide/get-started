@@ -49,6 +49,7 @@ test('shows no English text on the main screens in Spanish', async ({ page, brow
   await sweep('settings')
   await page.getByRole('button', { name: 'Cerrar ajustes' }).click()
   await page.keyboard.press('Control+k')
+  await expect(page.getByRole('dialog', { name: 'Paleta de comandos' })).toBeVisible()
   await sweep('palette')
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: /^Mapa de notas/ }).click()

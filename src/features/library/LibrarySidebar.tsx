@@ -59,8 +59,8 @@ export function LibrarySidebar({
   /** Runs a saved search. */
   onRunSearch: (query: string) => void
   onCloseNavigation: () => void
-  newNoteRef: RefObject<HTMLButtonElement>
-  closeButtonRef: RefObject<HTMLButtonElement>
+  newNoteRef: RefObject<HTMLButtonElement | null>
+  closeButtonRef: RefObject<HTMLButtonElement | null>
 }) {
   const notes = useLibraryStore((state) => state.notes)
   const trash = useLibraryStore((state) => state.trash)

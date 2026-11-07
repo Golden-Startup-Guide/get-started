@@ -11,20 +11,15 @@ import {
   Zap,
 } from 'lucide-react'
 import { buildNoteLinkLabels, sortNotes } from './features/notes/noteDisplay'
-import { NoteGrid } from './features/notes/NoteGrid'
 import { SaveSearchButton } from './features/notes/SaveSearchButton'
 import { SearchTips } from './features/notes/SearchTips'
 import { useSearchMatches, WORKER_SEARCH_THRESHOLD } from './features/notes/useSearchMatches'
-import { QuickCapture } from './features/notes/QuickCapture'
 import { LazyNoteEditor } from './features/notes/LazyNoteEditor'
 import { preloadNoteEditor } from './features/notes/noteEditorChunk'
-import { SettingsDialog } from './features/settings/SettingsDialog'
 import { BackupReminder } from './features/backup/BackupReminder'
 import { UpdateBanner } from './features/app/UpdateBanner'
 import { readLaunchRequest } from './features/app/launchRequest'
-import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
-import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
 import { HomePage } from './features/home/HomePage'
 import { LazyHandbookNote } from './features/notes/LazyHandbookNote'
 import { CORE_CATALOG, useCoreStore } from './state/coreStore'
@@ -77,6 +72,12 @@ const ShelfPage = lazy(() => loadPages().then((pages) => ({ default: pages.Shelf
 const HandbookNotebookPage = lazy(() => loadPages().then((pages) => ({ default: pages.HandbookNotebookPage })))
 const SearchPage = lazy(() => loadPages().then((pages) => ({ default: pages.SearchPage })))
 const KnowledgeGraph = lazy(() => loadPages().then((pages) => ({ default: pages.KnowledgeGraph })))
+const NoteGrid = lazy(() => loadPages().then((pages) => ({ default: pages.NoteGrid })))
+const loadDialogs = () => import('./features/dialogsChunk')
+const SettingsDialog = lazy(() => loadDialogs().then((dialogs) => ({ default: dialogs.SettingsDialog })))
+const CommandPalette = lazy(() => loadDialogs().then((dialogs) => ({ default: dialogs.CommandPalette })))
+const QuickCapture = lazy(() => loadDialogs().then((dialogs) => ({ default: dialogs.QuickCapture })))
+const DeleteStructureDialog = lazy(() => loadDialogs().then((dialogs) => ({ default: dialogs.DeleteStructureDialog })))
 // Both Ctrl+K and ⌘K work everywhere; the hint shows the one this platform uses.
 const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.platform)
 const PALETTE_SHORTCUT = IS_APPLE ? '⌘K' : 'Ctrl K'
@@ -151,6 +152,7 @@ function App() {
     const preloadTimer = window.setTimeout(() => {
       void preloadNoteEditor().catch(() => undefined)
       void loadPages().catch(() => undefined)
+      void loadDialogs().catch(() => undefined)
     }, 0)
     const stopSync = startStorageSync()
     return () => {
@@ -950,6 +952,8 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
           textLinks={textLinks}
         />
       )}
+      {/* The dialogs load just after start-up (see loadDialogs); nothing shows until they are ready. */}
+      <Suspense fallback={null}>
       {showSettings && <SettingsDialog onClose={closeSettings} />}
       {quickOpen && (
         <QuickCapture draft={quickDraft} onDraftChange={setQuickDraft} onSave={saveQuickNote} onClose={closeQuickCapture} shortcut={QUICK_NOTE_SHORTCUT} saveShortcut={IS_APPLE ? '⌘ Enter' : 'Ctrl Enter'} />
@@ -981,6 +985,7 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
         />
       )}
       {structureToDelete && <DeleteStructureDialog target={structureToDelete} />}
+      </Suspense>
     </div>
   )
 }

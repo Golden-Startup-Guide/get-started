@@ -53,11 +53,11 @@ export function useSearchMatches(
   enabled: boolean,
   primed = false,
 ): SearchMatches {
-  const workerRef = useRef<Worker>()
+  const workerRef = useRef<Worker | undefined>(undefined)
   // What the worker has: each note's updatedAt, which of them have attachments, and the locations.
   const sentRef = useRef(new Map<string, number>())
   const sentAttachedRef = useRef(new Set<string>())
-  const sentLocationsRef = useRef<Locations>()
+  const sentLocationsRef = useRef<Locations | undefined>(undefined)
   const latestQueryId = useRef(0)
   const queriesRef = useRef(new Map<number, SearchQuery>())
   // The library version the worker holds completely; queries wait for it to match `notes`.

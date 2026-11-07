@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { version } from './package.json'
 import { coreContentPlugin } from './scripts/coreContent'
 
@@ -45,6 +46,31 @@ function workerSafeEntityDecoder(): Plugin {
       return resolved && { ...resolved, id: resolved.id.replace(/index\.dom\.js$/, 'index.js') }
     },
   }
+}
+
+// The scripts in the install download (see globPatterns below); other scripts load on demand.
+const PRECACHED_SCRIPTS = /^assets\/(?:index|NoteEditor|pagesChunk|dialogsChunk|markdownPreview\.worker|search\.worker|highlighter|htmlToMarkdown|workbox-window|core-)[^/]*\.js$/
+
+/**
+ * The precache list: everything matched except scripts, which are kept only when listed in
+ * PRECACHED_SCRIPTS or imported, at load time, by one that is kept. Without this, a piece shared
+ * by two chunks loaded after start-up would be missing offline, and those chunks would fail.
+ */
+function withImports<T extends { url: string }>(entries: T[]): T[] {
+  const isScript = (url: string) => /^assets\/[^/]+\.js$/.test(url)
+  const keep = new Set(entries.filter((entry) => !isScript(entry.url) || PRECACHED_SCRIPTS.test(entry.url)).map((entry) => entry.url))
+  const queue = [...keep].filter(isScript)
+  while (queue.length) {
+    const code = readFileSync(fileURLToPath(new URL(`./dist/${queue.pop()}`, import.meta.url)), 'utf8')
+    for (const match of code.matchAll(/(?:from|import)\s*"\.\/([^"]+\.js)"/g)) {
+      const url = `assets/${match[1]}`
+      if (!keep.has(url)) {
+        keep.add(url)
+        queue.push(url)
+      }
+    }
+  }
+  return entries.filter((entry) => keep.has(entry.url))
 }
 
 // Where the app is served from: '/' locally and in tests, '/get-started/' on GitHub Pages
@@ -133,14 +159,19 @@ export default defineConfig({
         // and about 3.3 MB) are fetched when a note first uses them.
         globPatterns: [
           '*.{html,js,svg,png,ico,webmanifest}',
-          'assets/{index,NoteEditor,pagesChunk,markdownPreview.worker,search.worker,highlighter,htmlToMarkdown}-*.{js,css}',
+          'assets/{index,NoteEditor,pagesChunk,dialogsChunk,markdownPreview.worker,search.worker,highlighter,htmlToMarkdown}-*.{js,css}',
           // Loaded by the service worker registration in main.tsx, on every start.
           'assets/workbox-window*.js',
           // The built-in handbooks, one file per library (scripts/coreContent.ts): readable offline
           // from the first launch, with their pictures.
           'assets/core-*.js',
           'assets/picture-*.{svg,png,jpg,jpeg,webp}',
+          // Pieces the chunks above share (an icon both the pages and the dialogs use) get names of
+          // their own; of these, only what those chunks import is kept (see withImports).
+          // scripts/checkSizes.mjs checks that nothing they import is left out.
+          'assets/*.js',
         ],
+        manifestTransforms: [(entries) => ({ manifest: withImports(entries), warnings: [] })],
         runtimeCaching: [
           {
             // Everything else the app loads from /assets/ is kept after its first use, so maths and

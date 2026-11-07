@@ -104,7 +104,7 @@ describe('Knowledge Library workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Garden notes' })).toBeInTheDocument()
 
     await user.click(screen.getAllByRole('button', { name: 'Open settings' })[0])
-    await user.click(screen.getByRole('radio', { name: /dark/i }))
+    await user.click(await screen.findByRole('radio', { name: /dark/i }))
     expect(screen.getByRole('radio', { name: /dark/i })).toHaveAttribute('aria-checked', 'true')
     await user.click(screen.getByRole('button', { name: 'Close settings' }))
     await expect((await import('./lib/notes')).getSettings()).resolves.toEqual({ id: 'preferences', theme: 'dark', paper: false })
@@ -170,7 +170,7 @@ describe('Knowledge Library workspace', () => {
     await user.click(within(main).getByRole('button', { name: 'Open shelf Garden Shelf' }))
     await screen.findByRole('heading', { name: 'Garden Shelf', level: 1 })
     await user.click(within(main).getByRole('button', { name: 'Delete shelf' }))
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     const gardenLibrary = (await storage.getLibraries()).find((item) => item.name === 'Garden Library')!
     const destinationShelf = (await storage.getShelves()).find((item) => item.libraryId === gardenLibrary.id && item.name === 'General')!
     await user.selectOptions(within(dialog).getByLabelText('Move notebooks to shelf'), destinationShelf.id)

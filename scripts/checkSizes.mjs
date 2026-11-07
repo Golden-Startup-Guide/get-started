@@ -42,6 +42,21 @@ const rows = [
   ['Start-up script, gzipped', kib(entry('.js')), BUDGETS.startupScriptGzipKiB, ''],
   ['Start-up styles, gzipped', kib(entry('.css')), BUDGETS.startupStylesGzipKiB, ''],
 ]
+// Every file a precached script imports at load time must be precached too, or that script fails
+// offline. (Imports on demand, `import("./…")`, may load later from the network.)
+const missing = []
+for (const file of precached.filter((name) => name.endsWith('.js'))) {
+  const code = readFileSync(join(dist, file), 'utf8')
+  for (const match of code.matchAll(/(?:from|import)\s*"\.\/([^"]+\.js)"/g)) {
+    const imported = `assets/${match[1]}`
+    if (!precached.includes(imported)) missing.push(`${file} imports ${imported}`)
+  }
+}
+if (missing.length) {
+  console.error(`Precached scripts import files that are not precached, so they fail offline:\n- ${[...new Set(missing)].join('\n- ')}\nAdd them to globPatterns in vite.config.ts.`)
+  process.exit(1)
+}
+
 let over = false
 for (const [name, size, budget, note] of rows) {
   const ok = size <= budget
