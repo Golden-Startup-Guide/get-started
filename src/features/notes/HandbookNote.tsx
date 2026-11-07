@@ -93,6 +93,20 @@ export function HandbookNote({
     if (scroller) scroller.scrollTop = position * Math.max(0, scroller.scrollHeight - scroller.clientHeight)
   }
 
+  // The line length, measured in the font this device shows: so many characters of ordinary text,
+  // as a width in em, so it follows the text size. Before the place is restored below, since the
+  // width changes how tall the note is.
+  useLayoutEffect(() => {
+    const column = columnRef.current
+    const sample = sampleRef.current
+    if (!column) return
+    const fontSize = parseFloat(getComputedStyle(column).fontSize)
+    const sampleWidth = sample?.getBoundingClientRect().width ?? 0
+    column.style.setProperty('--reader-measure', fontSize > 0 && sampleWidth > 0
+      ? `${((CHARACTERS[settings.width] * sampleWidth) / SAMPLE.length / fontSize).toFixed(2)}em`
+      : MEASURE[settings.width])
+  }, [settings.font, settings.width])
+
   // Back where the reader left off, if known (the saved place may arrive just after the note
   // opens); otherwise at the start, with no claim of progress. Once the reader scrolls, their
   // place wins.
@@ -131,19 +145,6 @@ export function HandbookNote({
       onPositionRef.current(noteId, position)
     }, 700)
   }
-
-  // The line length, measured in the font this device shows: so many characters of ordinary text,
-  // as a width in em, so it follows the text size.
-  useLayoutEffect(() => {
-    const column = columnRef.current
-    const sample = sampleRef.current
-    if (!column) return
-    const fontSize = parseFloat(getComputedStyle(column).fontSize)
-    const sampleWidth = sample?.getBoundingClientRect().width ?? 0
-    column.style.setProperty('--reader-measure', fontSize > 0 && sampleWidth > 0
-      ? `${((CHARACTERS[settings.width] * sampleWidth) / SAMPLE.length / fontSize).toFixed(2)}em`
-      : MEASURE[settings.width])
-  }, [settings.font, settings.width])
 
   // A change of settings reflows the text; keep the reader at the same place in the note.
   const keptPosition = useRef<number>()
