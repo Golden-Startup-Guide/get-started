@@ -4,6 +4,19 @@ import type { Catalog } from './i18n'
 // reviewed by a native speaker: corrections are welcome. i18n.test.ts checks that every text
 // in the app is here.
 const catalog: Catalog = {
+  "Search": "Buscar",
+  "Search these notes": "Buscar en estas notas",
+  "Search the handbooks and your notes": "Buscar en los manuales y tus notas",
+  "Type a word or two to search every library, shelf, notebook, and note.": "Escribe una o dos palabras para buscar en todas las bibliotecas, estantes, cuadernos y notas.",
+  "Nothing in the handbooks or your notes matched. Try fewer or different words, or browse the libraries.": "No hubo coincidencias en los manuales ni en tus notas. Prueba con menos palabras o con otras, o explora las bibliotecas.",
+  "Browse the libraries": "Explorar las bibliotecas",
+  "Search results": "Resultados de búsqueda",
+  "Show {count} more": "Mostrar {count} más",
+  "{count} results for “{query}”": {
+    "one": "{count} resultado para «{query}»",
+    "other": "{count} resultados para «{query}»",
+    "many": "{count} resultados para «{query}»"
+  },
   "Reading settings": "Ajustes de lectura",
   "In this notebook": "En este cuaderno",
   "Previous": "Anterior",
@@ -472,7 +485,6 @@ const catalog: Catalog = {
   "Saved “{title}” to {INBOX_NOTEBOOK}.": "Se guardó «{title}» en {INBOX_NOTEBOOK}.",
   "Saving attachment…": "Guardando el adjunto…",
   "Saving…": "Guardando…",
-  "Search notes — try tag:health, notebook:work, \"a phrase\", -word": "Buscar notas: prueba tag:health, notebook:work, \"una frase\", -palabra",
   "Search notes, libraries, shelves, notebooks, and tags": "Buscar notas, bibliotecas, estantes, cuadernos y etiquetas",
   "Search notes, places, and actions": "Buscar notas, lugares y acciones",
   "Search notes, places, and actions…": "Buscar notas, lugares y acciones…",

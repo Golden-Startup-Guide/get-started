@@ -4,6 +4,22 @@ import type { Catalog } from './i18n'
 // reviewed by a native speaker: corrections are welcome. i18n.test.ts checks that every text
 // in the app is here.
 const catalog: Catalog = {
+  "Search": "بحث",
+  "Search these notes": "ابحث في هذه الملاحظات",
+  "Search the handbooks and your notes": "ابحث في الأدلة وملاحظاتك",
+  "Type a word or two to search every library, shelf, notebook, and note.": "اكتب كلمة أو كلمتين للبحث في كل المكتبات والرفوف والدفاتر والملاحظات.",
+  "Nothing in the handbooks or your notes matched. Try fewer or different words, or browse the libraries.": "لم يطابق أي شيء في الأدلة أو ملاحظاتك. جرّب كلمات أقل أو مختلفة، أو تصفّح المكتبات.",
+  "Browse the libraries": "تصفّح المكتبات",
+  "Search results": "نتائج البحث",
+  "Show {count} more": "عرض {count} أخرى",
+  "{count} results for “{query}”": {
+    "zero": "لا نتائج لـ «{query}»",
+    "one": "نتيجة واحدة لـ «{query}»",
+    "two": "نتيجتان لـ «{query}»",
+    "few": "{count} نتائج لـ «{query}»",
+    "many": "{count} نتيجة لـ «{query}»",
+    "other": "{count} نتيجة لـ «{query}»"
+  },
   "Reading settings": "إعدادات القراءة",
   "In this notebook": "في هذا الدفتر",
   "Previous": "السابق",
@@ -484,7 +500,6 @@ const catalog: Catalog = {
   "Saved “{title}” to {INBOX_NOTEBOOK}.": "تم حفظ «{title}» في {INBOX_NOTEBOOK}.",
   "Saving attachment…": "جارٍ حفظ المرفق…",
   "Saving…": "جارٍ الحفظ…",
-  "Search notes — try tag:health, notebook:work, \"a phrase\", -word": "ابحث في الملاحظات — جرّب tag:health أو notebook:work أو \"عبارة\" أو -كلمة",
   "Search notes, libraries, shelves, notebooks, and tags": "البحث في الملاحظات والمكتبات والرفوف والدفاتر والوسوم",
   "Search notes, places, and actions": "البحث في الملاحظات والأماكن والإجراءات",
   "Search notes, places, and actions…": "ابحث في الملاحظات والأماكن والإجراءات…",

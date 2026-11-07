@@ -6,6 +6,7 @@ describe('page addresses', () => {
     const routes: Route[] = [
       { view: 'home' },
       { view: 'all' },
+      { view: 'search', query: 'water' },
       { view: 'favorites' },
       { view: 'trash' },
       { view: 'graph', query: 'tag:health' },

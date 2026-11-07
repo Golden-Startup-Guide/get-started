@@ -17,7 +17,7 @@ export interface Route {
 }
 
 // Pages with a fixed address; All Notes is "#/notes", and Home is "#/".
-const PAGES = new Set(['notes', 'favorites', 'trash', 'graph'])
+const PAGES = new Set(['notes', 'search', 'favorites', 'trash', 'graph'])
 const ITEMS = new Set(['library', 'shelf', 'notebook', 'tag'])
 
 export function routeToHash(route: Route): string {
