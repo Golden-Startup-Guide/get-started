@@ -2741,3 +2741,11 @@ html[data-theme='dark'] .workspace {
     justify-content: center;
   }
 }
+
+/* Text the reading room measures its font by (HandbookNote.tsx); never seen or read aloud. */
+.reader-sample {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}

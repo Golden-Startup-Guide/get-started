@@ -19,9 +19,14 @@ const TYPE_LABELS: Record<CoreNoteType, () => string> = {
 // The reading column: text size, line spacing, and line length, as CSS custom properties.
 const SCALE: Record<ReaderSettings['size'], number> = { small: 0.9, medium: 1, large: 1.15, larger: 1.3 }
 const LEADING: Record<ReaderSettings['spacing'], number> = { normal: 1.7, roomy: 1.95 }
-// In em, not ch: the width of "0" varies too much between fonts (on Linux a wide fallback serif fit
-// 82 characters in 66ch). 32em holds about 62–70 characters in the serifs and sans-serifs people have.
+// Line length, in characters: the design specification asks for 62–72 at the default.
+const CHARACTERS: Record<ReaderSettings['width'], number> = { narrow: 56, medium: 66, wide: 78 }
+// Used until the font is measured (and where nothing can be measured): about the same in most fonts.
 const MEASURE: Record<ReaderSettings['width'], string> = { narrow: '27em', medium: '32em', wide: '38em' }
+// Ordinary text to measure the font by: the width of a character depends on the font the device
+// has (no font is downloaded), so a fixed width in ch or em gives 62 characters in one font and 80
+// in another.
+const SAMPLE = 'The quick brown fox jumps over the lazy dog, then rests by the river a while.'
 
 /**
  * The reading room for a built-in handbook note (design specification, section 4): one comfortable
@@ -67,6 +72,8 @@ export function HandbookNote({
   const closeRef = useRef<HTMLButtonElement>(null)
   const settingsButtonRef = useRef<HTMLButtonElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const columnRef = useRef<HTMLDivElement>(null)
+  const sampleRef = useRef<HTMLSpanElement>(null)
   const [controlsOpen, setControlsOpen] = useState(false)
   const [progress, setProgress] = useState(0)
 
@@ -125,6 +132,19 @@ export function HandbookNote({
     }, 700)
   }
 
+  // The line length, measured in the font this device shows: so many characters of ordinary text,
+  // as a width in em, so it follows the text size.
+  useLayoutEffect(() => {
+    const column = columnRef.current
+    const sample = sampleRef.current
+    if (!column) return
+    const fontSize = parseFloat(getComputedStyle(column).fontSize)
+    const sampleWidth = sample?.getBoundingClientRect().width ?? 0
+    column.style.setProperty('--reader-measure', fontSize > 0 && sampleWidth > 0
+      ? `${((CHARACTERS[settings.width] * sampleWidth) / SAMPLE.length / fontSize).toFixed(2)}em`
+      : MEASURE[settings.width])
+  }, [settings.font, settings.width])
+
   // A change of settings reflows the text; keep the reader at the same place in the note.
   const keptPosition = useRef<number>()
   const changeSettings = (next: ReaderSettings) => {
@@ -160,7 +180,6 @@ export function HandbookNote({
   const columnStyle = {
     '--reader-scale': SCALE[settings.size],
     '--reader-leading': LEADING[settings.spacing],
-    '--reader-measure': MEASURE[settings.width],
   } as CSSProperties
 
   function closeControls() {
@@ -212,7 +231,8 @@ export function HandbookNote({
           <ReaderControls id="reader-controls" settings={settings} theme={theme} onChange={changeSettings} onTheme={onTheme} onClose={closeControls} />
         )}
         <div ref={scrollRef} className="reader-scroll" onScroll={onScroll}>
-          <div className={`reader-column reader-font-${settings.font}`} style={columnStyle}>
+          <div ref={columnRef} className={`reader-column reader-font-${settings.font}`} style={columnStyle}>
+            <span ref={sampleRef} className="reader-sample" aria-hidden="true">{SAMPLE}</span>
             <p className="handbook-type">{TYPE_LABELS[note.type]()}</p>
             <h1 id="handbook-title" className="handbook-title">{note.title}</h1>
             <p className="handbook-summary">{note.summary}</p>
