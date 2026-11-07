@@ -127,7 +127,7 @@ describe('Knowledge Library workspace', () => {
     await within(libraryNavigation).findByText('My notes')
     await user.click(within(libraryNavigation).getByRole('button', { name: 'My notes 1' }))
     expect(await screen.findByRole('heading', { name: 'My notes', level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Shelves' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Shelves' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Open shelf General' }))
     expect(await screen.findByRole('heading', { name: 'General', level: 1 })).toBeInTheDocument()
 
@@ -454,7 +454,8 @@ describe('Knowledge Library workspace', () => {
 
     expect(await screen.findByRole('heading', { name: 'Note map', level: 1 })).toBeInTheDocument()
     // The graph opens on the newest note, which is now a starter note.
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Explore note' }), 'graph-source')
+    // The note map's code loads after start-up.
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Explore note' }), 'graph-source')
     expect(screen.getByRole('group', { name: 'Connected note graph' })).toBeInTheDocument()
     const graph = screen.getByRole('group', { name: 'Connected note graph' })
     expect(within(graph).getByRole('button', { name: 'Explore Graph target — Personal' })).toBeInTheDocument()

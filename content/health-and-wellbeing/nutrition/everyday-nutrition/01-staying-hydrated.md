@@ -21,3 +21,8 @@ Thirst, activity, food, and the weather all change what your body needs. Build a
 
 > [!NOTE]
 > Needs differ from person to person. For a health concern, follow the advice of a nurse, doctor, or clinic.
+
+## Sources
+
+- [Food-based dietary guidelines for South Africa: drink lots of clean, safe water (FAO summary)](https://www.fao.org/nutrition/education/food-dietary-guidelines/regions/countries/south-africa/en/)
+- [Dehydration: signs, symptoms, and treatment (Healthdirect)](https://www.healthdirect.gov.au/dehydration)

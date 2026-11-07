@@ -52,6 +52,10 @@ A note (any other `.md` file in a notebook folder):
 | `draft` | no | `true` while the text is not final; the app labels it **Draft**. |
 | `reviewed` | no | Who reviewed it and when, for example `Dr A. Reviewer, 2026-11-20`. Health and money notes need one before release. |
 
+## Sources
+
+End every note with a `## Sources` section listing, as links, the public sources it was written from, preferring official ones (government departments, the WHO, regulators). Reviewers check the text against them. Do not quote amounts that change every year, such as grant amounts; point to where the current figure is published.
+
 ## Links
 
 `[[Title]]` links to another handbook note by its title, and `[[Title#Heading]]` to a section. The

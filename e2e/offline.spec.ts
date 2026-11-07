@@ -58,6 +58,9 @@ test('opens a built-in handbook note offline, straight from its address', async 
     await page.goto('/#/notebook/core-everyday-nutrition?note=core-staying-hydrated')
     const reader = page.getByRole('dialog', { name: 'Staying hydrated' })
     await expect(reader.getByRole('heading', { name: 'Keep water close' })).toBeVisible()
+    // The library, shelf, notebook, and search pages come from the install too.
+    await page.goto('/#/library/core-agriculture')
+    await expect(page.getByRole('region', { name: 'Shelves' })).toContainText('Keeping animals')
   } finally {
     await context.setOffline(false)
   }

@@ -187,6 +187,8 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
 
 ### Phase 9: The first handbooks
 
+- **As built (owner's decision, 7 November 2026):** all eight libraries written in full from researched public sources (government departments, WHO, NCR, IEC, SASSA, Home Affairs, NASASA, UNICEF, and others), 49 pages in 16 notebooks, each ending with a **Sources** list for reviewers. Every page keeps `draft: true` ("Draft: not yet reviewed") until the owner's professional reviewers check the working app; reviewed pages then get `reviewed:` and lose `draft`. Amounts that change yearly (grant amounts, income limits) are not quoted; pages point to the official source instead. To keep the start-up script within budget as content grows, the library, shelf, notebook, search, and note map pages now load just after start-up in one precached chunk.
+
 - **Result:** the libraries are stocked. Content is written in plain, South African-grounded English for the libraries in section 2 of the spec. A first release might have eight libraries, each with one or two shelves, one or two notebooks per shelf, and three to eight notes per notebook, about 60–100 notes in all.
 - **Writing and review:** content can be drafted with help, but **health, financial, and legal-adjacent notes need review by a qualified person before release**. The `reviewed` field records who reviewed them, and notes without a review stay out of the release build.
 - **Calm guidance:** callouts give guidance such as "Follow advice from a qualified health professional", as in the mockups.

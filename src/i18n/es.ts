@@ -4,6 +4,7 @@ import type { Catalog } from './i18n'
 // reviewed by a native speaker: corrections are welcome. i18n.test.ts checks that every text
 // in the app is here.
 const catalog: Catalog = {
+  "Loading…": "Cargando…",
   "Note map": "Mapa de notas",
   "Create a note and connect it to others to see them on the map.": "Crea una nota y conéctala con otras para verlas en el mapa.",
   "A note in the middle, with the notes it links to and the notes that mention it. Choose one to move the map to it.": "Una nota en el centro, con las notas a las que enlaza y las que la mencionan. Elige una para mover el mapa hacia ella.",
