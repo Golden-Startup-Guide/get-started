@@ -2786,3 +2786,40 @@ html[data-theme='dark'] .workspace {
   margin-top: 1.5rem;
   font-family: var(--font-sans);
 }
+
+/*
+ * High-contrast modes (Windows Contrast themes) replace the app's colours with the system's, and
+ * drop backgrounds and shadows. Anything marked by a background alone (focus on menu items, the
+ * current page, the chosen option, the reading progress) gets a border or outline in the system's
+ * highlight colour instead, so it stays visible (WCAG 1.4.11, 2.4.7).
+ */
+@media (forced-colors: active) {
+  .tree-menu-item:focus-visible,
+  .tree-menu-item:focus,
+  .search-tips-example:focus-visible,
+  .prose-notes :is(h1, h2, h3, h4, h5, h6):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .nav-button-active,
+  .rail-button[aria-current='page'],
+  .palette-option-active,
+  .link-picker-option-active,
+  .theme-option-active,
+  .card-action-active,
+  .icon-button.is-selected,
+  [role='option'][aria-selected='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .reader-progress {
+    border-bottom: 1px solid CanvasText;
+  }
+
+  .reader-progress span {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+}

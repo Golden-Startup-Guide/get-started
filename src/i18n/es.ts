@@ -85,6 +85,7 @@ const catalog: Catalog = {
   "Continue reading": "Seguir leyendo",
   "Note {index} of {count}": "Nota {index} de {count}",
   "Start reading": "Empieza a leer",
+  "Choose a library below.": "Elige una biblioteca abajo.",
   "Choose a library below. The handbooks are ready to read, even offline.": "Elige una biblioteca abajo. Los manuales están listos para leer, incluso sin conexión.",
   "Explore libraries": "Explorar bibliotecas",
   "Your own library: private, on this device.": "Tu propia biblioteca: privada, en este dispositivo.",

@@ -15,6 +15,11 @@ WCAG 2.0, 2.1, and 2.2 A and AA rules, and fails on any violation, on:
   of the knowledge graph, and Trash, in the **light and dark** themes;
 - the phone layout and its navigation drawer.
 
+`e2e/acceptance.spec.ts` adds the design specification's acceptance checks
+(see [ACCEPTANCE.md](ACCEPTANCE.md)): a keyboard-only journey from Home to a
+handbook note and back, with focus returned to where the reader started; a
+tablet width with no sideways scrolling; high-contrast mode; and reduced motion.
+
 Automated checks find roughly a third of accessibility problems, so they are
 paired with the manual checks below.
 
@@ -40,7 +45,13 @@ K".
 - **Visual:** text and controls meet AA contrast in both themes (checked by the
   axe rules above), and focus is always visible. The layout adapts to phone
   widths with a navigation drawer, and animations are reduced when the system
-  asks for reduced motion.
+  asks for reduced motion (including the jump to a section from **Contents**).
+- **High contrast:** in Windows Contrast themes (forced colours), anything the
+  normal themes mark with a background alone (the current page, the chosen
+  option, focus on menu items, the reading progress) is outlined in the
+  system's highlight colour instead.
+- **Pictures:** every handbook picture has a written description, read aloud by
+  screen readers in place of the picture.
 
 ## Known limitations
 
@@ -64,13 +75,16 @@ done by a person.** The automated checks above are the evidence so far.
 3. Open a note: the title field, editor, live preview, and save status are
    announced. A checklist item can be ticked in the preview.
 4. Follow a `[[link]]`, then return using a backlink.
-5. Open Settings, export a backup, and import it, hearing each notice.
-6. Use the command palette: hear the options and the selected one as the arrow
+5. From Home, open a handbook library, a shelf, a notebook, and a note; hear
+   where you are (the breadcrumb and page heading), the picture's description,
+   and **Previous** and **Next**; close the note and land back where you were.
+6. Open Settings, export a backup, and import it, hearing each notice.
+7. Use the command palette: hear the options and the selected one as the arrow
    keys move.
-7. Zoom to 200% and use a 320 px-wide window: nothing is cut off or overlaps.
-8. In Windows High Contrast (forced colours) mode, all controls and focus
+8. Zoom to 200% and use a 320 px-wide window: nothing is cut off or overlaps.
+9. In Windows High Contrast (forced colours) mode, all controls and focus
    indicators are visible.
-9. Explore the knowledge graph with **Around a note**, and select a note in
+10. Explore the knowledge graph with **Around a note**, and select a note in
    **Whole library** through search.
 
 Report accessibility problems as issues at

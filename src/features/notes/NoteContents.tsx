@@ -18,7 +18,9 @@ export function NoteContents({ headings }: { headings: Heading[] }) {
     const target = document.getElementById(id)
     if (!target) return
     target.setAttribute('tabindex', '-1')
-    target.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    // A smooth scroll is motion: skipped when the system asks for less (WCAG 2.3.3).
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    target.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
     target.focus({ preventScroll: true })
   }
 

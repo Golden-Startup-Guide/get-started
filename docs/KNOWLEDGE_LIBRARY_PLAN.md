@@ -203,6 +203,10 @@ small set of placeholder handbook notes clearly marked as drafts. Phase 9 replac
 - **Accessibility sign-off:** a manual screen reader pass with NVDA and Firefox, and with VoiceOver and Safari, plus a high-contrast mode check. These need a person; automated checks are not enough.
 - **Usability:** a session with 3–5 non-technical readers covering the spec's success signals: they can say where they are, resume reading, follow a related note and come back, and do all of this with a keyboard, touch, and zoom.
 - **Release:** a minor version, with notes in the changelog.
+- **As built:** the checklist is recorded in [ACCEPTANCE.md](ACCEPTANCE.md), every item with its evidence. New end-to-end checks (`e2e/acceptance.spec.ts`) cover a keyboard-only journey, tablets, high contrast, and reduced motion.
+  - Four problems were found and fixed: focus return after moving between notes, an offline promise made too early, smooth scrolling under reduced motion, and backgrounds lost in high contrast.
+  - The release is 1.2.0.
+  - The screen reader pass, the usability session, and the handbooks' review need people. ACCEPTANCE.md guides each one and has tables for the results.
 
 ## Not planned
 

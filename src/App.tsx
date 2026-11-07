@@ -594,7 +594,15 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
 
   // Stable (uses only a ref and the store), so memoized note cards keep the same handler.
   const openNote = useCallback((note: Note) => {
-    focusReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // Going from note to note inside an open one (a link, Previous or Next, Back) keeps where to
+    // return when it finally closes: the link pressed is gone by then, and focus would fall back
+    // to the New note button.
+    const active = document.activeElement
+    const fromOpenNote = active instanceof HTMLElement && active.closest('[role="dialog"][aria-modal="true"]') !== null
+    const nothingFocused = !active || active === document.body
+    if (!fromOpenNote && !(nothingFocused && useEditorStore.getState().activeNote)) {
+      focusReturnRef.current = active instanceof HTMLElement ? active : null
+    }
     useEditorStore.getState().open(note)
   }, [])
 
