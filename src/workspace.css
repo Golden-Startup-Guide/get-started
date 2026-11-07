@@ -2749,3 +2749,21 @@ html[data-theme='dark'] .workspace {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* After a handbook note's text: what mentions it, and what is near it. */
+.reader-related {
+  margin-top: 2rem;
+  font-family: var(--font-sans);
+}
+
+.workspace .reader-related-title {
+  margin-bottom: 0.5rem;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.reader-map-button {
+  margin-top: 1.5rem;
+  font-family: var(--font-sans);
+}

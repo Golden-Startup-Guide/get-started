@@ -51,7 +51,7 @@ test('shows no English text on the main screens in Spanish', async ({ page, brow
   await page.keyboard.press('Control+k')
   await sweep('palette')
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: /Gráfico de conocimiento/ }).click()
+  await page.getByRole('button', { name: /^Mapa de notas/ }).click()
   await page.waitForTimeout(1000)
   await sweep('graph')
   await page.getByRole('button', { name: /Alrededor de una nota/ }).click()

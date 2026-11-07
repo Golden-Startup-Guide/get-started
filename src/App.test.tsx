@@ -450,9 +450,9 @@ describe('Knowledge Library workspace', () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByRole('heading', { name: 'All Notes' })
-    await user.click(screen.getByRole('button', { name: /Knowledge Graph/ }))
+    await user.click(screen.getByRole('button', { name: /^Note map/ }))
 
-    expect(await screen.findByRole('heading', { name: 'Knowledge Graph' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Note map', level: 1 })).toBeInTheDocument()
     // The graph opens on the newest note, which is now a starter note.
     await user.selectOptions(screen.getByRole('combobox', { name: 'Explore note' }), 'graph-source')
     expect(screen.getByRole('group', { name: 'Connected note graph' })).toBeInTheDocument()
@@ -465,7 +465,7 @@ describe('Knowledge Library workspace', () => {
     expect(connectedNode).toHaveFocus()
     await user.keyboard('{Enter}')
     expect(screen.getByRole('combobox', { name: 'Explore note' })).toHaveValue('graph-target')
-    await user.click(screen.getByRole('button', { name: 'Open in editor' }))
+    await user.click(screen.getByRole('button', { name: 'Open note' }))
     expect(await screen.findByRole('dialog')).toHaveAccessibleName('Graph target')
   })
 

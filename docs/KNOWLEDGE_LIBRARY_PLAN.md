@@ -174,6 +174,8 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
 
 ### Phase 8: Relationships and the local map
 
+- **As built:** Mentioned in and Related notes are on handbook pages (the reading room); your own notes keep their Linked notes section in the editor, where "Backlinks" is now "Mentioned in". The whole-library graph is kept as the map's second view rather than removed, offered only where WebGL 2 can draw it; the sidebar item is now **Note map** and opens around a note. Related notes leave out pages that mention the note (listed under Mentioned in) and the notes already named as Previous and Next, so with the three placeholder pages, which all link to each other, the list is empty until there is more content.
+
 - **Related notes:** 3–5 per note, each with a plain reason, such as "In the same notebook", "Links here", or "Shares the topic Nutrition", and its path. They are computed from links, notebooks, and tags.
 - **Backlinks:** labelled in plain language, such as "Mentioned in".
 - **Local map:** the graph view becomes a map of the notes near one note.

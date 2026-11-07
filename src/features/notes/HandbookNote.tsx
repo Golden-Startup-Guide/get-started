@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Copy, NotebookPen, Type, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Copy, Network, NotebookPen, Type, X } from 'lucide-react'
 import { keepFocusInDialog } from '../../components/dialogFocus'
 import { headingSlug } from '../../lib/headings'
 import { readingMinutes } from '../../lib/readingTime'
 import { buildTitleIndex, normalizeTitle, targetTitle } from '../../lib/wikilinks'
+import type { RelatedNote, RelatedReason } from '../../lib/related'
 import type { CoreNote, CoreNoteType, Note, ReaderSettings, ThemeChoice } from '../../types'
 import { MarkdownPreview, type WikilinkTarget } from './MarkdownPreview'
 import { ReaderControls } from './ReaderControls'
@@ -14,6 +15,16 @@ const TYPE_LABELS: Record<CoreNoteType, () => string> = {
   Guide: () => t('Guide'),
   Chapter: () => t('Chapter'),
   Handbook: () => t('Handbook'),
+}
+
+/** Why a note is related, in plain words. */
+function reasonText(reason: RelatedReason): string {
+  switch (reason.kind) {
+    case 'links-to': return t('Linked from this note')
+    case 'shared-tag': return t('Shares the tag {tag}', { tag: reason.tag })
+    case 'same-notebook': return t('In the same notebook')
+    case 'same-shelf': return t('On the same shelf')
+  }
 }
 
 // The reading column: text size, line spacing, and line length, as CSS custom properties.
@@ -49,6 +60,10 @@ export function HandbookNote({
   onClose,
   onMakeCopy,
   onWriteAbout,
+  mentions,
+  related,
+  pathOf,
+  onShowOnMap,
 }: {
   note: CoreNote
   /** Where it sits: "Library / Shelf / Notebook". */
@@ -68,6 +83,13 @@ export function HandbookNote({
   onClose: () => void
   onMakeCopy: () => void
   onWriteAbout: () => void
+  /** Notes that link to this one. */
+  mentions: Note[]
+  /** Notes near this one, each with why. */
+  related: RelatedNote[]
+  /** "Library / Shelf / Notebook" for a note. */
+  pathOf: (note: Note) => string
+  onShowOnMap: () => void
 }) {
   const closeRef = useRef<HTMLButtonElement>(null)
   const settingsButtonRef = useRef<HTMLButtonElement>(null)
@@ -118,6 +140,20 @@ export function HandbookNote({
     scrollTo(initialPosition)
     setProgress(positionNow())
     requestAnimationFrame(() => { restoring.current = false })
+  }, [initialPosition])
+  // What follows the text (mentions, related notes) arrives a moment later and makes the note
+  // taller; until the reader scrolls, keep them at their saved place as it does.
+  useEffect(() => {
+    const column = columnRef.current
+    if (!column || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      if (readerScrolled.current || initialPosition === undefined) return
+      restoring.current = true
+      scrollTo(initialPosition)
+      requestAnimationFrame(() => { restoring.current = false })
+    })
+    observer.observe(column)
+    return () => observer.disconnect()
   }, [initialPosition])
 
   // Remember the place a moment after scrolling stops, and when the note closes. One reader is
@@ -264,6 +300,40 @@ export function HandbookNote({
                 )}
               </nav>
             )}
+            {/* After the text, never in the middle of it: what refers to this note, and what is near it. */}
+            {mentions.length > 0 && (
+              <section className="reader-related" aria-labelledby="reader-mentions-heading">
+                <h2 id="reader-mentions-heading" className="reader-related-title">{t('Mentioned in')}</h2>
+                <ul>
+                  {mentions.map((mention) => (
+                    <li key={mention.id}>
+                      <button className="related-item" onClick={() => onOpenNote(mention)}>
+                        <span className="home-recent-title">{mention.title || t('Untitled note')}</span>
+                        <span className="home-recent-place">{pathOf(mention)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {related.length > 0 && (
+              <section className="reader-related" aria-labelledby="reader-related-heading">
+                <h2 id="reader-related-heading" className="reader-related-title">{t('Related notes')}</h2>
+                <ul>
+                  {related.map(({ note: item, reason }) => (
+                    <li key={item.id}>
+                      <button className="related-item" onClick={() => onOpenNote(item)}>
+                        <span className="home-recent-title">{item.title || t('Untitled note')}</span>
+                        <span className="home-recent-place">{reasonText(reason)} · {pathOf(item)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            <button className="secondary-button reader-map-button" onClick={onShowOnMap}>
+              <Network size={15} aria-hidden="true" /> {t('Show on the note map')}
+            </button>
           </div>
         </div>
         <footer className="editor-footer handbook-actions">

@@ -41,7 +41,7 @@ export function CollapsedRail({
       {item(t('Search'), <Search size={18} aria-hidden="true" />, () => onNavigate('search'), view === 'search')}
       {item(t('All Notes'), <FileText size={18} aria-hidden="true" />, () => onNavigate('all'), view === 'all')}
       {item(t('Favorites'), <Heart size={18} aria-hidden="true" />, () => onNavigate('favorites'), view === 'favorites')}
-      {item(t('Knowledge Graph'), <Network size={18} aria-hidden="true" />, () => onNavigate('graph'), view === 'graph')}
+      {item(t('Note map'), <Network size={18} aria-hidden="true" />, () => onNavigate('graph'), view === 'graph')}
       {item(t('Today’s note'), <CalendarDays size={18} aria-hidden="true" />, onOpenToday)}
       {item(t('Trash'), <Trash2 size={18} aria-hidden="true" />, () => onNavigate('trash'), view === 'trash')}
       <span className="rail-spacer" aria-hidden="true" />

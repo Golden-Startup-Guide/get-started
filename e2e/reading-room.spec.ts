@@ -34,12 +34,12 @@ test('reads at a comfortable line length, with the notes before and after by nam
   }
 
   const reader = page.getByRole('dialog', { name: 'Staying hydrated' })
-  await expect(reader.getByText('Note 1 of 2')).toBeVisible()
+  await expect(reader.getByText('Note 1 of 3')).toBeVisible()
   await expect(reader.getByRole('complementary', { name: 'Note' })).toContainText('Needs differ from person to person.')
   const pages = reader.getByRole('navigation', { name: 'In this notebook' })
   await pages.getByRole('button', { name: /Next\s*Water through the day/ }).click()
   const next = page.getByRole('dialog', { name: 'Water through the day' })
-  await expect(next.getByText('Note 2 of 2')).toBeVisible()
+  await expect(next.getByText('Note 2 of 3')).toBeVisible()
   await expect(next.getByRole('complementary', { name: 'Tip' })).toBeVisible()
   await next.getByRole('navigation', { name: 'In this notebook' }).getByRole('button', { name: /Previous\s*Staying hydrated/ }).click()
   await expect(page.getByRole('dialog', { name: 'Staying hydrated' })).toBeVisible()

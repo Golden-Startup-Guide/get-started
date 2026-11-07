@@ -5,7 +5,7 @@ test('a handbook notebook lists its contents in order and marks where the reader
   await expect(page.getByRole('heading', { name: 'Everyday Nutrition', level: 1 })).toBeVisible()
   await expect(page.getByText('Simple habits for eating and drinking well through the day.')).toBeVisible()
   const contents = page.getByRole('region', { name: 'Contents' })
-  await expect(contents.getByRole('listitem')).toHaveText([/Staying hydrated/, /Water through the day/])
+  await expect(contents.getByRole('listitem')).toHaveText([/Staying hydrated/, /Water through the day/, /Signs of dehydration/])
   await expect(page.getByText('Last read')).toHaveCount(0)
 
   await contents.getByRole('button', { name: /Water through the day/ }).click()
@@ -13,12 +13,12 @@ test('a handbook notebook lists its contents in order and marks where the reader
   // Marked in words and by a bar, not colour alone; Continue reading names the note's place.
   await expect(contents.getByRole('listitem').nth(1)).toContainText('Last read')
   const resume = page.getByRole('region', { name: 'Continue reading' })
-  await expect(resume).toContainText('Note 2 of 2')
+  await expect(resume).toContainText('Note 2 of 3')
 
   // The shelf shows the same progress in words, on the notebook's card.
   await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Nutrition' }).first().click()
   await expect(page.getByRole('heading', { name: 'Nutrition', level: 1 })).toBeVisible()
-  await expect(page.getByText('Last read: note 2 of 2')).toBeVisible()
+  await expect(page.getByText('Last read: note 2 of 3')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Continue reading' })).toContainText('Water through the day')
 })
 

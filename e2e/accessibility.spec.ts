@@ -58,10 +58,14 @@ for (const theme of ['light', 'dark'] as const) {
     await page.keyboard.press('Escape')
     await page.getByRole('searchbox', { name: /Search notes/ }).fill('')
 
-    await page.getByRole('button', { name: /Knowledge Graph/ }).click()
-    await expectNoViolations(page, 'the knowledge graph')
-    await page.getByRole('button', { name: 'Around a note' }).click()
-    await expectNoViolations(page, 'the relationship explorer')
+    await page.getByRole('button', { name: /^Note map/ }).click()
+    await expect(page.getByRole('group', { name: 'Connected note graph' })).toBeVisible()
+    await expectNoViolations(page, 'the note map')
+    const wholeLibrary = page.getByRole('button', { name: 'Whole library' })
+    if (await wholeLibrary.count()) {
+      await wholeLibrary.click()
+      await expectNoViolations(page, 'the whole-library graph')
+    }
 
     await page.getByRole('button', { name: /^Trash \d+$/ }).click()
     await expectNoViolations(page, 'Trash')

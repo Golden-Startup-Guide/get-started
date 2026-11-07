@@ -73,7 +73,7 @@ find any note.
 On wide screens (1200 pixels and above), the sidebar is visible by default,
 264 pixels wide. Its **Collapse sidebar** button (top right of the sidebar)
 narrows it to a 72-pixel rail of icons: **Expand sidebar**, **New note**, **All
-Notes**, **Favorites**, **Knowledge Graph**, **Today's note**, **Trash**, and
+Notes**, **Favorites**, **Note map**, **Today's note**, **Trash**, and
 **Settings**. Each icon has a name for screen readers and shows it in a tooltip
 on hover or keyboard focus, and the current page is marked by a bar as well as
 colour. On tablets and phones (1199 pixels and below), the header's menu button
@@ -128,7 +128,7 @@ the note open, and Escape returns you to where you were typing. The shortcut
 does nothing while Settings, a delete confirmation, or the quick note box is
 open.
 
-The sidebar groups All Notes, Favorites, Trash, and Knowledge Graph above the
+The sidebar groups Home, Search, All Notes, Favorites, Trash, and Note map above the
 library hierarchy. Use the disclosure buttons to expand or collapse libraries
 and shelves. Tags and Settings are available below the hierarchy. When viewing
 any page other than All Notes, the header shows a breadcrumb: each level above
@@ -219,6 +219,12 @@ own library. They are part of the app, not your data:
 - A handbook library page shows what it covers and its shelves; a shelf or
   notebook lists its notes in order. Search on those pages searches the
   handbook notes.
+
+After a handbook note's text come **Mentioned in** (your notes and other handbook
+pages that link to it, with where each sits), **Related notes** (up to five
+others: ones it links to, ones sharing a tag, then others in its notebook or on
+its shelf, each with its reason, and never the notes already named as Previous
+and Next), and **Show on the note map**.
 
 Opening a handbook note opens the **reading room**: where it sits, its type
 (Article, Guide, Chapter, or Handbook), title, summary, a **Draft: not yet
@@ -537,7 +543,7 @@ ones are removed when a new revision is added.
 History is kept in local IndexedDB and is included in backups unless excluded
 at export. Permanently deleting a note from Trash also removes its history.
 
-### 2.6 Linked notes and knowledge graph
+### 2.6 Linked notes and the note map
 
 The quickest way to link notes is to write a wikilink in the Markdown:
 `[[Note title]]`, or `[[Note title|shown text]]` to show different words. Type
@@ -548,7 +554,7 @@ recently updated one is used. In the preview, a wikilink opens its note, and a
 title that matches no note is shown dimmed with a dotted underline. Wikilinks
 are read from the text: deleting `[[...]]` removes the link, and `[[...]]`
 inside code is ignored. They appear under **Links from this note** (marked
-"in text"), in the other note's **Backlinks**, and in the knowledge graph.
+"in text"), in the other note's **Mentioned in** list, and on the note map.
 
 To link to a section, add the heading after `#`: `[[Garden plan#Harvest]]`
 opens Garden plan at its "Harvest" heading, with the preview scrolled there,
@@ -590,7 +596,10 @@ a note's title or notebook under **Linked notes**, choose a match with the
 mouse or the arrow keys and Enter, then select **Add link**. Up to 50 matches
 are listed at a time; keep typing to narrow larger results.
 
-**Knowledge Graph** has two views, switched at the top right:
+**Note map** opens around a note: the one sent there with **Show on the note
+map** from a handbook page, otherwise the one you read last, otherwise the
+first. Handbook notes are on the map with your own. Its views, switched at the
+top right:
 
 - **Whole library** draws every note outside Trash as a dot, coloured by
   library (a legend below names the colours) and larger the more links it has,
@@ -607,12 +616,16 @@ are listed at a time; keep typing to narrow larger results.
   holding up the page; the layout is remembered while the app is open, so
   returning to the graph or adding a note does not start it over. The drawing
   code is downloaded the first time the view is opened, and kept for offline
-  use from then on. Browsers without WebGL 2 open the second view instead.
-- **Around a note** (the relationship explorer) shows a bounded SVG
-  neighborhood around the chosen note, with incoming and outgoing
-  relationships and a list of connected notes, and works fully from the
-  keyboard. While searching, its **Explore note** list offers only the
-  matching notes.
+  use from then on. It is offered second, and only where WebGL 2 is
+  available; it covers your own notes.
+- **Around a note**, shown first, draws the chosen note in the middle with the
+  notes it links to and the notes that mention it, joined by labelled arrows.
+  **Zoom in**, **Zoom out**, and **Reset zoom** change the drawing's size;
+  **Skip to the list** moves past it to **The same notes, as a list**: **Links
+  from this note** and **Mentioned in**, which hold every connection (the
+  drawing shows a limited number), so the map is never the only way to reach a
+  note. Choosing a note moves the map to it; **Open note** opens it. While
+  searching, its **Explore note** list offers only the matching notes.
 
 The explorer limits the number of displayed direct neighbors to keep the
 view legible and responsive; the relationship lists retain the complete set of

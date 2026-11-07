@@ -710,9 +710,9 @@ export function NoteEditor({
                   ) : <p className="mt-1 text-xs text-[var(--muted)]">{t("No linked notes yet.")}</p>}
                 </div>
                 <div>
-                  <h4 className="text-xs font-medium text-[var(--muted)]">{t("Backlinks")}</h4>
+                  <h4 className="text-xs font-medium text-[var(--muted)]">{t("Mentioned in")}</h4>
                   {backlinkNotes.length ? (
-                    <ul className="note-link-list" aria-label={t("Backlinks")}>
+                    <ul className="note-link-list" aria-label={t("Mentioned in")}>
                       {backlinkNotes.map((related) => (
                         <li key={related.id}>
                           {related.deletedAt === undefined ? (
@@ -721,7 +721,7 @@ export function NoteEditor({
                         </li>
                       ))}
                     </ul>
-                  ) : <p className="mt-1 text-xs text-[var(--muted)]">{t("No backlinks yet.")}</p>}
+                  ) : <p className="mt-1 text-xs text-[var(--muted)]">{t("No other notes mention this one yet.")}</p>}
                 </div>
               </div>
               {!canEditLinks && !note.deletedAt && <p className="mt-2 text-xs text-[var(--muted)]">{t("Save this note before linking it.")}</p>}
