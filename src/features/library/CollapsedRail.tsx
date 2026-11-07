@@ -18,7 +18,7 @@ export function CollapsedRail({
   onOpenSettings,
 }: {
   view: View
-  expandRef: RefObject<HTMLButtonElement>
+  expandRef: RefObject<HTMLButtonElement | null>
   onExpand: () => void
   onNavigate: (view: View) => void
   onNewNote: () => void

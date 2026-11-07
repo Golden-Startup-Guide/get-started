@@ -162,8 +162,8 @@ export function HandbookNote({
   useLayoutEffect(() => {
     onPositionRef.current = onPosition
   })
-  const saveTimer = useRef<number>()
-  const lastPosition = useRef<number>()
+  const saveTimer = useRef<number | undefined>(undefined)
+  const lastPosition = useRef<number | undefined>(undefined)
   const noteId = note.id
   useEffect(() => () => {
     if (saveTimer.current === undefined) return
@@ -183,7 +183,7 @@ export function HandbookNote({
   }
 
   // A change of settings reflows the text; keep the reader at the same place in the note.
-  const keptPosition = useRef<number>()
+  const keptPosition = useRef<number | undefined>(undefined)
   const changeSettings = (next: ReaderSettings) => {
     keptPosition.current = positionNow()
     onSettings(next)
