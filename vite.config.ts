@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
-import { version } from './package.json'
-import { coreContentPlugin } from './scripts/coreContent'
+import packageJson from './package.json' with { type: 'json' }
+import { coreContentPlugin } from './scripts/coreContent.ts'
 
 // Production only: the dev server injects an inline script (React refresh) that this
 // policy would block. Remote https images are allowed because the preview loads them on
@@ -80,7 +80,7 @@ const base = process.env.BASE_PATH ?? '/'
 export default defineConfig({
   base,
   // The version shown in Settings and in problem reports (from package.json).
-  define: { __APP_VERSION__: JSON.stringify(version) },
+  define: { __APP_VERSION__: JSON.stringify(packageJson.version) },
   build: {
     // Never inline fonts as data: URLs (Vite inlines small files by default): the Content Security
     // Policy only allows fonts from the app itself. KaTeX ships several fonts under 4 KB.

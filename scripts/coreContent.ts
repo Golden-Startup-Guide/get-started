@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import type { Plugin } from 'vite'
-import type { CoreCatalog, CoreLibrary, CoreNote, CoreNotebook, CoreNoteType, CoreShelf } from '../src/types'
+import type { CoreCatalog, CoreLibrary, CoreNote, CoreNotebook, CoreNoteType, CoreShelf } from '../src/types.ts'
 
 export interface CompiledContent {
   catalog: CoreCatalog
