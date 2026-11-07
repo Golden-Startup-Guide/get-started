@@ -66,6 +66,30 @@ describe('storage and the built-in handbooks', () => {
     expect(await storage.getLastReading()).toEqual(expect.objectContaining({ noteId: 'core-staying-hydrated' }))
   })
 
+  it('remembers the place in a note, between 0 and 1, without changing when it was opened', async () => {
+    await storage.recordReading('core-water-through-the-day')
+    const opened = (await storage.getReadingRecords()).find((record) => record.noteId === 'core-water-through-the-day')!
+    await storage.saveReadingPosition('core-water-through-the-day', 0.42)
+    await storage.saveReadingPosition('core-staying-hydrated', 7)
+    const records = await storage.getReadingRecords()
+    expect(records.find((record) => record.noteId === 'core-water-through-the-day')).toEqual({ ...opened, position: 0.42 })
+    expect(records.find((record) => record.noteId === 'core-staying-hydrated')?.position).toBe(1)
+    // Opening it again keeps the place.
+    await storage.recordReading('core-water-through-the-day')
+    expect((await storage.getReadingRecords()).find((record) => record.noteId === 'core-water-through-the-day')?.position).toBe(0.42)
+  })
+
+  it('keeps reading settings with the other settings, and in backups that older versions accept', async () => {
+    const reader = { size: 'large', font: 'simple', spacing: 'roomy', width: 'narrow' } as const
+    await storage.saveReaderSettings(reader)
+    expect((await storage.getSettings()).reader).toEqual(reader)
+    const { validateBackup } = await import('./backupFormat')
+    const backup = await storage.exportBackup()
+    expect(backup.settings.reader).toEqual(reader)
+    expect(() => validateBackup(backup)).not.toThrow()
+    expect(() => validateBackup({ ...backup, settings: { ...backup.settings, reader: { ...reader, size: 'huge' } } })).toThrow()
+  })
+
   it('leaves handbooks and reading out of backups', async () => {
     const backup = await storage.exportBackup()
     expect(JSON.stringify(backup)).not.toContain('core-staying-hydrated')

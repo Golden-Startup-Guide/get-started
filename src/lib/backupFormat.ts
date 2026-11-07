@@ -162,12 +162,24 @@ function validTag(value: unknown): value is Tag {
   )
 }
 
+const READER_CHOICES = {
+  size: ['small', 'medium', 'large', 'larger'],
+  font: ['classic', 'simple'],
+  spacing: ['normal', 'roomy'],
+  width: ['narrow', 'medium', 'wide'],
+} as const
+
+function validReaderSettings(value: unknown): boolean {
+  return isRecord(value) && Object.entries(READER_CHOICES).every(([key, choices]) => (choices as readonly string[]).includes(String(value[key])))
+}
+
 function validSettings(value: unknown): value is AppSettings {
   return (
     isRecord(value) &&
     value.id === 'preferences' &&
     ['light', 'dark', 'system'].includes(String(value.theme)) &&
     (value.paper === undefined || typeof value.paper === 'boolean') &&
+    (value.reader === undefined || validReaderSettings(value.reader)) &&
     (value.editorMode === undefined || value.editorMode === 'live' || value.editorMode === 'source') &&
     (value.savedSearches === undefined ||
       (Array.isArray(value.savedSearches) && value.savedSearches.length <= MAX_SAVED_SEARCHES && value.savedSearches.every(validSavedSearch)))

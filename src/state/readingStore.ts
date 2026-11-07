@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getReadingRecords, recordReading } from '../lib/notes'
+import { getReadingRecords, recordReading, saveReadingPosition } from '../lib/notes'
 import type { ReadingRecord } from '../types'
 
 interface ReadingState {
@@ -9,6 +9,8 @@ interface ReadingState {
   refresh: () => Promise<void>
   /** Records that a note was opened now. */
   opened: (noteId: string) => Promise<void>
+  /** Remembers how far through a note the reader is, from 0 to 1. */
+  savePosition: (noteId: string, position: number) => Promise<void>
 }
 
 /**
@@ -24,6 +26,14 @@ export const useReadingStore = create<ReadingState>()((set) => ({
     } catch {
       set({ loaded: true })
     }
+  },
+  savePosition: async (noteId, position) => {
+    try {
+      await saveReadingPosition(noteId, position)
+    } catch {
+      return
+    }
+    set((state) => ({ records: state.records.map((record) => (record.noteId === noteId ? { ...record, position } : record)) }))
   },
   opened: async (noteId) => {
     try {

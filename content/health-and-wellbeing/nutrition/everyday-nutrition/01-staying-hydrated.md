@@ -19,4 +19,5 @@ Hydration is part of everyday wellbeing. Small, regular choices make it easier t
 
 Thirst, activity, food, and the weather all change what your body needs. Build a routine that fits your day and the water you have. See [[Water through the day]] for ideas.
 
+> [!NOTE]
 > Needs differ from person to person. For a health concern, follow the advice of a nurse, doctor, or clinic.

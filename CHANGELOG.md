@@ -8,6 +8,8 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 ## [Unreleased]
 
 ### Added
+- **The reading room** for handbook notes: one column at a comfortable line length, **Reading settings** for text size, style, line spacing, line length, and theme (remembered, and resettable), your place in each note remembered, **Previous** and **Next** by name, a quiet progress bar, and a reading time for longer notes.
+- **Callouts**: a quote starting with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, or `[!CAUTION]` becomes a labelled box, in handbooks and in your own notes.
 - **Library, shelf, and notebook pages** made for reading: counts that name what they count, shelves and notebooks with their descriptions, Continue reading where you left off, related shelves and notebooks, and a handbook notebook's numbered contents with your last-read note marked. Managing your own libraries and shelves moves to a **Manage** section at the end of their pages.
 - The sidebar opens the branch you are on and small libraries; large ones start closed, so it stays short as the library grows.
 - **Home**, the new start page: Continue reading (the note you opened last, and where it sits), tiles to explore the libraries, Recently added, and whether the app is available offline. All Notes moves to its own address, `#/notes`, and the breadcrumb starts at Home.

@@ -220,10 +220,35 @@ own library. They are part of the app, not your data:
   notebook lists its notes in order. Search on those pages searches the
   handbook notes.
 
-Opening a handbook note shows it for reading: where it sits, its type (Article,
-Guide, Chapter, or Handbook), title, summary, and a **Draft: not yet reviewed**
-label while its text is not final (or who reviewed it). `[[Links]]` in it open
-other notes, and Back returns. To work with one:
+Opening a handbook note opens the **reading room**: where it sits, its type
+(Article, Guide, Chapter, or Handbook), title, summary, a **Draft: not yet
+reviewed** label while its text is not final (or who reviewed it), its place in
+its notebook ("Note 1 of 2"), and, for notes of two minutes or more, about how
+long it takes to read. Then:
+
+- The text in one column of comfortable length: about 62–72 characters a line at
+  the default settings, 18 px on wide screens and 16 px on phones. Long notes
+  start with a **Contents** list that can be opened.
+- **Callouts**: a quote that starts with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
+  `[!WARNING]`, or `[!CAUTION]` becomes a labelled box ("Note", "Tip", …), named
+  by its label for screen readers. They work in personal notes too.
+- A thin bar under the header shows how far through the note you are; it is a
+  quiet cue only.
+- **Previous** and **Next** at the end name the notes before and after it in its
+  notebook.
+- **Reading settings** (the button in the header) sets the text size (Small,
+  Medium, Large, Larger), style (Classic, a serif, or Simple, the interface's
+  sans-serif), line spacing (Normal or Roomy), line length (Narrow, Medium, or
+  Wide), and the colour theme. Each takes effect at once, keeps you at the same
+  place in the note, and is remembered with your settings (and in backups);
+  **Reset reading settings** returns to the defaults. On phones the settings
+  open as a sheet from the bottom. Escape closes them, then the note.
+- Your place in each note is remembered on this device: reopening a note
+  returns to where you were. A note never opened before starts at the top.
+
+`[[Links]]` in a handbook note open other notes, and Back returns. Your own notes
+still open in the editor, which has its own **Preview only** view. To work with a
+handbook note:
 
 - **Make a personal copy** opens a new personal note with the same title and
   text, ending with a link back to the handbook note; edit it like any note.

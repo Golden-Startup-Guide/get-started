@@ -19,6 +19,7 @@ import {
   saveNote,
   saveEditorMode,
   saveSearch,
+  saveReaderSettings,
   saveTheme,
   setNoteFlag,
   subscribeToStorage,
@@ -28,7 +29,7 @@ import {
 import { findNotebook, SAMPLE_TEMPLATE, TEMPLATES_NOTEBOOK } from '../lib/templates'
 import { notesLinkingTo, renameWikilinks } from '../lib/wikilinks'
 import { shelfForNewNotebook } from '../features/library/placement'
-import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemeChoice } from '../types'
+import type { EditorMode, Library, Note, Notebook, SavedSearch, Shelf, ThemeChoice, ReaderSettings } from '../types'
 import { readText } from '../features/backup/backupFolder'
 import { checkBackup, describeCheck } from '../lib/backupCheck'
 import type { ImportSource } from '../features/transfer/importSources'
@@ -324,6 +325,16 @@ export async function changeTheme(theme: ThemeChoice) {
     library().setTheme(theme)
   } catch {
     workspace().showError(t("Your theme preference could not be saved."))
+  }
+}
+
+/** Applied at once; saving only remembers it for next time. */
+export async function changeReaderSettings(reader: ReaderSettings) {
+  library().setReader(reader)
+  try {
+    await saveReaderSettings(reader)
+  } catch {
+    workspace().showError(t("Your reading settings could not be saved."))
   }
 }
 

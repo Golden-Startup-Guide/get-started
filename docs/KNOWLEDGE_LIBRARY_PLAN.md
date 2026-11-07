@@ -139,6 +139,8 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
 
 ### Phase 6: The reading room
 
+- **As built:** the reading room is for handbook notes. Personal notes still open in the editor (which has a **Preview only** view), since changing how they open would change every writing flow; an Edit-first reading view for them can follow if wanted. The outline is the collapsible Contents list at the top of a long note, on every screen size, rather than a separate panel or sheet. On phones the line is shorter than 62 characters, since the screen is; the 62–72 measure is checked at desktop and tablet widths. Reader settings are kept with the other settings, so they are in backups (and older versions ignore them); reading positions stay on the device.
+
 - **Result:** the note page from section 4 of the spec.
 - **Header:** a compact breadcrumb and the notebook's context, then the title, the summary, and modest metadata. The reading time is shown only when it is reliable.
 - **Text:** semantic content from the existing Markdown renderer, including callouts, which are new.
