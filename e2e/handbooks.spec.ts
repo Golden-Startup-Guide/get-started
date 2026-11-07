@@ -5,7 +5,8 @@ test('reads a built-in handbook, follows its links, and cannot change it', async
   const handbooks = page.getByRole('navigation', { name: 'Handbooks' })
   await handbooks.getByRole('button', { name: /^Health & Wellbeing/ }).click()
   await expect(page.getByRole('heading', { name: 'Health & Wellbeing', level: 1 })).toBeVisible()
-  await expect(page.getByText('Clear, practical knowledge for caring for yourself')).toBeVisible()
+  // The library page's description (Home's tile, which has the same words, can stay hidden a moment).
+  await expect(page.locator('.handbook-description', { hasText: 'Clear, practical knowledge for caring for yourself' })).toBeVisible()
   // No editing on a handbook page.
   await expect(page.getByRole('button', { name: 'Rename library' })).toHaveCount(0)
 
