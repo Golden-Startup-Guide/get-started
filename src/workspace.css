@@ -2462,7 +2462,7 @@ html[data-theme='dark'] .workspace {
 }
 
 /* The reading room (design specification, section 4): one column of comfortable length, with the
-   reader's size, style, spacing, and width (see HandbookNote.tsx). 66ch is about 62–72 characters. */
+   reader's size, style, spacing, and width (see HandbookNote.tsx). 32em is about 62–70 characters. */
 .workspace .reader-room {
   display: flex;
   height: min(94vh, 1000px);
@@ -2478,7 +2478,7 @@ html[data-theme='dark'] .workspace {
 }
 
 .reader-column {
-  max-width: var(--reader-measure, 66ch);
+  max-width: var(--reader-measure, 32em);
   margin: 0 auto;
   /* 18 px on wide screens, 16 px on phones, times the reader's size. */
   font-size: calc(clamp(1rem, 0.9rem + 0.5vw, 1.125rem) * var(--reader-scale, 1));

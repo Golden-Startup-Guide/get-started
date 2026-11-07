@@ -19,7 +19,9 @@ const TYPE_LABELS: Record<CoreNoteType, () => string> = {
 // The reading column: text size, line spacing, and line length, as CSS custom properties.
 const SCALE: Record<ReaderSettings['size'], number> = { small: 0.9, medium: 1, large: 1.15, larger: 1.3 }
 const LEADING: Record<ReaderSettings['spacing'], number> = { normal: 1.7, roomy: 1.95 }
-const MEASURE: Record<ReaderSettings['width'], string> = { narrow: '56ch', medium: '66ch', wide: '78ch' }
+// In em, not ch: the width of "0" varies too much between fonts (on Linux a wide fallback serif fit
+// 82 characters in 66ch). 32em holds about 62–70 characters in the serifs and sans-serifs people have.
+const MEASURE: Record<ReaderSettings['width'], string> = { narrow: '27em', medium: '32em', wide: '38em' }
 
 /**
  * The reading room for a built-in handbook note (design specification, section 4): one comfortable
