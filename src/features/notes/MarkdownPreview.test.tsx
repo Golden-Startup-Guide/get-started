@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { MarkdownPreview } from './MarkdownPreview'
 
 describe('MarkdownPreview', () => {
+  it('labels a callout, and names it by its label for screen readers', () => {
+    render(<MarkdownPreview markdown={'> [!WARNING]\n> Boil the water first.\n\n> Just a quote.'} />)
+    const callout = screen.getByRole('complementary', { name: 'Warning' })
+    expect(callout).toHaveTextContent(/^Warning\s*Boil the water first\.$/)
+    expect(callout).not.toHaveTextContent('[!WARNING]')
+    expect(screen.getByText('Just a quote.').closest('blockquote')).not.toBeNull()
+  })
+
   it('maps each checkbox to its own source line, even after code blocks and in quotes', () => {
     const onToggleTask = vi.fn()
     const markdown = '```\n- [ ] Code sample\n```\n\n- [ ] Real task\n\n> - [x] Quoted task'

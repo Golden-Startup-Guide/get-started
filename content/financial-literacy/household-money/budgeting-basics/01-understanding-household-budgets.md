@@ -22,4 +22,5 @@ A budget is a plan for your money. It shows what comes in, what goes out, and wh
 
 Check your plan each month. A budget is not a test; it is a tool you change as your life changes.
 
+> [!NOTE]
 > This is general information, not financial advice for your situation.

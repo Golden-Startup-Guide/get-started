@@ -40,6 +40,7 @@ import { CollapsedRail } from './features/library/CollapsedRail'
 import { useRouting } from './features/app/useRouting'
 import { isHandbookView, notebookForNewNote } from './features/library/placement'
 import {
+  changeReaderSettings,
   changeTheme,
   createSampleTemplate,
   ensureNotebook,
@@ -65,7 +66,7 @@ import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery, pruneSear
 import { findSavedSearch } from './lib/savedSearches'
 import { DAILY_NOTEBOOK, dailyNoteContent, fillTemplate, findDailyNote, isoDate } from './lib/templates'
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
-import type { CoreNote, Note, NoteLink } from './types'
+import { DEFAULT_READER_SETTINGS, type CoreNote, type Note, type NoteLink } from './types'
 import './workspace.css'
 import { t, tp } from './i18n/i18n'
 
@@ -96,6 +97,7 @@ function App() {
   const isLoading = useLibraryStore((state) => state.isLoading)
   const coreNotes = useCoreStore((state) => state.notes)
   const coreFailed = useCoreStore((state) => state.failed)
+  const readingRecords = useReadingStore((state) => state.records)
   const refresh = useLibraryStore((state) => state.refresh)
   const view = useWorkspaceStore((state) => state.view)
   const query = useWorkspaceStore((state) => state.query)
@@ -164,6 +166,10 @@ function App() {
   useEffect(() => {
     if (isHandbookView(view)) void useCoreStore.getState().load()
   }, [view])
+  // What has been read, and how far: for Continue reading and the reader's place in each note.
+  useEffect(() => {
+    if (!isLoading) void useReadingStore.getState().refresh()
+  }, [isLoading])
 
   // Once the library has loaded, check it for damage (in idle time, so start-up never waits).
   useEffect(() => {
@@ -814,8 +820,16 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
 
       {activeNote && isCoreId(activeNote.id) ? (
         <LazyHandbookNote
+          key={activeNote.id}
           note={activeNote as CoreNote}
           onError={showError}
+          notebookNotes={coreNotes.filter((note) => note.notebookId === activeNote.notebookId)}
+          settings={settings.reader ?? DEFAULT_READER_SETTINGS}
+          theme={themeChoice(settings)}
+          initialPosition={readingRecords.find((record) => record.noteId === activeNote.id)?.position}
+          onSettings={(reader) => void changeReaderSettings(reader)}
+          onTheme={(choice) => void changeTheme(choice)}
+          onPosition={(noteId, position) => void useReadingStore.getState().savePosition(noteId, position)}
           location={handbookLocation(activeNote as CoreNote)}
           notes={handbookLinkTargets}
           onOpenNote={(note, section) => {

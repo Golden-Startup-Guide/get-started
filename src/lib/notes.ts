@@ -4,6 +4,7 @@ import { isCoreId } from './core'
 import type {
   AppSettings,
   Note,
+  ReaderSettings,
   ReadingRecord,
   NoteAttachment,
   NoteLink,
@@ -939,6 +940,10 @@ export async function saveTheme(choice: ThemeChoice): Promise<void> {
   await saveSettings(themeSettings(choice))
 }
 
+export async function saveReaderSettings(reader: ReaderSettings): Promise<void> {
+  await saveSettings({ reader })
+}
+
 export async function saveEditorMode(editorMode: EditorMode): Promise<void> {
   await saveSettings({ editorMode })
 }
@@ -999,6 +1004,15 @@ export async function recordReading(noteId: string): Promise<void> {
 export async function getReadingRecords(): Promise<ReadingRecord[]> {
   const db = await database
   return (await db.getAllFromIndex('reading', 'by-opened')).reverse()
+}
+
+/** Remembers how far through a note the reader is, from 0 (the start) to 1 (the end). */
+export async function saveReadingPosition(noteId: string, position: number): Promise<void> {
+  const db = await database
+  const transaction = db.transaction('reading', 'readwrite')
+  const existing = await transaction.store.get(noteId)
+  await transaction.store.put({ openedAt: Date.now(), ...existing, noteId, position: Math.min(1, Math.max(0, position)) })
+  await transaction.done
 }
 
 /** The note opened most recently, if any. */

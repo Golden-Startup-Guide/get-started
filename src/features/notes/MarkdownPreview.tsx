@@ -9,7 +9,7 @@ import { createTaskTextLookup } from './checklists'
 import { loadHighlighter, MAX_HIGHLIGHT_LENGTH } from './codeHighlight'
 import { DiagramBlock } from './DiagramBlock'
 import { MathFormula } from './MathFormula'
-import { markdownToHast } from './markdownToHast'
+import { markdownToHast, type CalloutKind } from './markdownToHast'
 import { NoteContents } from './NoteContents'
 import { collectHeadings } from './noteHeadings'
 import { t } from '../../i18n/i18n'
@@ -25,6 +25,27 @@ const ChecklistContext = createContext<ChecklistContextValue>({ taskText: () => 
 // Each list item exposes its source line, so its checkbox toggles exactly that line.
 // Counting rendered checkboxes instead breaks when task syntax appears in code blocks.
 const ListItemLineContext = createContext<number | undefined>(undefined)
+
+const CALLOUT_LABELS: Record<CalloutKind, () => string> = {
+  note: () => t('Note'),
+  tip: () => t('Tip'),
+  important: () => t('Important'),
+  warning: () => t('Warning'),
+  caution: () => t('Caution'),
+}
+
+/** A callout ("> [!NOTE]"): a labelled box, named for screen readers by its label. */
+function Callout({ node: _node, children, ...props }: ComponentProps<'aside'> & ExtraProps & { 'data-callout'?: CalloutKind }) {
+  const kind = props['data-callout']
+  if (!kind || !CALLOUT_LABELS[kind]) return <aside {...props}>{children}</aside>
+  const label = CALLOUT_LABELS[kind]()
+  return (
+    <aside {...props} className={`callout callout-${kind}`} aria-label={label}>
+      <p className="callout-label">{label}</p>
+      {children}
+    </aside>
+  )
+}
 
 function MarkdownListItem({ node, ...props }: ComponentProps<'li'> & ExtraProps) {
   return (
@@ -264,6 +285,7 @@ const markdownComponents: Partial<Components> = {
   img: MarkdownImage,
   input: TaskCheckbox,
   li: MarkdownListItem,
+  aside: Callout,
 }
 
 const EMPTY_PREVIEW = '_Nothing to preview yet._'

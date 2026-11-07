@@ -1,10 +1,25 @@
 import { toHtml } from 'hast-util-to-html'
 import { describe, expect, it } from 'vitest'
-import { markdownToHast } from './markdownToHast'
+import type { Element } from 'hast'
+import { visit } from 'unist-util-visit'
+import { markdownToHast, textOf } from './markdownToHast'
 
 const html = (markdown: string) => toHtml(markdownToHast(markdown))
 
 describe('markdownToHast', () => {
+  it('turns "> [!NOTE]" quotes into callouts without the marker, and leaves other quotes alone', () => {
+    const asides = (markdown: string) => {
+      const found: Array<{ kind: unknown; text: string }> = []
+      visit(markdownToHast(markdown), 'element', (node: Element) => {
+        if (node.tagName === 'aside') found.push({ kind: node.properties.dataCallout, text: textOf(node).trim() })
+      })
+      return found
+    }
+    expect(asides('> [!NOTE]\n> Needs differ.')).toEqual([{ kind: 'note', text: 'Needs differ.' }])
+    expect(asides('> [!warning] Boil the water first.')).toEqual([{ kind: 'warning', text: 'Boil the water first.' }])
+    expect(asides('> [!UNKNOWN] Stays a quote.\n\n> A plain quote.')).toEqual([])
+  })
+
   it('blanks unsafe link and image URLs and keeps safe ones', () => {
     expect(html('[bad](javascript:alert(1)) [data](data:text/html,x) [ok](https://example.com) [mail](mailto:a@b.c)')).toBe(
       '<p><a href="">bad</a> <a href="">data</a> <a href="https://example.com">ok</a> <a href="mailto:a@b.c">mail</a></p>',

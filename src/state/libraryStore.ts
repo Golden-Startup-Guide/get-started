@@ -11,7 +11,7 @@ import {
   getTrash,
 } from '../lib/notes'
 import { sortNotes } from '../features/notes/noteDisplay'
-import type { AppSettings, EditorMode, Library, Note, Notebook, NoteLink, SavedSearch, Shelf, Tag, ThemeChoice } from '../types'
+import type { AppSettings, EditorMode, Library, Note, Notebook, NoteLink, SavedSearch, Shelf, Tag, ThemeChoice, ReaderSettings } from '../types'
 import { themeSettings } from '../lib/theme'
 
 interface LibraryState {
@@ -34,6 +34,7 @@ interface LibraryState {
   /** Updates the note lists after the editor saved a note, without reloading everything. */
   noteSaved: (note: Note) => Promise<void>
   setTheme: (theme: ThemeChoice) => void
+  setReader: (reader: ReaderSettings) => void
   setEditorMode: (mode: EditorMode) => void
   setSavedSearches: (savedSearches: SavedSearch[]) => void
 }
@@ -78,6 +79,7 @@ export const useLibraryStore = create<LibraryState>()((set) => ({
     set({ tags: await getTags() })
   },
   setTheme: (theme) => set((state) => ({ settings: { ...state.settings, ...themeSettings(theme) } })),
+  setReader: (reader) => set((state) => ({ settings: { ...state.settings, reader } })),
   setEditorMode: (editorMode) => set((state) => ({ settings: { ...state.settings, editorMode } })),
   setSavedSearches: (savedSearches) => set((state) => ({ settings: { ...state.settings, savedSearches } })),
 }))

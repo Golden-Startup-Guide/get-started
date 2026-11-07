@@ -125,7 +125,8 @@ export function cardPreview(content: string): PreviewBlock[] {
     else if (task) push({ kind: 'task', done: task[1] !== ' ', text: plainInline(task[2]), depth })
     else if (bullet) push({ kind: 'bullet', text: plainInline(bullet[1] ?? ''), depth })
     else if (numbered) push({ kind: 'numbered', number: numbered[1], text: plainInline(numbered[2] ?? ''), depth })
-    else if (quote) push({ kind: 'quote', text: plainInline(quote[1]) })
+    // A callout's marker ("> [!NOTE]") is not part of what it says.
+    else if (quote) push({ kind: 'quote', text: plainInline(quote[1].replace(/^\[!\w+\]\s*/, '')) })
     else paragraph.push(line.trim())
   }
   if (!full()) flushParagraph()

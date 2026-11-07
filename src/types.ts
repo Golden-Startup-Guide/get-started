@@ -69,6 +69,8 @@ export interface AppSettings {
   theme: ThemePreference
   /** With the light theme, use soft paper colours instead. Absent means plain light. */
   paper?: boolean
+  /** How handbook notes are shown in the reading room. Absent means the defaults. */
+  reader?: ReaderSettings
   /** Absent in libraries from before live preview, which means 'live'. */
   editorMode?: EditorMode
   /** Absent until a search is first saved. */
@@ -148,3 +150,14 @@ export interface ReadingRecord {
   /** How far through the note the reader was, from 0 to 1, once saved. */
   position?: number
 }
+
+/** The reading room's text: size, style, line spacing, and line length (src/features/notes/ReaderControls.tsx). */
+export interface ReaderSettings {
+  size: 'small' | 'medium' | 'large' | 'larger'
+  /** Classic is a serif for long reading; simple is the interface's sans-serif. */
+  font: 'classic' | 'simple'
+  spacing: 'normal' | 'roomy'
+  width: 'narrow' | 'medium' | 'wide'
+}
+
+export const DEFAULT_READER_SETTINGS: ReaderSettings = { size: 'medium', font: 'classic', spacing: 'normal', width: 'medium' }

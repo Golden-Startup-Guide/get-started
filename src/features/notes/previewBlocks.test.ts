@@ -35,6 +35,10 @@ describe('cardPreview', () => {
     expect(cardPreview('')).toEqual([])
   })
 
+  it('shows what a callout says, without its marker', () => {
+    expect(cardPreview('> [!NOTE]\n> Ask a nurse.')).toEqual([{ kind: 'quote', text: 'Ask a nurse.' }])
+  })
+
   it('stops after a few blocks', () => {
     expect(cardPreview(Array.from({ length: 20 }, (_, index) => `- Item ${index}`).join('\n'))).toHaveLength(6)
   })

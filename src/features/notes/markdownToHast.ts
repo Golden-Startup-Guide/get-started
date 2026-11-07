@@ -1,4 +1,4 @@
-import type { Nodes, Root } from 'hast'
+import type { Element, Nodes, Root } from 'hast'
 import { urlAttributes } from 'html-url-attributes'
 import { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -38,6 +38,29 @@ const processor = unified()
   // Raw HTML is kept as "raw" nodes only so it can be shown as text below; it never renders.
   .use(remarkRehype, { allowDangerousHtml: true })
 
+/** The kinds of callout a quote can start with, as "> [!NOTE]" (the common Markdown form). */
+export const CALLOUT_KINDS = ['note', 'tip', 'important', 'warning', 'caution'] as const
+export type CalloutKind = (typeof CALLOUT_KINDS)[number]
+
+/**
+ * A quote starting with "[!NOTE]" (or TIP, IMPORTANT, WARNING, CAUTION) becomes a callout: an
+ * <aside data-callout="note"> without the marker. The preview adds its label, in the reader's
+ * language; anything else stays an ordinary quote.
+ */
+function markCallout(quote: Element) {
+  const first = quote.children.find((child): child is Element => child.type === 'element')
+  const text = first?.tagName === 'p' ? first.children[0] : undefined
+  if (!first || text?.type !== 'text') return
+  const match = /^\s*\[!(\w+)\][ \t]*\n?/.exec(text.value)
+  const kind = match?.[1].toLowerCase() as CalloutKind | undefined
+  if (!match || !kind || !CALLOUT_KINDS.includes(kind)) return
+  text.value = text.value.slice(match[0].length)
+  // "> [!NOTE]" on a line of its own leaves an empty first paragraph.
+  if (!text.value && first.children.length === 1) quote.children.splice(quote.children.indexOf(first), 1)
+  quote.tagName = 'aside'
+  quote.properties = { ...quote.properties, dataCallout: kind }
+}
+
 /**
  * Parses a note's Markdown into an HTML syntax tree (hast) for the preview.
  *
@@ -57,6 +80,7 @@ export function markdownToHast(markdown: string): Root {
       return index
     }
     if (node.type !== 'element') return
+    if (node.tagName === 'blockquote') markCallout(node)
     if (/^h[1-6]$/.test(node.tagName)) node.properties.id = headingId(textOf(node), usedIds)
     for (const key in urlAttributes) {
       if (!Object.hasOwn(node.properties, key)) continue
