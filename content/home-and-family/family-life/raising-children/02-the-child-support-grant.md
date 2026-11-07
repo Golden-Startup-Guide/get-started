@@ -9,6 +9,8 @@ draft: true
 ---
 The **child support grant** is a monthly payment from the South African Social Security Agency (SASSA) to help caregivers with low incomes look after children.
 
+![A caregiver with a child applying at a SASSA office with a birth certificate and an ID.](02-the-child-support-grant.svg)
+
 ## Who can apply
 
 - The child's **primary caregiver**: the person who looks after the child day to day. This can be a parent, grandparent, aunt, or another person, not only the mother.

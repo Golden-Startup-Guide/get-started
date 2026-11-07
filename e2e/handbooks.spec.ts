@@ -25,6 +25,11 @@ test('reads a built-in handbook, follows its links, and cannot change it', async
   await expect(reader.locator('.reader-location')).toContainText('Health & Wellbeing / Nutrition / Everyday Nutrition')
   await expect(reader.getByRole('textbox')).toHaveCount(0)
   await expect(page).toHaveURL(/note=core-staying-hydrated$/)
+  // Every page has a picture, served by the app itself (not offered as an outside image).
+  const picture = reader.getByRole('img', { name: /drinking a glass of water/ })
+  await expect(picture).toBeVisible()
+  await expect.poll(() => picture.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
+  await expect(reader.getByRole('button', { name: /^Load image/ })).toHaveCount(0)
 
   await reader.getByRole('link', { name: 'Water through the day' }).click()
   await expect(page.getByRole('dialog', { name: 'Water through the day' })).toBeVisible()

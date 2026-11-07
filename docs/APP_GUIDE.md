@@ -267,7 +267,9 @@ content is written in the `content/` folder ([content/README.md](../content/READ
 the build checks it and stops on any mistake. Eight libraries ship: Health &
 Wellbeing, Agriculture, Financial Literacy, Education & Learning, Community
 Development, Skills & Careers, Home & Family, and South Africa, with 49 pages in
-16 notebooks. Each page ends with the sources it was written from. All are
+16 notebooks. Each page has a picture of what it explains (a simple drawing,
+described for screen readers, that shows offline) and ends with the sources it
+was written from. All are
 marked **Draft: not yet reviewed** until qualified reviewers have checked them
 (see [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md), phase 9).
 

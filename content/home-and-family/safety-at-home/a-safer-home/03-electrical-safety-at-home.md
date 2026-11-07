@@ -9,6 +9,8 @@ draft: true
 ---
 Electricity makes life easier, but faulty wiring, overloaded plugs, and illegal connections cause shocks, fires, and deaths every year.
 
+![A wall socket with one plug in it, and an overloaded multi-plug crossed out.](03-electrical-safety-at-home.svg)
+
 ## Plugs and cords
 
 - **Do not overload a plug point.** Running a kettle, heater, and stove from one plug or adaptor makes it overheat and can cause a fire.

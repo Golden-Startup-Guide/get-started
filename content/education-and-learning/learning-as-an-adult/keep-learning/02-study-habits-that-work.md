@@ -9,6 +9,8 @@ draft: true
 ---
 Adults often study around work and family. A few habits make that time count.
 
+![An adult studying at night with notes, a timer, and a list of goals being ticked off.](02-study-habits-that-work.svg)
+
 ## Make time
 
 - Short, regular sessions beat long, rare ones: 30 minutes on most days works better than four hours once a week.

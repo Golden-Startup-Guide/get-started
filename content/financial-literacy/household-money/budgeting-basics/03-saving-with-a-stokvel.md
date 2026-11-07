@@ -9,6 +9,8 @@ draft: true
 ---
 A stokvel is a group of people who each pay an agreed amount into a shared fund, regularly. The money is then paid out to members in turn, or at the end of the year, or used for an agreed purpose. There are hundreds of thousands of stokvels in South Africa.
 
+![Members of a stokvel sitting in a circle, each putting money into a shared box.](03-saving-with-a-stokvel.svg)
+
 ## Kinds of stokvel
 
 - **Rotating:** each month one member receives the whole month's contributions.

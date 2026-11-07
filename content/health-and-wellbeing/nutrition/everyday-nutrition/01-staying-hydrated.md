@@ -9,6 +9,8 @@ draft: true
 ---
 Hydration is part of everyday wellbeing. Small, regular choices make it easier to drink enough, especially on hot or busy days.
 
+![A woman drinking a glass of water on a sunny day, with a full water bottle beside her.](01-staying-hydrated.svg)
+
 ## Keep water close
 
 - Keep a glass or bottle of clean water where you can see it.

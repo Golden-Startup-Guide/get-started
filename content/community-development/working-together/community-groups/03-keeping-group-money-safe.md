@@ -9,6 +9,8 @@ draft: true
 ---
 Disputes about money break up more groups than anything else. A few simple controls protect the money, and protect the treasurer from suspicion.
 
+![Two group members signing a record book next to a bank card and a locked cash box.](03-keeping-group-money-safe.svg)
+
 ## Use a bank account in the group's name
 
 - Never keep group money in one member's personal account.

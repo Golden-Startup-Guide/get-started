@@ -9,6 +9,8 @@ draft: true
 ---
 Vegetables grow best when planted in the right season. South Africa has two main rainfall patterns:
 
+![A calendar with seasons: seedlings in spring, tomatoes in summer, and cabbages in winter.](03-what-to-plant-when.svg)
+
 - **Summer rainfall areas**, most of the country, including Gauteng, KwaZulu-Natal, Limpopo, Mpumalanga, the Free State, North West, and the Eastern Cape.
 - **Winter rainfall areas**, mainly the Western Cape.
 

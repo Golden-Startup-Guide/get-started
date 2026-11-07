@@ -9,6 +9,8 @@ draft: true
 ---
 Reading aloud to children is one of the best things a family can do for their learning. It builds language, imagination, concentration, and a love of books, and it helps children learn to read for themselves.
 
+![A grandmother reading a picture book aloud with a child on the couch.](01-reading-with-children.svg)
+
 ## Start early, and start in your home language
 
 - You can read to babies. They enjoy your voice and the pictures long before they understand the words.

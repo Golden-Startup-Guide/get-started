@@ -9,6 +9,8 @@ draft: true
 ---
 Dehydration means the body has lost more water than it has taken in. Mild dehydration is common on hot days, during illness, or after hard work, and drinking water usually helps.
 
+![A tired man holding his head on a hot day, next to a glass of water and warning signs of thirst.](03-signs-of-dehydration.svg)
+
 ## Common signs
 
 - Feeling thirsty

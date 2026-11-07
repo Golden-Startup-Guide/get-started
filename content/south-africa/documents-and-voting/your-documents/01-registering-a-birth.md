@@ -9,6 +9,8 @@ draft: true
 ---
 A birth certificate proves who a child is and that they are South African. A child needs it to get an ID later, to apply for the child support grant, and to enrol at school.
 
+![A parent with a newborn baby at a Home Affairs office, receiving a birth certificate.](01-registering-a-birth.svg)
+
 ## Register within 30 days
 
 The law says a birth must be registered **within 30 days**. Registering within 30 days is **free**, and you receive an unabridged birth certificate free of charge.

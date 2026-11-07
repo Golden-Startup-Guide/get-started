@@ -9,6 +9,8 @@ draft: true
 ---
 Many small businesses fail because they start before checking that enough people will buy, at a price that covers the costs. Testing first saves money and heartache.
 
+![A small food stall owner asking customers what they would buy, before spending much money.](01-testing-a-business-idea.svg)
+
 ## Ask three questions
 
 1. **Who will buy, and why?** Name your customers: neighbours, commuters, schools, small shops. What problem do you solve for them?

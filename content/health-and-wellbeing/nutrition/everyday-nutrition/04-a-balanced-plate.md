@@ -9,6 +9,8 @@ draft: true
 ---
 Eating well does not need special or expensive food. South Africa's food-based dietary guidelines describe a few simple habits that work for most families.
 
+![A plate divided into vegetables (half), starch (a quarter), and protein (a quarter), with a glass of water.](04-a-balanced-plate.svg)
+
 ## The food groups
 
 Try to include something from most of these groups every day:

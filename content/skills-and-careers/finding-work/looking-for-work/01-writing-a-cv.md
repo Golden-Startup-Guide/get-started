@@ -9,6 +9,8 @@ draft: true
 ---
 A CV (curriculum vitae) is a short summary of who you are, what you can do, and what you have done. It is often the first thing an employer sees, so make it clear and easy to read.
 
+![A one-page CV with a photo, contact details, and sections for experience and skills, with a pen.](01-writing-a-cv.svg)
+
 ## What to include
 
 1. **Your details:** full name, phone number, email address, and the area where you live. You do not need to include your ID number, age, or a photo unless asked.

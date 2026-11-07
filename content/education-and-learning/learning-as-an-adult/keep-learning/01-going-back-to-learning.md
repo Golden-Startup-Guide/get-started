@@ -9,6 +9,8 @@ draft: true
 ---
 It is never too late to learn. Many adults go back to finish school, learn to read and write, or gain a skill for work.
 
+![An adult learner arriving at a community college with books in hand.](01-going-back-to-learning.svg)
+
 ## Community Education and Training (CET) colleges
 
 South Africa has nine public **CET colleges**, one in each province, with thousands of **Community Learning Centres** in schools, libraries, and community halls. They are for adults and young people who are out of school, and they offer:

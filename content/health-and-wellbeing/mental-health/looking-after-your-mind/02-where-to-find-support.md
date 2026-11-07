@@ -9,6 +9,8 @@ draft: true
 ---
 Asking for help is a sign of strength, not weakness. These services are free and confidential.
 
+![A person phoning a free helpline and talking to a counsellor who listens.](02-where-to-find-support.svg)
+
 ## Helplines
 
 | Service | Number | When |

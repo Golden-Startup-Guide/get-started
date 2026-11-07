@@ -2096,6 +2096,25 @@ html[data-theme='dark'] .workspace {
   padding: 0.15rem 0.6rem;
 }
 
+/*
+ * Every handbook page has a picture (content/README.md): the column's full width, never wider.
+ * The drawings are all 640 × 360, so their space is kept before they load and the text never
+ * jumps (which would also undo returning to where the reader left off).
+ */
+.handbook-text img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  margin: 1.5em 0;
+  border-radius: 1rem;
+}
+
+/* The drawings have light backgrounds; soften them on the dark theme. */
+.workspace[data-theme='dark'] .handbook-text img {
+  filter: brightness(0.88);
+}
 
 .handbook-actions {
   display: flex;

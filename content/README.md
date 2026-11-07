@@ -56,6 +56,19 @@ A note (any other `.md` file in a notebook folder):
 
 End every note with a `## Sources` section listing, as links, the public sources it was written from, preferring official ones (government departments, the WHO, regulators). Reviewers check the text against them. Do not quote amounts that change every year, such as grant amounts; point to where the current figure is published.
 
+## Pictures
+
+Every note has at least one picture; the build stops when one is missing. Put the file next to the note, with the same name (`01-staying-hydrated.svg` beside `01-staying-hydrated.md`), and show it after the first paragraph:
+
+```markdown
+![A woman drinking a glass of water on a sunny day.](01-staying-hydrated.svg)
+```
+
+- The words in the brackets say what the picture shows, for people who cannot see it. They are required.
+- Pictures are files in `content/`, never links to other websites, so they show offline. The build copies each one to `assets/picture-<name>-<hash>.svg`, downloaded with the handbooks.
+- Use simple drawings (SVG) of a few kilobytes, without words in them, since the app is translated. `.png`, `.jpg`, and `.webp` also work, but photos are large: the handbooks and their pictures share a 600 KiB budget (`scripts/checkSizes.mjs`).
+- The drawings so far are flat illustrations 640 × 360 with rounded corners, a soft background per library, and people of different ages and skin tones. New pictures should match them.
+
 ## Links
 
 `[[Title]]` links to another handbook note by its title, and `[[Title#Heading]]` to a section. The

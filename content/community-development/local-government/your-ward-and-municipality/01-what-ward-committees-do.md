@@ -9,6 +9,8 @@ draft: true
 ---
 Every municipality is divided into **wards**. Each ward elects a **ward councillor**, and each ward has a **ward committee**.
 
+![A ward councillor listening to community members at a meeting outside the municipal offices.](01-what-ward-committees-do.svg)
+
 ## Who is on it
 
 The ward committee is **chaired by the ward councillor**. Its members represent different parts of the ward and different interests, such as youth, women, business, health, education, and safety.

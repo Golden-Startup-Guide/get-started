@@ -9,6 +9,8 @@ draft: true
 ---
 Your identity document proves who you are. You need it to open a bank account, apply for a job or a grant, register to vote, and much more.
 
+![A young person holding up their new smart ID card.](02-getting-your-id.svg)
+
 ## Your first ID
 
 - South African citizens can apply from the age of **16**.

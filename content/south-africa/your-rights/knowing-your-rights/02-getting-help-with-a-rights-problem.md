@@ -9,6 +9,8 @@ draft: true
 ---
 If your rights are not respected, you do not have to face it alone, and you do not need money to get help.
 
+![A person getting free advice from a legal adviser, with the scales of justice.](02-getting-help-with-a-rights-problem.svg)
+
 ## Free legal advice: Legal Aid South Africa
 
 Legal Aid South Africa gives free legal advice to anyone, and free legal representation in court to people who cannot afford a lawyer and qualify.

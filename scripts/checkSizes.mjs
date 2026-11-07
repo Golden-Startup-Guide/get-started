@@ -10,7 +10,8 @@ import { gzipSync } from 'node:zlib'
 
 const BUDGETS = {
   installKiB: 1500,
-  // Text compresses well and is cheap; images in handbooks must stay few and small.
+  // Text compresses well and is cheap. Every handbook page has a picture, so pictures must stay
+  // small: simple drawings (SVG) of a few kilobytes each.
   handbooksKiB: 600,
   startupScriptGzipKiB: 125,
   startupStylesGzipKiB: 15,
@@ -22,7 +23,7 @@ const kib = (bytes) => bytes / 1024
 // The precache list, as written into the service worker.
 const serviceWorker = readFileSync(join(dist, 'sw.js'), 'utf8')
 const precached = [...serviceWorker.matchAll(/url:"([^"]+)"/g)].map((match) => decodeURIComponent(match[1]))
-const isHandbook = (file) => /^assets\/core-[^/]+\.js$/.test(file)
+const isHandbook = (file) => /^assets\/(?:core-[^/]+\.js|picture-[^/]+)$/.test(file)
 const sizeOf = (files) => files.reduce((sum, file) => sum + statSync(join(dist, file)).size, 0)
 const appFiles = precached.filter((file) => !isHandbook(file))
 const handbookFiles = precached.filter(isHandbook)
@@ -37,7 +38,7 @@ const entry = (extension) => {
 
 const rows = [
   ['Install download (precached)', kib(install), BUDGETS.installKiB, `${appFiles.length} files`],
-  ['Built-in handbooks (precached)', kib(sizeOf(handbookFiles)), BUDGETS.handbooksKiB, `${handbookFiles.length} libraries`],
+  ['Built-in handbooks (precached)', kib(sizeOf(handbookFiles)), BUDGETS.handbooksKiB, `${handbookFiles.filter((file) => file.endsWith('.js')).length} libraries, ${handbookFiles.filter((file) => !file.endsWith('.js')).length} pictures`],
   ['Start-up script, gzipped', kib(entry('.js')), BUDGETS.startupScriptGzipKiB, ''],
   ['Start-up styles, gzipped', kib(entry('.css')), BUDGETS.startupStylesGzipKiB, ''],
 ]

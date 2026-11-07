@@ -9,6 +9,8 @@ draft: true
 ---
 Discipline means teaching, not punishing. Positive discipline helps children learn how to behave by building a good relationship and setting clear expectations, without violence.
 
+![A father kneeling to talk calmly with his child, eye to eye.](01-positive-discipline.svg)
+
 ## Why not hitting?
 
 Hitting and harsh shouting can stop a behaviour for a moment, but they create fear, damage trust, and teach children that hurting others is a way to solve problems. In South Africa, the Constitutional Court ruled in 2019 that physical punishment of children at home is not allowed.

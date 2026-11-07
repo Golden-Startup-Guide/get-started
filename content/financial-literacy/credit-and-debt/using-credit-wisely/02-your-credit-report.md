@@ -9,6 +9,8 @@ draft: true
 ---
 A credit report is a record of how you have handled credit: your accounts, how much you owe, and whether you have paid on time. Lenders, landlords, and some employers look at it before deciding about you.
 
+![A credit report on paper with a magnifying glass, checking it for mistakes.](02-your-credit-report.svg)
+
 ## Get yours free
 
 The National Credit Act gives you the right to **one free credit report every year from each registered credit bureau**. The main consumer bureaus are:

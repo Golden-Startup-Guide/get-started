@@ -9,6 +9,8 @@ draft: true
 ---
 An interview is a conversation: the employer wants to know if you can do the job and will fit in, and you want to know if the job suits you.
 
+![A job seeker shaking hands with an interviewer across a desk.](02-preparing-for-an-interview.svg)
+
 ## Before the day
 
 - **Learn about the employer:** what they do, and what the job involves.
