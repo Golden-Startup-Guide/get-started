@@ -94,6 +94,7 @@ const catalog: Catalog = {
   "Continue reading": "متابعة القراءة",
   "Note {index} of {count}": "الملاحظة {index} من {count}",
   "Start reading": "ابدأ القراءة",
+  "Choose a library below.": "اختر مكتبة أدناه.",
   "Choose a library below. The handbooks are ready to read, even offline.": "اختر مكتبة أدناه. الأدلة جاهزة للقراءة، حتى دون اتصال.",
   "Explore libraries": "استكشاف المكتبات",
   "Your own library: private, on this device.": "مكتبتك الخاصة: خاصة، على هذا الجهاز.",

@@ -1,12 +1,12 @@
-# My Notes - Product Roadmap
+# The Personal Knowledge Library - Product Roadmap
 
-This document is the single source of truth for the planned evolution of My Notes. It records the product direction, current capabilities, planned feature requirements, and a recommended implementation sequence. A status of **Planned** or **Future** describes intent, not a delivery commitment or release date.
+This document is the single source of truth for the planned evolution of The Personal Knowledge Library (called My Notes until 1.2.0). It records the product direction, current capabilities, planned feature requirements, and a recommended implementation sequence. A status of **Planned** or **Future** describes intent, not a delivery commitment or release date.
 
 ## Vision
 
-My Notes is an offline-first Progressive Web App designed to help users capture, organise, search, and manage personal knowledge.
+The Personal Knowledge Library is an offline-first Progressive Web App: a library of practical, illustrated handbooks to read, alongside the reader's own notes, organised, connected, discovered, and preserved on their device.
 
-The long-term vision is to evolve from a simple note-taking application into a Personal Knowledge Library where information can be organised, connected, discovered, and preserved.
+It began as a note-taking app (My Notes, 1.0 and 1.1). Version 1.2.0 made it a reading-first library.
 
 Core principles:
 
@@ -18,7 +18,7 @@ Core principles:
 - No Mandatory Cloud Dependencies
 - Scalable Architecture
 
-**Next:** the reading-first redesign, *The Personal Knowledge Library*, is planned in [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md).
+**Status (1.2.0, November 2026):** the reading-first redesign is built, in ten phases recorded in [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md), and checked against the design specification in [ACCEPTANCE.md](ACCEPTANCE.md). **Next:** reviews of the handbooks by qualified people, the screen-reader and usability checks in ACCEPTANCE.md, and later, downloadable content packs and handbooks in more languages.
 
 ## Roadmap conventions
 
@@ -27,7 +27,7 @@ Core principles:
 - **Future** means it depends on product, privacy, or architectural decisions and is not an immediate commitment.
 - The recommended implementation order later in this document is dependency- and risk-aware. It intentionally differs from the phase grouping where earlier delivery would provide more value or reduce data-loss risk.
 - Every implementation should preserve offline operation, local ownership of note data, and existing user data. Storage migrations must be versioned and tested against existing databases.
-- Cloud services and AI providers remain optional. No roadmap item may make an account or network connection mandatory for core note-taking.
+- Cloud services remain optional, and AI is not planned ([decision 10](DECISIONS.md#10-no-ai-chat-social-or-dashboard-features)). No roadmap item may make an account or network connection mandatory for core note-taking.
 
 # Current Version (Completed)
 
@@ -371,7 +371,7 @@ Status:
 
 **Completed** — relationships are stored independently from note content in IndexedDB. Links and backlinks work offline; no network service or graph dependency is used. Trash and restore preserve relationships, while permanent deletion removes both incoming and outgoing links. Backup format version 3 preserves links and remains backward-compatible with version 1 and 2 backups.
 
-## Feature: Knowledge Graph
+## Feature: Note map (formerly Knowledge Graph)
 
 Requirements:
 
@@ -381,7 +381,7 @@ Requirements:
 
 Status:
 
-**Completed** — an offline relationship explorer renders a bounded, keyboard-operable SVG neighborhood from stored note links, with directional arrows, backlinks, connected-note discovery, and exact-note opening. The complete relationship lists remain available when a note has more connections than the visual graph displays. No graph library was added, avoiding bundle cost for this focused explorer.
+**Completed** — the note map opens **Around a note**: a bounded, keyboard-operable SVG neighbourhood from stored note links, with directional arrows, zoom, **Skip to the list**, and the same notes listed below it. **Whole library** draws every note with sigma.js (WebGL), loaded only when opened. Handbook pages also list what they are **Mentioned in** and their **Related notes**, each with a plain reason.
 
 # Phase 8 - Personal Knowledge Library
 
@@ -420,68 +420,50 @@ Status:
 
 **Completed** — the offline-first hierarchy is Library → Shelf → Notebook → Note. The Library home lists its shelves; navigation supports every level and preserves a direct All Notes view. Libraries and shelves can be created, renamed, and deleted only with an explicit destination for their contents. Schema version 6 assigns existing notebooks to Personal Library → General without changing note IDs or content. Version 4 backups preserve the hierarchy and remain compatible with versions 1–3.
 
-# Phase 9 - AI Features
+# Phase 9 - The Personal Knowledge Library (1.2.0)
 
-## AI Summaries
+Requirements: the design specification ([design/peoples-home-spec.md](design/peoples-home-spec.md)), planned in [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md).
 
-Requirements:
-
-- Summarise long notes
-- Extract key points
-- Extract action items
-
-Status:
-
-**Future**
-
-## AI Search
-
-Example:
-
-> What did I write about stress?
-
-Requirements:
-
-- Semantic search
-- Natural language queries
-- Context-aware answers
+- Built-in, read-only handbooks: eight libraries and 49 pages, each with a picture and its sources, offline from the first launch
+- Home, with Continue reading, Explore libraries, and Recently added
+- Addresses for every page and note, a breadcrumb, and a rail when the sidebar is collapsed
+- Library, shelf, and notebook pages made for reading
+- The reading room, with reading settings and the reader's place remembered
+- One Search across the handbooks and personal notes
+- Mentioned in, Related notes, and the note map around a note
+- WCAG 2.2 AA, checked automatically and recorded in [ACCEPTANCE.md](ACCEPTANCE.md)
 
 Status:
 
-**Future**
+**Completed** in 1.2.0. The handbooks stay marked as drafts until qualified reviewers have checked them.
 
-AI capabilities must clearly disclose where processing occurs. Local processing is preferred when practical. Any cloud integration must be opt-in, explain what note content is sent and to whom, and leave the rest of the application usable offline without AI.
+# Not planned: AI features
+
+AI summaries and AI search were once listed here as future work. They are ruled out by [decision 10](DECISIONS.md#10-no-ai-chat-social-or-dashboard-features), together with chat, social, and dashboard features. A proposal for any of them needs a new decision first.
 
 # Technical Roadmap
 
 ## Current Stack
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- IndexedDB
-- Service Worker
+- React, TypeScript, and Vite
+- Tailwind CSS, with design tokens in `src/workspace.css`
+- Zustand for state
+- IndexedDB (`idb`)
+- CodeMirror 6 for writing
+- unified, remark, and KaTeX and Mermaid (loaded on demand) for notes
+- sigma.js and graphology for the whole-library note map (loaded on demand)
+- A Workbox service worker (`vite-plugin-pwa`) that precaches the app and the handbooks
 
 ## Future Technologies
 
 ### Search
 
-- MiniSearch
-- FlexSearch
+- Search is a local scan in a worker, within the targets in [PERFORMANCE.md](PERFORMANCE.md) at 20,000 notes. MiniSearch or FlexSearch are candidates only if those targets are missed.
 
-### Markdown
+### Content
 
-- React Markdown
-
-### Graph Visualisation
-
-- The current bounded neighborhood explorer uses in-house SVG and adds no graph-library bundle cost. Reconsider a library only if future graph interactions exceed this focused view.
-
-### AI
-
-- Local AI models
-- Cloud AI integration (optional)
+- Downloadable content packs, once the handbooks outgrow their 600 KiB budget.
+- Handbooks in more languages; the content files allow translations.
 
 These are candidates rather than requirements. Evaluate bundle size, offline behavior, accessibility, security, and maintenance cost against the feature before adopting a library or service.
 
@@ -505,9 +487,9 @@ This historical order was based on the V1 code: a single `Note` record with stri
 | 12 | File, image, and audio attachments | High | High | **Completed in Version 5.** Shared IndexedDB storage, size limits, quota errors, backup/import, deletion cleanup, offline previews, and audio recording/playback. |
 | 13 | Note History | Medium to high | High | Requires revision retention limits, timestamps, comparison UI, and restore semantics. Build after autosave and the richer content model so revision boundaries are reliable and storage growth is controlled. |
 | 14 | Linked Notes and Backlinks | High | Medium to high | **Completed.** Stable note-ID relationships, editor link management, backlinks, Trash integrity, and version 3 backup/restore support. The relationship model is independent from graph rendering. |
-| 15 | Knowledge Graph | Medium | High | Depends on linked-note relationships and a useful amount of user data. Begin with a bounded, accessible relationship explorer; assess graph library bundle cost before adoption. |
+| 15 | Note map (formerly Knowledge Graph) | Medium | High | **Completed.** Around a note (accessible SVG with lists) first, and the whole library (sigma.js) loaded on demand. |
 | 16 | Personal Knowledge Library / Shelves | High long-term | High | **Completed.** Library → Shelf → Notebook → Note navigation, Library home, safe schema migration and backup compatibility, and a direct All Notes view. |
-| 17 | AI Summaries and AI Search | Variable | High / privacy-sensitive | Depends on a mature content model and clear user consent, processing location, cost, and offline behavior. Prototype opt-in integrations independently; do not make AI a prerequisite for search or core note operations. |
+| 17 | AI Summaries and AI Search | — | — | **Not planned** ([decision 10](DECISIONS.md#10-no-ai-chat-social-or-dashboard-features)). |
 
 ### Delivery guardrails
 
@@ -515,7 +497,7 @@ This historical order was based on the V1 code: a single `Note` record with stri
 - For any IndexedDB schema change, increment the database version, write an idempotent migration, and verify that an existing V1 database remains readable and editable.
 - Treat imports, replacements, migrations, and permanent deletion as data-sensitive operations: validate first, explain the impact, and provide recovery where feasible.
 - Measure search performance before adding MiniSearch or FlexSearch; the current in-memory scan is simple and may remain adequate for small personal libraries.
-- Keep optional rich-content and AI dependencies out of the initial bundle when practical, and preserve a usable offline path.
+- Keep optional rich-content dependencies out of the initial bundle when practical, and preserve a usable offline path.
 - Add keyboard and screen-reader support for new dialogs, navigation, previews, and graph interactions.
 
 # Success Criteria
@@ -532,4 +514,4 @@ and ultimately become:
 
 **Personal Knowledge Library**
 
-where users can organise, connect, preserve, and discover information in a structured and meaningful way.
+where users can organise, connect, preserve, and discover information in a structured and meaningful way. With 1.2.0 it is one: a library to read, with the reader's own notes beside it.

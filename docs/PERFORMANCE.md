@@ -1,4 +1,6 @@
-# My Notes - Performance Baseline
+# The Personal Knowledge Library - Performance Baseline
+
+*Written when the app was called My Notes; it is now The Personal Knowledge Library (1.2.0). The record below is kept as it was, apart from status updates.*
 
 **Date:** 2026-11-01
 **Status:** Baseline recorded before any performance work; causes 1 (the link picker) and 2 (rendering every card) have since been fixed, see [Progress](#progress). Targets come from [the architecture vision](ARCHITECTURE_VISION.md), section 3E.

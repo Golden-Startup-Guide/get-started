@@ -1,13 +1,20 @@
-# My Notes - Library Catalog and Rollout Plan
+# The Personal Knowledge Library - Library Catalog
 
-This document focuses on the **libraries** that could make up My Notes'
-community knowledge resource. It proposes subject areas and example
-organization for discussion; it does not create these libraries or change the
-application's current starter content.
+This document proposed the **libraries** that could make up the app's
+knowledge collection, with example shelves and notebooks, when the app was
+called My Notes.
+
+**Status (1.2.0):** all eight libraries proposed here now ship as built-in
+handbooks: Health & Wellbeing, Agriculture, Financial Literacy, Education &
+Learning, Community Development, Skills & Careers, Home & Family, and South
+Africa, with 16 shelves, 16 notebooks, and 49 illustrated pages. Their actual
+shelves and pages are in [content/](../content/), and how they are written in
+[content/README.md](../content/README.md). They began smaller than the shelves
+proposed below, which remain ideas for growing them.
 
 ## The library question
 
-My Notes has reached the organizational stage:
+The app had reached the organizational stage:
 
 ```text
 Library → Shelf → Notebook → Note
@@ -241,7 +248,7 @@ leaving room for a deeper, interconnected collection over time.
 
 ## Direction
 
-The long-term opportunity is for My Notes to grow from a personal note-taking
+The long-term opportunity is for the app to grow from a personal note-taking
 app into a **community knowledge library platform**: a place where useful
 information can be organized, preserved, and connected across subjects. The
 five-library Version 1 catalog is a practical first step toward that vision;

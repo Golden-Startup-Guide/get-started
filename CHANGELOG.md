@@ -7,6 +7,10 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-07
+
+The Personal Knowledge Library: a library of eight illustrated handbooks to read, offline, beside your own notes.
+
 ### Added
 - **The handbooks**: eight libraries (Health & Wellbeing, Agriculture, Financial Literacy, Education & Learning, Community Development, Skills & Careers, Home & Family, South Africa), 49 practical, South African pages, each listing its sources. They are marked as drafts until reviewed by qualified people.
 - **A picture on every handbook page**: 49 simple drawings showing what the page explains, each described for people who cannot see it, downloaded with the handbooks so they show offline. The build refuses a handbook page without one.
@@ -32,6 +36,19 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 - New colours from the design specification: warm paper, forest green, and a blue focus ring, in light and dark. Every pairing is checked against WCAG 2.2 AA.
 - Titles and note text use a serif for easier reading.
 - The sidebar is 264 px wide; tablets up to 1199 px use the navigation drawer. On phones, the page title and its location sit under the header buttons with the full width.
+
+### Fixed
+- Closing a note after following a link inside it (or Previous, Next, or Back) returns focus to where you opened it, not to the **New note** button.
+- Home promises offline reading only once the app is saved on the device.
+- Jumping to a section from **Contents** no longer scrolls smoothly when the system asks for less motion.
+- In Windows Contrast themes, the current page, the chosen option, focus on menu items, and the reading progress stay visible.
+
+### Accessibility and acceptance
+- The design specification's acceptance checklist is recorded item by item in [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md), with new checks for a keyboard-only journey, tablets, high contrast, and reduced motion. It also guides the checks that need people: screen readers, a usability session with readers, and the handbooks' review.
+
+### Documentation
+- The README, roadmap, guide, plan, catalog, privacy policy, and translation notes describe the app as it is in 1.2.0, with screenshots of Home and the reading room. Older documents written for My Notes say so at the top.
+- Two decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md): the handbooks come with the app, read-only (9), and there are no AI, chat, social, or dashboard features (10). The roadmap's old AI items are marked as not planned.
 
 ## [1.1.0] - 2026-11-06
 

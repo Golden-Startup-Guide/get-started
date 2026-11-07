@@ -1,7 +1,10 @@
-# My Notes - Architecture Plan for a World-Class, AI-Free Knowledge Platform
+# The Personal Knowledge Library - Architecture Plan for a World-Class, AI-Free Knowledge Platform
+
+*Written when the app was called My Notes; it is now The Personal Knowledge Library (1.2.0). The record below is kept as it was, apart from status updates.*
 
 **Date:** 2026-10-31
 **Status:** Proposed direction. Nothing here is a delivery commitment. Each major choice needs an architecture decision record (ADR) before work starts.
+**Since then:** the decisions it asked for are recorded in [DECISIONS.md](DECISIONS.md) (including no AI, decision 10), and the reading-first redesign in [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md).
 **Related:** [Product roadmap](ROADMAP.md) (feature history and plans) · [Audit](AUDIT.md) (current quality baseline) · [App guide](APP_GUIDE.md) (how the app works today)
 
 This document describes how My Notes could grow from a solid local-first notes app into one of the best personal knowledge platforms, **without using AI**. Developers and AI assistants working in this repository should read it before proposing architectural changes, and keep new work consistent with its principles.

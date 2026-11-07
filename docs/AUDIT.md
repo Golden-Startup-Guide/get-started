@@ -1,4 +1,6 @@
-# My Notes - Code and Data-Safety Audit
+# The Personal Knowledge Library - Code and Data-Safety Audit
+
+*Written when the app was called My Notes; it is now The Personal Knowledge Library (1.2.0). The record below is kept as it was, apart from status updates.*
 
 **Date:** 2026-10-31
 **Scope:** All source code, IndexedDB storage layer, backup/import, build, tests, dependencies, and documentation at commit `b1b005d`.

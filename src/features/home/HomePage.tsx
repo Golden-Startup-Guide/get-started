@@ -110,7 +110,8 @@ export function HomePage({ onNavigate, onOpenNote }: { onNavigate: (view: View) 
         ) : (
           <section className="home-continue" aria-labelledby="home-start-heading">
             <h2 id="home-start-heading" className="section-label">{t('Start reading')}</h2>
-            <p className="home-continue-place">{t('Choose a library below. The handbooks are ready to read, even offline.')}</p>
+            {/* Offline reading is promised only once this device has actually saved the app. */}
+            <p className="home-continue-place">{installed ? t('Choose a library below. The handbooks are ready to read, even offline.') : t('Choose a library below.')}</p>
           </section>
         )
       )}

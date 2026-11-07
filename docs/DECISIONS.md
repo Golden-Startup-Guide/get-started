@@ -1,6 +1,8 @@
 # Decisions
 
-The hard-to-reverse choices behind My Notes, decided on November 5, 2026. Each
+The hard-to-reverse choices behind The Personal Knowledge Library (called My
+Notes until 1.2.0). Decisions 1 to 8 were made on November 5, 2026, and 9 and 10
+on November 6, with the reading-first redesign. Each
 records what was chosen, why, and what would make it worth revisiting. They
 answer the five questions in
 [ARCHITECTURE_VISION.md §6](ARCHITECTURE_VISION.md#6-decisions-to-make-first),
@@ -8,7 +10,7 @@ plus how the app reaches desktop and phone.
 
 ## 1. Business model: free and open source, with no service to run
 
-**Decision.** My Notes is free, open source under the [MIT licence](../LICENSE),
+**Decision.** The app is free, open source under the [MIT licence](../LICENSE),
 and has no server, accounts, subscriptions, or paid tier.
 
 **Why.** The app's promise is privacy and ownership: notes live on the device,
@@ -86,7 +88,7 @@ with bring-your-own storage.
 
 ## 6. Desktop and phone: the installable web app
 
-**Decision.** My Notes reaches desktop and phone as a Progressive Web App. It
+**Decision.** The app reaches desktop and phone as a Progressive Web App. It
 installs from the browser (Chrome, Edge, Safari on iPhone and iPad through Add
 to Home Screen, and Android), works offline, and opens in its own window.
 There is no Electron, Tauri, or app-store build. Pages and notes are captured
@@ -137,3 +139,34 @@ avoids is small: a clear message when a name is taken.
 by their path (`Library › Shelf › Notebook`) everywhere they are shown,
 matched, and imported.
 
+## 9. The handbooks come with the app, read-only
+
+**Decision.** The app ships curated handbooks (libraries, shelves, notebooks,
+and pages written in `content/`). They are part of every install, readable
+offline from the first launch, versioned with the app, and read-only. People
+make a personal copy of a page, or write a note about it, to work with one.
+They are not in backups, since every install already has them.
+
+**Why.** In the owner's words: "a Library with Books, not an Empty Note-Taking
+App". The first launch should feel like entering a stocked library. Bundling
+keeps it offline and private: nothing is fetched, and nobody learns what is
+read.
+
+**Revisit if** the handbooks outgrow their size budget (600 KiB,
+`scripts/checkSizes.mjs`). Downloadable content packs are the planned next
+step then.
+
+## 10. No AI, chat, social, or dashboard features
+
+**Decision.** The app has no AI features (assistants, generated summaries,
+semantic search, or chat with notes), no communication (chat, comments, voice,
+or video calls), no social features (profiles, likes, follows, or feeds), and
+no dashboards (activity feeds, scores, streaks, or charts of reading).
+
+**Why.** The design specification rules these out, and the owner confirmed it
+when the redesign began. The app is for reading and keeping knowledge calmly
+and privately. Each of these would send content off the device, compete with
+reading for attention, or both.
+
+**Revisit if** the owner decides otherwise. A proposal needs a new decision
+here first, saying where any processing happens and what leaves the device.
