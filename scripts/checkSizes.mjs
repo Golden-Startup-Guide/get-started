@@ -30,25 +30,42 @@ const handbookFiles = precached.filter(isHandbook)
 const install = sizeOf(appFiles)
 
 const assets = readdirSync(join(dist, 'assets'))
-const entry = (extension) => {
+/** What a script imports at load time (`import "./x.js"`, `from "./x.js"`), not on demand. */
+const staticImports = (file) =>
+  [...readFileSync(join(dist, file), 'utf8').matchAll(/(?:from|import)\s*"\.\/([^"]+\.js)"/g)].map((match) => `assets/${match[1]}`)
+
+// The start-up script with every file it imports at load time: the bundler can split start-up
+// code into several files (Vite 8 does), and all of them are downloaded before the app starts.
+const startupFiles = (extension) => {
   const file = assets.find((name) => name.startsWith('index-') && name.endsWith(extension))
   if (!file) throw new Error(`No start-up ${extension} file in dist/assets`)
-  return gzipSync(readFileSync(join(dist, 'assets', file))).length
+  const files = new Set([`assets/${file}`])
+  if (extension === '.js') {
+    const queue = [...files]
+    while (queue.length) {
+      for (const imported of staticImports(queue.pop())) {
+        if (!files.has(imported)) {
+          files.add(imported)
+          queue.push(imported)
+        }
+      }
+    }
+  }
+  return [...files]
 }
+const entry = (extension) => startupFiles(extension).reduce((sum, file) => sum + gzipSync(readFileSync(join(dist, file))).length, 0)
 
 const rows = [
   ['Install download (precached)', kib(install), BUDGETS.installKiB, `${appFiles.length} files`],
   ['Built-in handbooks (precached)', kib(sizeOf(handbookFiles)), BUDGETS.handbooksKiB, `${handbookFiles.filter((file) => file.endsWith('.js')).length} libraries, ${handbookFiles.filter((file) => !file.endsWith('.js')).length} pictures`],
-  ['Start-up script, gzipped', kib(entry('.js')), BUDGETS.startupScriptGzipKiB, ''],
+  ['Start-up script, gzipped', kib(entry('.js')), BUDGETS.startupScriptGzipKiB, `${startupFiles('.js').length} files`],
   ['Start-up styles, gzipped', kib(entry('.css')), BUDGETS.startupStylesGzipKiB, ''],
 ]
 // Every file a precached script imports at load time must be precached too, or that script fails
 // offline. (Imports on demand, `import("./…")`, may load later from the network.)
 const missing = []
 for (const file of precached.filter((name) => name.endsWith('.js'))) {
-  const code = readFileSync(join(dist, file), 'utf8')
-  for (const match of code.matchAll(/(?:from|import)\s*"\.\/([^"]+\.js)"/g)) {
-    const imported = `assets/${match[1]}`
+  for (const imported of staticImports(file)) {
     if (!precached.includes(imported)) missing.push(`${file} imports ${imported}`)
   }
 }

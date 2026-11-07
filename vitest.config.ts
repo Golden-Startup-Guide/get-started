@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
-import { coreContentPlugin } from './scripts/coreContent'
+import { coreContentPlugin } from './scripts/coreContent.ts'
 
 export default defineConfig({
   plugins: [react(), coreContentPlugin(fileURLToPath(new URL('./content', import.meta.url)))],
