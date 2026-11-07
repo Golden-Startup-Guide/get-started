@@ -1,5 +1,7 @@
 # The Personal Knowledge Library - UI Design
 
+*Superseded: this was the first interface direction. The design specification ([design/peoples-home-spec.md](design/peoples-home-spec.md)) replaced it, and was built as planned in [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md). Where they differ, the specification and the app guide describe the app as it is. For example, the Knowledge Graph is now the note map, and backlinks are **Mentioned in**.*
+
 ## Purpose
 
 The Personal Knowledge Library is evolving from a personal note editor into a **Personal Knowledge

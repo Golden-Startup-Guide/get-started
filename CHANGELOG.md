@@ -46,6 +46,10 @@ The Personal Knowledge Library: a library of eight illustrated handbooks to read
 ### Accessibility and acceptance
 - The design specification's acceptance checklist is recorded item by item in [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md), with new checks for a keyboard-only journey, tablets, high contrast, and reduced motion. It also guides the checks that need people: screen readers, a usability session with readers, and the handbooks' review.
 
+### Documentation
+- The README, roadmap, guide, plan, catalog, privacy policy, and translation notes describe the app as it is in 1.2.0, with screenshots of Home and the reading room. Older documents written for My Notes say so at the top.
+- Two decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md): the handbooks come with the app, read-only (9), and there are no AI, chat, social, or dashboard features (10). The roadmap's old AI items are marked as not planned.
+
 ## [1.1.0] - 2026-11-06
 
 Notes that read like documents, and a plan for what comes next.

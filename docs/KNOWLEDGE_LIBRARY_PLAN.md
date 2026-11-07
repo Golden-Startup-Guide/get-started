@@ -1,6 +1,6 @@
 # The Personal Knowledge Library: plan
 
-**Status:** Planned, 6 November 2026. Nothing in this document has been built yet.
+**Status:** Built. Planned on 6 November 2026; all ten phases were delivered by 7 November 2026 (pull requests #77 to #88) and released as 1.2.0. Where a phase was built differently from its plan, its **As built** note says how. What still needs people is in [ACCEPTANCE.md](ACCEPTANCE.md).
 **Design source:** [design/peoples-home-spec.md](design/peoples-home-spec.md) (UX specification v1.0) and
 [design/peoples-home-mockups.html](design/peoples-home-mockups.html) (static concepts). The
 specification PDF that came with them has the same text as the Markdown copy.
@@ -55,7 +55,7 @@ Handbook notes cannot be edited in place. **Make a personal copy** creates an ed
 | Search | Searches personal notes, shows cards | Searches built-in and personal content; each result shows its level and full path |
 | Graph | The whole library at once | A map of nearby notes around one note, with a list alternative, as the spec requires |
 | Favourites, pins, tags, trash, history, backups, importers, export | Present | Kept for personal content. Backups never include built-in content |
-| Translations (Spanish, Arabic with right-to-left) | Interface | The interface stays translated. Handbook content is in English first ([Still to confirm](#still-to-confirm)) |
+| Translations (Spanish, Arabic with right-to-left) | Interface | The interface stays translated. Handbook content is in English first ([Settled questions](#settled-questions)) |
 
 Things that must not change: existing users' notes and settings, the IndexedDB database name
 (`my-notes`), and the backup format. A backup made before this plan must restore after it. An
@@ -74,6 +74,7 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
 - **Colours:** add the specification's colour tokens (section 6) as CSS custom properties for light and dark, plus a **soft-paper** theme. Replace the scattered hard-coded colours, such as `#b45d4d`, with the tokens.
 - **Type:** serif for reading and sans for the interface, using system font stacks only. Web fonts would add download weight and a network dependency.
 - **Done when:** a unit test checks the contrast of every real text and background pair in all three themes against WCAG 2.2 AA. The existing axe checks pass, and screenshots are reviewed.
+- **As built:** the install manifest uses the full name, The Personal Knowledge Library, as its short name too. Soft paper is stored as the light theme with `paper: true`, so backups stay compatible.
 
 ### Phase 2: Addresses, breadcrumb, and the navigation rail
 
@@ -110,6 +111,7 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
   - an offline end-to-end test opens a handbook note with the network off;
   - a backup made before this phase still restores;
   - personal notes can link to handbook notes.
+- **As built:** each library's notes compile to a small JavaScript module (`assets/core-<id>-<hash>.js`) rather than a JSON file, served through `virtual:core-content`. The reader settings ended up with the other settings rather than in the `reading` store (see phase 6). Handbook pictures, added later, are copied to `assets/picture-*` and counted in the same content budget.
 
 ### Phase 4: Home, the library entrance
 
@@ -229,12 +231,13 @@ A proposal for any of these needs a new decision in [DECISIONS.md](DECISIONS.md)
 - **Scope of test changes.** Most end-to-end tests assume "All Notes" opens first. Phases 2 and 4 update them as they change navigation, never by weakening what the tests check.
 - **Performance at scale.** The 20,000-note targets in [PERFORMANCE.md](PERFORMANCE.md), for typing, search, and the grid, still apply to personal content, and the rail must not render whole trees.
 
-## Still to confirm
+## Settled questions
 
-These don't block phases 1 and 2. Defaults are proposed in brackets.
+These were open when the plan was written; the defaults in brackets were proposed then.
 
-1. **Content authorship:** who writes and who reviews the first handbooks? [Claude drafts them, and the owner arranges a qualified review for health and finance.]
-2. **Content languages:** English only at first, or also isiZulu, Afrikaans, and others? [English first; content files allow translations later.]
-3. **Reading time:** show "About N min read"? [Yes, from word count, rounded, and only above two minutes.]
-4. **Recently added:** use the content's `added` date, or also personal notes? [Both, built-in first.]
-5. **Reading data in backups:** include reading positions and reader settings? [Settings yes, positions no.]
+1. **Content authorship:** [Claude drafts them, and the owner arranges a qualified review for health and finance.] **Settled that way.** All pages were researched and written from public sources, listed on each page. The owner will send the app to professionals to review, and every page stays a draft until reviewed ([ACCEPTANCE.md](ACCEPTANCE.md#3-reviewing-the-handbooks)).
+2. **Content languages:** [English first; content files allow translations later.] **Settled that way.** The app itself is in English, Spanish, and Arabic.
+3. **Reading time:** [Yes, from word count, rounded, and only above two minutes.] **Built that way.**
+4. **Recently added:** [Both, built-in first.] **Built that way.**
+5. **Reading data in backups:** [Settings yes, positions no.] **Built that way.**
+6. **Pictures:** added on 7 November at the owner's request: every handbook page has a picture, and the build refuses a page without one.

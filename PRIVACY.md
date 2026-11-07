@@ -28,10 +28,11 @@ cloud drive syncs. That copy is then governed by wherever you put it.
 ## Network use
 
 The app's own files are downloaded from where it is hosted (GitHub Pages) when
-you first open it and when it updates, and are then kept for offline use. A
-note's content can make your browser load an image from the web if the note
-links to one (`![…](https://…)`); that request goes from your browser directly
-to that website.
+you first open it and when it updates, and are then kept for offline use. The
+handbooks and their pictures are among those files, so reading them fetches
+nothing, and nobody learns what you read. If a note links to an image on the
+web (`![…](https://…)`), it shows a **Load image** button instead; only when you
+press it does your browser fetch the image, directly from that website.
 
 ## The host
 

@@ -5,6 +5,9 @@ The Personal Knowledge Library is available in **English**, **Spanish** (Españo
 Language**, or keep **Same as this device** to follow the device's language
 (English when it is not one of these). The choice is kept on the device.
 
+The handbooks themselves are in English for now (see
+[content/README.md](../content/README.md)); the app around them is translated.
+
 The Spanish and Arabic texts were written with machine assistance and have not
 yet been reviewed by native speakers. Corrections are very welcome.
 
