@@ -28,5 +28,5 @@ test('shows another note inside this one with ![[Note]], kept up to date', async
   // Embeds count as links: Spring plan is a backlink of Seed list.
   await page.getByRole('button', { name: 'Close editor' }).first().click()
   await page.getByRole('button', { name: 'Open note Seed list' }).click()
-  await expect(page.getByRole('list', { name: 'Backlinks' })).toContainText('Spring plan')
+  await expect(page.getByRole('list', { name: 'Mentioned in' })).toContainText('Spring plan')
 })

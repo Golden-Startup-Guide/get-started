@@ -17,7 +17,7 @@ test('opens on Home, invites a first read, and then offers to continue where the
   await page.getByRole('complementary', { name: 'Primary navigation' }).getByRole('button', { name: 'Home' }).click()
   const resume = page.getByRole('region', { name: 'Continue reading' })
   await expect(resume.getByRole('paragraph').first()).toHaveText('Water through the day')
-  await expect(resume.getByText('Health & Wellbeing / Nutrition / Everyday Nutrition · Note 2 of 2')).toBeVisible()
+  await expect(resume.getByText('Health & Wellbeing / Nutrition / Everyday Nutrition · Note 2 of 3')).toBeVisible()
   await resume.getByRole('button', { name: /^Continue reading/ }).click()
   await expect(page.getByRole('dialog', { name: 'Water through the day' })).toBeVisible()
   await page.goBack()

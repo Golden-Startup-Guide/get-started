@@ -43,6 +43,9 @@ interface WorkspaceState {
   /** The library, shelf, or notebook the delete dialog is open for. */
   structureToDelete: StructureItem | null
   setView: (view: View) => void
+  /** The note the note map should open around, when sent there from a note. */
+  graphFocusId: string | null
+  setGraphFocus: (noteId: string | null) => void
   setQuery: (query: string) => void
   toggleSidebar: () => void
   setNavigationOpen: (open: boolean) => void
@@ -64,6 +67,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set) => ({
   notice: null,
   structureToDelete: null,
   setView: (view) => set({ view }),
+  graphFocusId: null,
+  setGraphFocus: (graphFocusId) => set({ graphFocusId }),
   setQuery: (query) => set({ query }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setNavigationOpen: (navigationOpen) => set({ navigationOpen }),

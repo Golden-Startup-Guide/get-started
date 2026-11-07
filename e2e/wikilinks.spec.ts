@@ -34,7 +34,7 @@ test('links notes by typing [[ and a suggested title, then follows the link and 
 
   await page.locator('.prose-notes').getByRole('link', { name: 'Seed catalogue' }).click()
   await expect(page.getByRole('textbox', { name: 'Note title' })).toHaveValue('Seed catalogue')
-  const backlinks = page.getByRole('list', { name: 'Backlinks' })
+  const backlinks = page.getByRole('list', { name: 'Mentioned in' })
   await expect(backlinks).toContainText('Planting calendar')
 
   await backlinks.getByRole('button', { name: 'Planting calendar' }).click()

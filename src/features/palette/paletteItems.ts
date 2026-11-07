@@ -78,7 +78,7 @@ export function buildPaletteItems(sources: PaletteSources, handlers: PaletteHand
     place('all', t('All Notes'), 'all', undefined, 'everything home'),
     place('favorites', t('Favorites'), 'favorites', undefined, 'starred hearts'),
     place('trash', t('Trash'), 'trash', undefined, 'deleted bin restore'),
-    place('graph', t('Knowledge Graph'), 'graph', undefined, 'links backlinks relationships'),
+    place('graph', t('Note map'), 'graph', undefined, 'graph links backlinks mentions relationships'),
     ...libraries.map((library) => place(`library:${library.id}`, library.name, `library:${library.id}`, t('Library'))),
     ...shelves.map((shelf) => place(`shelf:${shelf.id}`, shelf.name, `shelf:${shelf.id}`, t('Shelf in {library}', { library: libraryName.get(shelf.libraryId) ?? t('a library') }))),
     ...notebooks.map((notebook) => {

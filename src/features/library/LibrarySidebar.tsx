@@ -179,7 +179,7 @@ export function LibrarySidebar({
         <NavButton active={view === 'all'} label={t("All Notes")} count={notes.length} onClick={() => onNavigate('all')} icon={<FileText size={16} />} />
         <NavButton active={view === 'favorites'} label={t("Favorites")} count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
         <NavButton active={view === 'trash'} label={t("Trash")} count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />
-        <NavButton active={view === 'graph'} label={t("Knowledge Graph")} count={notes.length} onClick={() => onNavigate('graph')} icon={<Network size={16} />} />
+        <NavButton active={view === 'graph'} label={t("Note map")} count={notes.length} onClick={() => onNavigate('graph')} icon={<Network size={16} />} />
         <button className="nav-button flex w-full items-center gap-3 text-left" onClick={onOpenToday}>
           <CalendarDays size={16} aria-hidden="true" /><span className="min-w-0 flex-1 truncate">{t("Today’s note")}</span>
         </button>

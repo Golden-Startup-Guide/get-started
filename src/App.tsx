@@ -67,6 +67,7 @@ import { buildLocations, isEmptyQuery, matchesQuery, parseSearchQuery, pruneSear
 import { findSavedSearch } from './lib/savedSearches'
 import { DAILY_NOTEBOOK, dailyNoteContent, fillTemplate, findDailyNote, isoDate } from './lib/templates'
 import { deriveWikilinks, mergeLinks } from './lib/wikilinks'
+import { mentionsOf, relatedNotes } from './lib/related'
 import { DEFAULT_READER_SETTINGS, type CoreNote, type Note, type NoteLink } from './types'
 import './workspace.css'
 import { t, tp } from './i18n/i18n'
@@ -247,6 +248,16 @@ function App() {
   const needsTextLinks = useDeferredValue(Boolean(activeNote) || view === 'graph')
   const textLinks = useMemo(() => (needsTextLinks ? deriveWikilinks(notes) : NO_LINKS), [needsTextLinks, notes])
   const graphLinks = useMemo(() => mergeLinks(links, textLinks), [links, textLinks])
+  // The same across personal and handbook notes, for the note map and a handbook note's related
+  // notes and mentions: only while one of those is showing, and once the handbooks have loaded.
+  const showingHandbookNote = Boolean(activeNote && isCoreId(activeNote.id))
+  const needsWideLinks = useDeferredValue((view === 'graph' || showingHandbookNote) && coreNotes.length > 0)
+  const wideLinks = useMemo(
+    () => (needsWideLinks ? mergeLinks(links, deriveWikilinks(linkableNotes)) : NO_LINKS),
+    [needsWideLinks, links, linkableNotes],
+  )
+  const mapNotes = useMemo(() => (coreNotes.length ? [...graphNotes, ...coreNotes] : graphNotes), [graphNotes, coreNotes])
+  const graphFocusId = useWorkspaceStore((state) => state.graphFocusId)
 
   const resolvedTheme = settings.theme === 'system' ? (systemDark ? 'dark' : 'light') : settings.theme
   // Soft paper replaces the light colours; 'system' follows the device between light and dark.
@@ -356,7 +367,7 @@ function App() {
       : view === 'trash'
         ? t('Trash')
       : view === 'graph'
-        ? t('Knowledge Graph')
+        ? t('Note map')
       : view.startsWith('library:')
         ? allLibraries.find((item) => item.id === view.slice(8))?.name ?? t('Library')
       : view.startsWith('shelf:')
@@ -393,6 +404,26 @@ function App() {
 
   // A handbook note's [[links]] reach handbook notes first, then personal ones.
   const handbookLinkTargets = useMemo(() => [...coreNotes, ...notes], [coreNotes, notes])
+  // What mentions the handbook note open, and what is near it (not the notes before and after it,
+  // which the reader already names).
+  const openHandbookNote = showingHandbookNote ? activeNote : null
+  const handbookMentions = useMemo(
+    () => (openHandbookNote ? mentionsOf(openHandbookNote.id, wideLinks, new Map(handbookLinkTargets.map((item) => [item.id, item]))) : []),
+    [openHandbookNote, wideLinks, handbookLinkTargets],
+  )
+  const handbookRelated = useMemo(() => {
+    if (!openHandbookNote) return []
+    const siblings = coreNotes.filter((item) => item.notebookId === openHandbookNote.notebookId)
+    const index = siblings.findIndex((item) => item.id === openHandbookNote.id)
+    const shelfOfNotebook = new Map(allNotebooks.map((notebook) => [notebook.id, notebook.shelfId]))
+    return relatedNotes({
+      note: openHandbookNote,
+      notes: handbookLinkTargets,
+      links: wideLinks,
+      shelfOf: (notebookId) => shelfOfNotebook.get(notebookId ?? ''),
+      exclude: new Set([siblings[index - 1]?.id, siblings[index + 1]?.id].filter((id): id is string => Boolean(id))),
+    })
+  }, [openHandbookNote, coreNotes, allNotebooks, handbookLinkTargets, wideLinks])
 
   // Remember what was opened, for "Continue reading". A new note counts from when it is next opened.
   const openedNoteId = activeNote && !isCreating ? activeNote.id : undefined
@@ -486,6 +517,21 @@ function App() {
 
   function openNewNote() {
     openDraft()
+  }
+
+  /** "Library / Shelf / Notebook" for any note. */
+  function placeOfNote(note: Note): string {
+    const notebook = allNotebooks.find((item) => item.id === note.notebookId)
+    const shelf = allShelves.find((item) => item.id === notebook?.shelfId)
+    const library = allLibraries.find((item) => item.id === shelf?.libraryId)
+    return [library?.name, shelf?.name, notebook?.name].filter(Boolean).join(' / ')
+  }
+
+  /** Closes the note and shows the note map around it. */
+  function showOnMap(note: Note) {
+    useWorkspaceStore.getState().setGraphFocus(note.id)
+    closeEditor()
+    navigateToView('graph')
   }
 
   /** "Library / Shelf / Notebook" for a handbook note. */
@@ -800,8 +846,12 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
             <HandbookNotebookPage notebookId={view.slice(9)} onNavigate={navigateToView} onOpenNote={openNote} />
           ) : view === 'graph' ? (
             <KnowledgeGraph
-              notes={graphNotes}
-              links={graphLinks}
+              key={graphFocusId ?? 'map'}
+              initialFocusId={graphFocusId ?? readingRecords.find((record) => mapNotes.some((note) => note.id === record.noteId))?.noteId}
+              notes={mapNotes}
+              links={coreNotes.length ? wideLinks : graphLinks}
+              libraryNotes={graphNotes}
+              libraryLinks={graphLinks}
               matchingIds={graphMatches}
               theme={theme}
               noteLabel={noteLabel}
@@ -846,6 +896,10 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
           onSettings={(reader) => void changeReaderSettings(reader)}
           onTheme={(choice) => void changeTheme(choice)}
           onPosition={(noteId, position) => void useReadingStore.getState().savePosition(noteId, position)}
+          mentions={handbookMentions}
+          related={handbookRelated}
+          pathOf={placeOfNote}
+          onShowOnMap={() => showOnMap(activeNote)}
           location={handbookLocation(activeNote as CoreNote)}
           notes={handbookLinkTargets}
           onOpenNote={(note, section) => {

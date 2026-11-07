@@ -8,6 +8,9 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 ## [Unreleased]
 
 ### Added
+- **Relationships** on handbook pages: **Mentioned in** (what links to the page) and **Related notes**, each with a plain reason, and **Show on the note map**.
+- **The note map** (formerly Knowledge Graph) opens around a note, with handbook notes included, zoom and reset buttons, and **Skip to the list**; the same notes are always listed below it. The whole-library view is offered second. "Backlinks" are now called **Mentioned in**.
+- A third placeholder page in Everyday Nutrition, "Signs of dehydration" (a draft, with a warning to get help).
 - **Search** for the whole library: one search across the handbooks' libraries, shelves, notebooks, and notes and your own notes, each result saying what it is and where it sits, with the words marked. Back returns to the results; when nothing matches, it offers a way on.
 - **The reading room** for handbook notes: one column at a comfortable line length, **Reading settings** for text size, style, line spacing, line length, and theme (remembered, and resettable), your place in each note remembered, **Previous** and **Next** by name, a quiet progress bar, and a reading time for longer notes.
 - **Callouts**: a quote starting with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, or `[!CAUTION]` becomes a labelled box, in handbooks and in your own notes.

@@ -42,5 +42,5 @@ test('follows [[Note#Section]] links to the heading, suggests headings, and jump
   })).toBe(true)
 
   // The section link counts as a link: Calendar is a backlink of Garden plan.
-  await expect(page.getByRole('list', { name: 'Backlinks' })).toContainText('Calendar')
+  await expect(page.getByRole('list', { name: 'Mentioned in' })).toContainText('Calendar')
 })

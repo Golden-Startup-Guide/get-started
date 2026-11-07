@@ -1,5 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, ExternalLink, Network } from 'lucide-react'
+import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { ArrowDownLeft, ArrowUpRight, ExternalLink, Network, ZoomIn, ZoomOut } from 'lucide-react'
 import type { Note, NoteLink } from '../../types'
 import { getGraphNeighbors, MAX_VISIBLE_GRAPH_NEIGHBORS } from './graphModel'
 import { canDrawLibraryGraph } from './libraryGraphData'
@@ -9,8 +9,14 @@ import { t, tp } from '../../i18n/i18n'
 const LibraryGraph = lazy(() => import('./LibraryGraph'))
 
 interface KnowledgeGraphProps {
+  /** Every note the map can show: yours and the handbooks'. */
   notes: Note[]
   links: NoteLink[]
+  /** Your own notes and their links, for the optional whole-library view. */
+  libraryNotes: Note[]
+  libraryLinks: NoteLink[]
+  /** The note to start around: one sent from a note, or the one read last. */
+  initialFocusId?: string
   /** Notes matching the search, or undefined when not searching. */
   matchingIds?: ReadonlySet<string>
   /** 'light' or 'dark'. */
@@ -39,11 +45,18 @@ function getEdgePath(from: GraphPosition, to: GraphPosition, offset: number): st
   return `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`
 }
 
-export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, onOpenNote }: KnowledgeGraphProps) {
+/**
+ * The note map (design specification, section 4): a note and the notes it links to or is
+ * mentioned in, drawn around it, with the same connections listed below, so the map is never the
+ * only way to reach a note. A view of your whole library is offered too, never first.
+ */
+export function KnowledgeGraph({ notes, links, libraryNotes, libraryLinks, initialFocusId, matchingIds, theme, noteLabel, onOpenNote }: KnowledgeGraphProps) {
   const activeNotes = useMemo(() => notes.filter((note) => note.deletedAt === undefined), [notes])
-  // The whole library where the browser can draw it; otherwise the neighbourhood explorer.
-  const [mode, setMode] = useState<GraphMode>(() => (canDrawLibraryGraph() ? 'library' : 'note'))
-  const [focusNoteId, setFocusNoteId] = useState(() => activeNotes[0]?.id ?? '')
+  const activeLibraryNotes = useMemo(() => libraryNotes.filter((note) => note.deletedAt === undefined), [libraryNotes])
+  const [mode, setMode] = useState<GraphMode>('note')
+  const [focusNoteId, setFocusNoteId] = useState(() => (activeNotes.some((note) => note.id === initialFocusId) ? initialFocusId! : activeNotes[0]?.id ?? ''))
+  const [zoom, setZoom] = useState(1)
+  const listRef = useRef<HTMLHeadingElement>(null)
   // While searching, the explorer offers only the matching notes (and the one shown).
   const choices = useMemo(
     () => (matchingIds ? activeNotes.filter((note) => matchingIds.has(note.id) || note.id === focusNoteId) : activeNotes),
@@ -70,8 +83,8 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
     return (
       <section aria-labelledby="knowledge-graph-heading" className="empty-state">
         <span className="empty-icon"><Network size={24} aria-hidden="true" /></span>
-        <h2 id="knowledge-graph-heading" className="mt-4 text-lg font-semibold">{t("Relationship explorer")}</h2>
-        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{t("Create a note and connect it to others to explore your knowledge graph.")}</p>
+        <h2 id="knowledge-graph-heading" className="mt-4 text-lg font-semibold">{t("Note map")}</h2>
+        <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">{t("Create a note and connect it to others to see them on the map.")}</p>
       </section>
     )
   }
@@ -79,10 +92,11 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
   const outgoing = neighbors.filter((neighbor) => neighbor.outgoing)
   const backlinks = neighbors.filter((neighbor) => neighbor.incoming)
 
-  const modeSwitch = (
+  // The whole-library view needs WebGL 2; without it, only the map around a note is offered.
+  const modeSwitch = canDrawLibraryGraph() && (
     <div className="segmented" role="group" aria-label={t("Graph view")}>
-      <button type="button" aria-pressed={mode === 'library'} onClick={() => setMode('library')}>{t("Whole library")}</button>
       <button type="button" aria-pressed={mode === 'note'} onClick={() => setMode('note')}>{t("Around a note")}</button>
+      <button type="button" aria-pressed={mode === 'library'} onClick={() => setMode('library')}>{t("Whole library")}</button>
     </div>
   )
 
@@ -98,8 +112,8 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
         </div>
         <Suspense fallback={<p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading the graph…")}</p>}>
           <LibraryGraph
-            notes={activeNotes}
-            links={links}
+            notes={activeLibraryNotes}
+            links={libraryLinks}
             matchingIds={matchingIds}
             noteLabel={noteLabel}
             theme={theme}
@@ -118,8 +132,8 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
     <section aria-labelledby="knowledge-graph-heading" className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 id="knowledge-graph-heading" className="text-xl font-semibold">{t("Relationship explorer")}</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">{t("Explore direct links and backlinks between your saved notes.")}</p>
+          <h2 id="knowledge-graph-heading" className="text-xl font-semibold">{t("Around a note")}</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">{t("A note in the middle, with the notes it links to and the notes that mention it. Choose one to move the map to it.")}</p>
         </div>
         {modeSwitch}
         <div className="flex flex-wrap items-center gap-2">
@@ -145,8 +159,17 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
               <p className="truncate font-medium">{label}</p>
             </div>
             <button className="secondary-button shrink-0" onClick={() => onOpenNote(focusNote)}>
-              <ExternalLink size={15} aria-hidden="true" /> {t("Open in editor")}
+              <ExternalLink size={15} aria-hidden="true" /> {t("Open note")}
             </button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button type="button" className="secondary-button" onClick={() => listRef.current?.focus()}>{t("Skip to the list")}</button>
+            <div className="flex gap-1" role="group" aria-label={t("Zoom")}>
+              <button type="button" className="icon-button" aria-label={t("Zoom out")} disabled={zoom <= 0.75} onClick={() => setZoom((value) => Math.max(0.75, value - 0.25))}><ZoomOut size={16} aria-hidden="true" /></button>
+              <button type="button" className="secondary-button" onClick={() => setZoom(1)}>{t("Reset zoom")}</button>
+              <button type="button" className="icon-button" aria-label={t("Zoom in")} disabled={zoom >= 1.75} onClick={() => setZoom((value) => Math.min(1.75, value + 0.25))}><ZoomIn size={16} aria-hidden="true" /></button>
+            </div>
           </div>
 
           <div
@@ -158,6 +181,8 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
             <p id="graph-instructions" className="sr-only">
               {t("The focused note is in the center. Select a connected note to explore its relationships. Arrows point from the note that links to the note it links to.")}
             </p>
+            {/* Zoomed from the middle; the map's own size and the list below stay as they are. */}
+            <div className="absolute inset-0 transition-transform" style={{ transform: `scale(${zoom})` }}>
             <svg
               aria-hidden="true"
               className="absolute inset-0 h-full w-full"
@@ -221,10 +246,11 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
                 <span className="line-clamp-2">{noteLabel(neighbor.note)}</span>
               </button>
             ))}
+            </div>
           </div>
 
           <p role="status" aria-live="polite" className="sr-only">
-            {label}: {tp(outgoing.length, '{count} outgoing link', '{count} outgoing links')}, {tp(backlinks.length, '{count} backlink', '{count} backlinks')}.
+            {label}: {tp(outgoing.length, '{count} outgoing link', '{count} outgoing links')}, {tp(backlinks.length, 'mentioned in {count} note', 'mentioned in {count} notes')}.
           </p>
           {neighbors.length > MAX_VISIBLE_GRAPH_NEIGHBORS && (
             <p className="text-xs text-[var(--muted)]">
@@ -232,6 +258,7 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
             </p>
           )}
 
+          <h3 ref={listRef} tabIndex={-1} className="text-base font-semibold">{t("The same notes, as a list")}</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <RelationshipList
               title={t("Links from this note")}
@@ -242,10 +269,10 @@ export function KnowledgeGraph({ notes, links, matchingIds, theme, noteLabel, on
               onExplore={(note) => setFocusNoteId(note.id)}
             />
             <RelationshipList
-              title={t("Backlinks to this note")}
+              title={t("Mentioned in")}
               icon={<ArrowDownLeft size={15} aria-hidden="true" />}
               notes={backlinks}
-              emptyText={t("No notes link to this one yet.")}
+              emptyText={t("No notes mention this one yet.")}
               noteLabel={noteLabel}
               onExplore={(note) => setFocusNoteId(note.id)}
             />

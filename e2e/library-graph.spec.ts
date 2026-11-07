@@ -4,10 +4,12 @@ test('draws the whole library, narrows it with search, and selects a note to exp
   await openWorkspace(page)
   // A second note, linking to the Welcome note a new library starts with.
   await createNote(page, 'Garden plan', 'Read [[Welcome to your Knowledge Library]] first.')
-  await page.getByRole('button', { name: /Knowledge Graph/ }).click()
+  await page.getByRole('button', { name: /^Note map/ }).click()
+  // The map around a note comes first; the whole library is offered where WebGL 2 can draw it.
+  await expect(page.getByRole('button', { name: 'Around a note' })).toHaveAttribute('aria-pressed', 'true')
   const wholeLibrary = page.getByRole('button', { name: 'Whole library' })
-  // Browsers without WebGL 2 start in "Around a note" instead.
-  test.skip(await wholeLibrary.getAttribute('aria-pressed') !== 'true', 'No WebGL 2 in this browser')
+  test.skip(await wholeLibrary.count() === 0, 'No WebGL 2 in this browser')
+  await wholeLibrary.click()
 
   // Two notes, one link between them.
   const status = page.getByRole('status').filter({ hasText: /notes? ·/ })
