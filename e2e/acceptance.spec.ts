@@ -67,9 +67,11 @@ test('in a high-contrast mode, the current page and focus stay marked', async ({
   await page.emulateMedia({ forcedColors: 'active' })
   await page.goto('/#/notes')
   // Marked by a background in the normal themes, which high-contrast modes remove.
-  const current = page.locator('.nav-button-active').first()
-  await expect(current).toBeVisible()
-  expect(await current.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid')
+  // Once the page has settled on All Notes (it can start on Home while the address is read).
+  await expect(page.getByRole('heading', { name: 'All Notes', level: 1 })).toBeVisible()
+  const current = page.getByRole('complementary', { name: 'Primary navigation' }).getByRole('button', { name: /^All Notes/ })
+  await expect(current).toHaveClass(/nav-button-active/)
+  await expect.poll(() => current.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe('solid')
 })
 
 test('when the system asks for less motion, nothing animates', async ({ page }) => {
