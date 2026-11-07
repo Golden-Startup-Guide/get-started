@@ -30,6 +30,7 @@ import { LibraryPage } from './features/library/LibraryPage'
 import { ShelfPage } from './features/library/ShelfPage'
 import { HandbookNotebookPage } from './features/library/HandbookNotebookPage'
 import { HomePage } from './features/home/HomePage'
+import { SearchPage } from './features/search/SearchPage'
 import { LazyHandbookNote } from './features/notes/LazyHandbookNote'
 import { CORE_CATALOG, useCoreStore } from './state/coreStore'
 import { isCoreId } from './lib/core'
@@ -346,6 +347,8 @@ function App() {
 
   const viewLabel = view === 'home'
     ? t('Home')
+    : view === 'search'
+    ? t('Search')
     : view === 'all'
     ? t('All Notes')
     : view === 'favorites'
@@ -419,6 +422,9 @@ function App() {
   }
 
   function navigateToView(nextView: View) {
+    // A search made on the Search page stays there (Back returns to it with its results) rather
+    // than filtering the next page.
+    if (view === 'search' && nextView !== 'search') setQuery('')
     setView(nextView)
     if (isCompactNavigation) {
       setNavigationOpen(false)
@@ -748,12 +754,12 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
           )}
           <div className="mb-5 flex min-w-0 items-center gap-3">
             {/* Library, shelf, and handbook pages are for reading and choosing; notes are searched where they are listed. */}
-            {!view.startsWith('library:') && !view.startsWith('shelf:') && !handbookView && view !== 'home' && (
+            {!view.startsWith('library:') && !view.startsWith('shelf:') && !handbookView && view !== 'home' && view !== 'search' && (
               <>
                 <div className="search-field flex-1">
                   <Search size={18} aria-hidden="true" />
                   <label htmlFor="note-search" className="sr-only">{t("Search notes, libraries, shelves, notebooks, and tags")}</label>
-                  <input ref={searchInputRef} id="note-search" type="search" value={query} onFocus={() => setSearchPrimed(true)} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search notes — try tag:health, notebook:work, \"a phrase\", -word")} />
+                  <input ref={searchInputRef} id="note-search" type="search" value={query} onFocus={() => setSearchPrimed(true)} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search these notes")} />
                   {query && <button className="icon-button !h-8 !w-8" onClick={() => setQuery('')} aria-label={t("Clear search")}><X size={15} /></button>}
                   {query.trim() && <SaveSearchButton query={query} saved={findSavedSearch(settings.savedSearches, query)} />}
                   <SearchTips onAdd={(example) => {
@@ -772,6 +778,16 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
             <HomePage onNavigate={navigateToView} onOpenNote={openNote} />
           ) : isLoading ? (
             <p role="status" className="py-16 text-center text-[var(--muted)]">{t("Loading your notes…")}</p>
+          ) : view === 'search' ? (
+            <SearchPage
+              query={query}
+              searchQuery={searchQuery}
+              personalMatches={filteredNotes}
+              searching={useWorkerResults && workerSearch.pending}
+              onQuery={setQuery}
+              onNavigate={navigateToView}
+              onOpenNote={openNote}
+            />
           ) : view.startsWith('library:') ? (
             <LibraryPage libraryId={view.slice(8)} onNavigate={navigateToView} onOpenNote={openNote} />
           ) : view.startsWith('shelf:') ? (

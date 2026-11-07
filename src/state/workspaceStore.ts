@@ -7,6 +7,8 @@ export type View =
   | 'home'
   /** Every personal note. */
   | 'all'
+  /** One search across the handbooks and your notes. */
+  | 'search'
   | 'favorites'
   | 'trash'
   | 'graph'

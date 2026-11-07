@@ -8,6 +8,7 @@ adds features, and a **patch** fixes problems. The app updates itself, asking fi
 ## [Unreleased]
 
 ### Added
+- **Search** for the whole library: one search across the handbooks' libraries, shelves, notebooks, and notes and your own notes, each result saying what it is and where it sits, with the words marked. Back returns to the results; when nothing matches, it offers a way on.
 - **The reading room** for handbook notes: one column at a comfortable line length, **Reading settings** for text size, style, line spacing, line length, and theme (remembered, and resettable), your place in each note remembered, **Previous** and **Next** by name, a quiet progress bar, and a reading time for longer notes.
 - **Callouts**: a quote starting with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, or `[!CAUTION]` becomes a labelled box, in handbooks and in your own notes.
 - **Library, shelf, and notebook pages** made for reading: counts that name what they count, shelves and notebooks with their descriptions, Continue reading where you left off, related shelves and notebooks, and a handbook notebook's numbered contents with your last-read note marked. Managing your own libraries and shelves moves to a **Manage** section at the end of their pages.

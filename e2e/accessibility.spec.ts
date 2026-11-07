@@ -22,7 +22,7 @@ async function expectNoViolations(page: Page, screen: string) {
 
 for (const theme of ['light', 'dark'] as const) {
   test(`main screens have no WCAG 2.2 AA problems axe can find (${theme} theme)`, async ({ page }) => {
-    // Sixteen screens checked in turn; WebKit on Windows is the slowest.
+    // Seventeen screens checked in turn; WebKit on Windows is the slowest.
     test.setTimeout(150_000)
     await page.emulateMedia({ colorScheme: theme })
     await page.goto('/')
@@ -69,6 +69,10 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByRole('navigation', { name: 'Libraries' }).getByRole('button', { name: /^My notes/ }).click()
     await expect(page.getByRole('heading', { name: 'Manage this library' })).toBeVisible()
     await expectNoViolations(page, 'a personal library')
+
+    await page.goto('/#/search?q=water')
+    await expect(page.getByRole('list', { name: 'Search results' })).toBeVisible()
+    await expectNoViolations(page, 'search results')
 
     await page.getByRole('navigation', { name: 'Handbooks' }).getByRole('button', { name: /^Health & Wellbeing/ }).click()
     await expect(page.getByRole('button', { name: 'Open shelf Nutrition' })).toBeVisible()

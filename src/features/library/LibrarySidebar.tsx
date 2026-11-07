@@ -175,6 +175,7 @@ export function LibrarySidebar({
       </button>
       <nav aria-label={t("Note views")} className="space-y-1">
         <NavButton active={view === 'home'} label={t("Home")} onClick={() => onNavigate('home')} icon={<Home size={16} />} />
+        <NavButton active={view === 'search'} label={t("Search")} onClick={() => onNavigate('search')} icon={<Search size={16} />} />
         <NavButton active={view === 'all'} label={t("All Notes")} count={notes.length} onClick={() => onNavigate('all')} icon={<FileText size={16} />} />
         <NavButton active={view === 'favorites'} label={t("Favorites")} count={counts.favorites} onClick={() => onNavigate('favorites')} icon={<Heart size={16} />} />
         <NavButton active={view === 'trash'} label={t("Trash")} count={trash.length} onClick={() => onNavigate('trash')} icon={<Trash2 size={16} />} />

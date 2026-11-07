@@ -264,6 +264,22 @@ short drafts, to be replaced by reviewed handbooks (see
 
 ### 2.3 Search
 
+**Search** in the sidebar (and the collapsed rail) opens one search across the
+whole library, at `#/search?q=…`: the handbooks' libraries, shelves, notebooks,
+and notes, and your own notes. Each result says what it is (Library, Shelf,
+Notebook, or Note, and "Handbook" for a handbook note), where it sits
+("Health & Wellbeing / Nutrition / Everyday Nutrition"), and a short passage
+with the searched words marked. Places match by their name and description;
+notes as described below. Results whose name or title holds every word come
+first, then those that only mention them. The number of results is announced
+to screen readers; long lists show 50 at a time with **Show more**. Opening a
+result and coming Back returns to the search with its results. When nothing
+matches, the page says so and offers **Clear search** and **Browse the
+libraries**. Searches using the operators below find notes only.
+
+Within a list of your notes (All Notes, a notebook, Favorites, a tag), the
+search field above the list searches just that list, as follows.
+
 Use the workspace search field to find notes by title, note content, tags,
 notebook, shelf, or library name. Every word you type must appear somewhere in
 the note or its location, in any order, ignoring capitals. Matching results are

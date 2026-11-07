@@ -161,6 +161,8 @@ and Lighthouse. Each phase also updates the changelog and [APP_GUIDE.md](APP_GUI
 
 ### Phase 7: Search
 
+- **As built:** a Search page (`#/search`) in the sidebar and rail. Handbook notes and places are matched on the page itself (there are few, and they need no worker); personal notes are still searched by the worker in large libraries. Results are a list of buttons rather than an arrow-key listbox, so the keyboard moves through them with Tab. The search clears when leaving the page, and Back restores it from the address. Lists of your notes keep their own search field, now with a plain placeholder; the operators are in its tips.
+
 - **Result:** one search covers both built-in and personal content.
   - Each result shows its level (Library, Shelf, Notebook, or Note), its full path, and the matched words.
   - Results can be browsed with the keyboard, and the number of results is announced.
