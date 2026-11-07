@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { themeChoice } from './lib/theme'
 import {
   FileText,
@@ -22,15 +22,10 @@ import { SettingsDialog } from './features/settings/SettingsDialog'
 import { BackupReminder } from './features/backup/BackupReminder'
 import { UpdateBanner } from './features/app/UpdateBanner'
 import { readLaunchRequest } from './features/app/launchRequest'
-import { KnowledgeGraph } from './features/graph/KnowledgeGraph'
 import { CommandPalette } from './features/palette/CommandPalette'
 import type { PaletteItem } from './features/palette/paletteSearch'
 import { DeleteStructureDialog } from './features/library/DeleteStructureDialog'
-import { LibraryPage } from './features/library/LibraryPage'
-import { ShelfPage } from './features/library/ShelfPage'
-import { HandbookNotebookPage } from './features/library/HandbookNotebookPage'
 import { HomePage } from './features/home/HomePage'
-import { SearchPage } from './features/search/SearchPage'
 import { LazyHandbookNote } from './features/notes/LazyHandbookNote'
 import { CORE_CATALOG, useCoreStore } from './state/coreStore'
 import { isCoreId } from './lib/core'
@@ -73,6 +68,15 @@ import './workspace.css'
 import { t, tp } from './i18n/i18n'
 
 const NO_LINKS: NoteLink[] = []
+
+// Pages other than Home and the note lists come in one chunk, fetched after start-up (see
+// features/pagesChunk.ts), so the start-up script stays small as the library grows.
+const loadPages = () => import('./features/pagesChunk')
+const LibraryPage = lazy(() => loadPages().then((pages) => ({ default: pages.LibraryPage })))
+const ShelfPage = lazy(() => loadPages().then((pages) => ({ default: pages.ShelfPage })))
+const HandbookNotebookPage = lazy(() => loadPages().then((pages) => ({ default: pages.HandbookNotebookPage })))
+const SearchPage = lazy(() => loadPages().then((pages) => ({ default: pages.SearchPage })))
+const KnowledgeGraph = lazy(() => loadPages().then((pages) => ({ default: pages.KnowledgeGraph })))
 // Both Ctrl+K and ⌘K work everywhere; the hint shows the one this platform uses.
 const IS_APPLE = /Mac|iPhone|iPad/.test(navigator.platform)
 const PALETTE_SHORTCUT = IS_APPLE ? '⌘K' : 'Ctrl K'
@@ -144,7 +148,10 @@ function App() {
     void usePersistenceStore.getState().load()
     // Fetch the editor's code straight after the first render, so the first note opens without
     // waiting for it. A failure here is reported if a note is actually opened.
-    const preloadTimer = window.setTimeout(() => void preloadNoteEditor().catch(() => undefined), 0)
+    const preloadTimer = window.setTimeout(() => {
+      void preloadNoteEditor().catch(() => undefined)
+      void loadPages().catch(() => undefined)
+    }, 0)
     const stopSync = startStorageSync()
     return () => {
       window.clearTimeout(preloadTimer)
@@ -819,6 +826,8 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
               </>
             )}
           </div>
+          {/* The pages loaded after start-up (see loadPages) show this only if their code is not ready yet. */}
+          <Suspense fallback={<p role="status" className="py-16 text-center text-[var(--muted)]">{t('Loading…')}</p>}>
           {view === 'home' ? (
             // Drawn at once, before the library has loaded: the handbooks need no database.
             <HomePage onNavigate={navigateToView} onOpenNote={openNote} />
@@ -877,6 +886,7 @@ ${t('Copied from the handbook note [[{title}]].', { title: note.title })}
               {!query && view !== 'favorites' && view !== 'trash' && <button className="primary-button mt-5" onClick={openNewNote}><Plus size={16} /> {t("Create a note")}</button>}
             </div>
           )}
+          </Suspense>
           <div className="mt-8 flex items-center justify-between md:hidden">
             <span className="text-xs text-[var(--muted)]">{tp(notebooks.length, '{count} notebook', '{count} notebooks')} · {tp(tags.length, '{count} tag', '{count} tags')}</span>
             <button className="nav-button flex items-center gap-2" onClick={openSettings}><Settings size={15} /> {t("Settings")}</button>

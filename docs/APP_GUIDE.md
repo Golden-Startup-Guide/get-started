@@ -264,9 +264,12 @@ handbook note:
 Personal notes can link to handbook notes with `[[Title]]` (suggested while
 typing) or **Linked notes**, and the start-up check keeps those links. Handbook
 content is written in the `content/` folder ([content/README.md](../content/README.md));
-the build checks it and stops on any mistake. The handbooks shipped so far are
-short drafts, to be replaced by reviewed handbooks (see
-[KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md), phase 9).
+the build checks it and stops on any mistake. Eight libraries ship: Health &
+Wellbeing, Agriculture, Financial Literacy, Education & Learning, Community
+Development, Skills & Careers, Home & Family, and South Africa, with 49 pages in
+16 notebooks. Each page ends with the sources it was written from. All are
+marked **Draft: not yet reviewed** until qualified reviewers have checked them
+(see [KNOWLEDGE_LIBRARY_PLAN.md](KNOWLEDGE_LIBRARY_PLAN.md), phase 9).
 
 ### 2.3 Search
 

@@ -24,3 +24,8 @@ Check your plan each month. A budget is not a test; it is a tool you change as y
 
 > [!NOTE]
 > This is general information, not financial advice for your situation.
+
+## Sources
+
+- [Know your credit (National Credit Regulator)](https://www.ncr.org.za/documents/pages/NCR+KNOW+YOUR+CREDIT_POSTER+REVISION.compressed.pdf)
+- [What should I look for in a well-run stokvel? (Smart About Money)](https://smartaboutmoney.co.za/saving-and-investing/investment-products/what-should-i-look-for-in-a-well-run-stokvel/)

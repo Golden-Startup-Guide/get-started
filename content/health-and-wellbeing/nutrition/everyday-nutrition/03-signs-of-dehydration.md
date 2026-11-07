@@ -22,3 +22,8 @@ Babies, young children, and older people can become dehydrated more quickly, and
 > Get medical help at once if someone is confused, faints, has not passed urine for many hours, or cannot keep fluids down. Go to your nearest clinic or call for emergency help.
 
 To build steady habits, see [[Staying hydrated]] and [[Water through the day]].
+
+## Sources
+
+- [Dehydration: symptoms and causes (Mayo Clinic)](https://www.mayoclinic.org/diseases-conditions/dehydration/symptoms-causes/syc-20354086)
+- [Dehydration: signs, symptoms, and treatment (Healthdirect)](https://www.healthdirect.gov.au/dehydration)

@@ -14,7 +14,7 @@ test('reads a built-in handbook, follows its links, and cannot change it', async
   await page.getByRole('button', { name: 'Open notebook Everyday Nutrition' }).click()
   // The notebook lists its notes in order, each labelled while it is a draft.
   const contents = page.getByRole('region', { name: 'Contents' })
-  await expect(contents.getByRole('listitem')).toHaveCount(3)
+  await expect(contents.getByRole('listitem')).toHaveCount(4)
   const first = contents.getByRole('button', { name: /^1? ?Staying hydrated/ })
   await expect(first.getByText('Draft', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Pin note' })).toHaveCount(0)

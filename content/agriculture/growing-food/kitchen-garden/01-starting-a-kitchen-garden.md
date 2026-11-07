@@ -27,3 +27,8 @@ Loosen the soil and mix in compost. Good soil holds water and feeds the plants.
 - Tomatoes, with a stake for support
 
 Water in the early morning or late afternoon, when less water is lost to the sun.
+
+## Sources
+
+- [Vegetable garden beginners' guide (Cape Contours)](https://www.capecontours.co.za/tips-to-create-your-own-vegetable-garden/)
+- [Vegetable planting calendar for South Africa (My Creative Lifestyle)](https://www.mycreativelifestyle.co.za/post/vegetable-planting-calendar-for-south-africa)
