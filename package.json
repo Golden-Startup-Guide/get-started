@@ -63,7 +63,7 @@
     "globals": "^17.14.0",
     "graphology-types": "^0.24.8",
     "hast-util-to-html": "^9.0.6",
-    "jsdom": "^25.0.1",
+    "jsdom": "^31.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "~5.6.2",
